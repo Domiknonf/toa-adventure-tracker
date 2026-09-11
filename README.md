@@ -21,11 +21,14 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Installation](#installation)
 - [Der Ablauf eines Reisetags](#der-ablauf-eines-reisetags)
 - [Die Rollen](#die-rollen)
-- [Wie 0, 1 oder 2 Hexfelder entstehen](#wie-0-1-oder-2-hexfelder-entstehen)
+- [Reisearten: zu Fuß, Reittier, Kanu, Schiff](#reisearten-zu-fuß-reittier-kanu-schiff)
+- [Wie die Tagesstrecke entsteht](#wie-die-tagesstrecke-entsteht)
 - [Wetter](#wetter)
 - [Vorräte, Durst und Hunger](#vorräte-durst-und-hunger)
 - [Ereignisse](#ereignisse)
 - [Folgen](#folgen)
+- [Kampfgrößen für schwer und tödlich](#kampfgrößen-für-schwer-und-tödlich)
+- [Was die Spieler sehen](#was-die-spieler-sehen)
 - [Weltoptionen](#weltoptionen)
 - [Eigene Rollen (JSON)](#eigene-rollen-json)
 - [API](#api)
@@ -120,46 +123,80 @@ fest verdrahtet.
 
 ---
 
-## Wie 0, 1 oder 2 Hexfelder entstehen
+## Reisearten: zu Fuß, Reittier, Kanu, Schiff
 
-Grundwert ist **1 Hexfeld**. Darauf wirken, in dieser Reihenfolge:
+Das Tempo sagt, wie sehr ihr euch anstrengt. Die **Reiseart** sagt, womit — und
+das macht den größeren Unterschied. Ein Tag unter Segeln bringt euch weiter als
+ein Tag Macheten im Dickicht, und das gehört nicht in die Tempo-Tabelle, sonst
+müsste „schnell" zwei verschiedene Dinge gleichzeitig heißen.
+
+| Reiseart | langsam | normal | schnell | Ereignisse aus | Besonderheit |
+|---|:--:|:--:|:--:|---|---|
+| **Zu Fuß** | 1 | 1 | 2 | Land | Die ursprüngliche Regel: 0, 1 oder 2 und nichts sonst |
+| **Reittiere** | 1 | 2 | 3 | Land + Reittier | Eigene Pannen: lahmende Tiere, Durchgehen, erschöpfte Pferde |
+| **Kanu** | 1 | 2 | 3 | Land + Fluss | Krokodile, Stromschnellen, Flusspferde — gelagert wird am Ufer |
+| **Schiff** | 2 | 3 | 5 | See | Piraten, Sahuagin, Flaute. **Keine Nachhut** — es gibt keine Spuren |
+
+Gemessen über je 300 simulierte Tage bei normalem Tempo: zu Fuß 0,70 Hexfelder
+pro Tag, beritten 1,20, im Kanu 1,30, unter Segeln 2,01.
+
+**Die Ereignispools sind getrennt.** Velociraptoren tauchen nie auf offener See
+auf, Sahuagin nie im Dschungel. Was überall passiert — Durst, Hunger, ein
+verpeilter Kurs — ist als solches markiert und immer im Spiel. Von 81
+Ereignissen sind 44 Land, 10 überall, 10 Fluss, 14 See und 3 nur beritten.
+
+**Die Rollen folgen der Reiseart.** Auf einem Schiff gibt es keine Nachhut, weil
+es keine Spuren zu verwischen gibt — die Rolle verschwindet aus der Auswahl und
+zählt auch nicht als unbesetzt. Wer beim Umsteigen eine Rolle hielt, die es in
+der neuen Reiseart nicht gibt, verliert sie; alle anderen behalten ihre.
+
+Ein Wechsel der Reiseart **verwirft die Auswertung und die Würfe des Tages**.
+Ein Navigationswurf zu Fuß ist nicht der Wurf, den man am Ruder gemacht hätte,
+und die bereits gezogenen Ereignisse gibt es in der neuen Reiseart womöglich gar
+nicht — Velociraptoren im Bericht, nachdem ihr an Bord gegangen seid, wären
+schlimmer als ein neuer Wurf.
+
+---
+
+## Wie die Tagesstrecke entsteht
+
+Grundwert ist die **Obergrenze der Reiseart beim gewählten Tempo** (siehe
+Tabelle oben). Darauf wirken, in dieser Reihenfolge:
 
 | Was | Wirkung |
 |---|---|
-| Navigation misslungen, **kein** Kartograph | **0** — verlaufen, der Tag ist weg |
-| Navigation misslungen, Kartograph erfolgreich | **1** — ein vertaner Tag statt eines verlorenen |
-| Schnelles Tempo **und** Navigation um ≥ 3 übertroffen | **+1** → 2 Hexfelder |
-| Ein blockierendes Ereignis (Sturm, Kampf, Flut) | **−1** |
+| Navigation misslungen, **kein** Kartograph | **0** — verlaufen, der Tag ist weg (in jeder Reiseart) |
+| Navigation misslungen, Kartograph erfolgreich | die **Hälfte** der Obergrenze, mindestens 1 |
+| Schnelles Tempo, Navigation um **weniger als 3** übertroffen | zurück auf die Normal-Obergrenze |
+| Ein blockierendes Ereignis (Sturm, Kampf, Flaute, Riff) | **−1** je Ereignis |
 | Erschöpfung Grad ≥ 3 in der Gruppe | höchstens **1** |
 | Erschöpfung Grad ≥ 5 | **0** |
-
-Das Ergebnis wird auf 0…2 begrenzt und auf die Obergrenze des Tempos.
 
 Im Bericht steht **jeder dieser Schritte einzeln**. Eine Zahl ohne Begründung
 ist eine Zahl, über die am Tisch gestritten wird.
 
 ### Die drei Tempi
 
-| Tempo | Max. Hex | Navigation | Begegnungen |
-|---|---|---|---|
-| Langsam | 1 | **+5** | −10 % |
-| Normal | 1 | 0 | — |
-| Schnell | **2** | **−3** | +10 % |
+| Tempo | Navigation | Begegnungen |
+|---|---|---|
+| Langsam | **+5** | −10 % |
+| Normal | 0 | — |
+| Schnell | **−3** | +10 % |
 
-Nur schnelles Tempo kann überhaupt 2 Hexfelder erreichen — und verliert dafür
-deutlich mehr Tage ganz.
+Schnelles Tempo hebt die Obergrenze — aber nur, wenn die Navigation den SG um
+mindestens 3 übertrifft. Sonst kommt ihr auf das Normalmaß, habt aber die
+schlechtere Probe und die zusätzlichen Begegnungen schon bezahlt.
 
 > **Warum −3 und nicht −5?** Die ursprüngliche Vorgabe war −5, aber die galt
 > einem Meilen-Modell, in dem ein misslungener Navigationswurf die Strecke
 > *halbierte*. Im Hex-Modell kostet er den **ganzen** Tag. Über 300 simulierte
 > Tage kam schnelles Tempo mit −5 auf 0,40 Hexfelder gegenüber 0,69 bei
-> normalem — das ist kein Risiko, das ist eine Falle. Mit −3 liegen beide bei
-> etwa 0,65, aber schnell streut viel weiter: rund 20 % Zwei-Hex-Tage gegen
-> 55 % verlorene. Beide Werte sind Weltoptionen.
+> normalem — das ist kein Risiko, das ist eine Falle. Mit −3 liegen beide gleich
+> auf, aber schnell streut viel weiter. Beide Werte sind Weltoptionen.
 
-Zum Vergleich, gleiche Gruppe, normales Tempo, **mit** Kartograph statt Vorhut:
-0,83 Hexfelder pro Tag und nur 17 % verlorene Tage. Die Rollenwahl ist der
-größte Hebel im ganzen System.
+Zum Vergleich, gleiche Gruppe zu Fuß, normales Tempo, **mit** Kartograph statt
+Vorhut: 0,83 Hexfelder pro Tag statt 0,66 und nur 17 % verlorene Tage. Die
+Rollenwahl ist der größte Hebel im ganzen System.
 
 ---
 
@@ -214,7 +251,7 @@ dass die Gruppe in der Stadt Fässer gekauft hat.
 
 ## Ereignisse
 
-**54 Ereignisse in 11 Kategorien.** Der Tagesbericht liefert Gründe, nicht nur
+**81 Ereignisse in 11 Kategorien, verteilt auf vier Reisearten.** Der Tagesbericht liefert Gründe, nicht nur
 Zahlen: Der Tag, der ein Hexfeld gekostet hat, sagt *welches* Rudel Velociraptoren
 es gekostet hat.
 
@@ -228,7 +265,7 @@ es gekostet hat.
 | **Schlechtes Wasser** | Wasserträger misslungen | Blutegel im Tümpel, Etwas liegt flussaufwärts |
 | **Durst / Hunger** | Vorräte leer | Die Schläuche sind leer, Verdorbene Vorräte |
 | **Lager** | Lagermeister misslungen | Ein Lager im Nassen, Ameisenstraße durchs Lager, Kein Feuer |
-| **Sturm** | Wetter | Monsunregen, Hangrutsch, Blitzschlag, Der Fluss tritt über |
+| **Sturm** | Wetter | Monsunregen, Hangrutsch, Blitzschlag, Sturm auf See, Flaute, Stromschnellen |
 | **Glück** | Ein makelloser Tag, 25 % | Ein Chwinga folgt euch, Trockene Ruine, Klare Quelle |
 
 Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
@@ -267,6 +304,77 @@ Beides lässt sich abschalten:
 **„Folgen auf die Charakterbögen schreiben“** und
 **„Rettungswürfe automatisch würfeln“**. Ausgeschaltet zeigt der Bericht
 weiterhin genau an, was passiert *wäre*.
+
+---
+
+## Kampfgrößen für schwer und tödlich
+
+Das Ereignis sagt, dass ein Rudel Velociraptoren aufgetaucht ist. Wie viele
+davon einen echten Kampf ergeben, steht direkt darunter — damit du manche
+Begegnungen einfach ausspielen kannst, statt sie nur zu erzählen.
+
+```
+Rudel Velociraptoren                    [kostet den Tag] [2W6 Schaden]
+Sie kommen aus drei Richtungen gleichzeitig, lautlos bis zum letzten Sprung …
+⚔ Velociraptor  HG 1/4   Schwer: 12×   Tödlich: 12×+
+```
+
+**Die Gruppenstufe trägst du ein** — oben im Tagesbericht (ein Feld, gilt
+sofort) oder in den Weltoptionen. `0` heißt: aus den Charakterbögen errechnen,
+gemittelt über die Reisenden. Trag eine feste Stufe ein, wenn die Bögen nicht
+den Tisch abbilden.
+
+Gerechnet wird mit den XP-Budgets des **DMG von 2014** — der Edition, für die
+Tomb of Annihilation geschrieben wurde — inklusive des Gruppenmultiplikators
+(zwei Gegner zählen ×1,5, drei bis sechs ×2, und so weiter). Das Budget zählt
+die **Charaktere**, nicht die Reisenden: Träger und Lasttiere trinken mit,
+halten aber keine Linie.
+
+Drei Fälle, die das Fenster unterscheidet:
+
+| Anzeige | Bedeutung |
+|---|---|
+| `Schwer: 7× · Tödlich: 10×` | Der Normalfall. |
+| `Tödlich: 1×` (ohne „Schwer") | Schon ein einzelner ist mehr als ein schwerer Kampf — eine „Schwer"-Zahl gäbe es hier nicht ehrlich. |
+| `Schon einzeln jenseits von tödlich` | Ein Tyrannosaurus gegen eine Stufe-6-Gruppe. Lauft. |
+
+Ein `+` hinter der Zahl heißt: Es ginge noch mehr, aber bei zwölf hört die
+Empfehlung auf. Vierzig Stirges sind rechnerisch tödlich und praktisch ein
+Nachmittag voll Initiativewürfe.
+
+**Nicht jedes Ereignis bekommt eine Zahl.** Treibsand ist kein Gegner, und die
+Tabaxi-Jägerin will nur wissen, wohin ihr wollt. Ereignisse ohne Gegner zeigen
+keine Kampfgröße — sonst würde das Modul einen Kampf erfinden, den das Ereignis
+gar nicht beschreibt.
+
+Es bleibt eine **Empfehlung**: Das Modul stellt keine Tokens auf, würfelt keine
+Initiative und rührt den Kampf-Tracker nicht an. Es ist Arithmetik, angeboten
+der Person, die entscheidet.
+
+---
+
+## Was die Spieler sehen
+
+**Den Tagesbericht bekommen die Spieler standardmäßig nicht.** Und zwar nicht
+nur ausgeblendet: Er wird ihnen gar nicht erst übermittelt. Die Ereignistexte
+sind zum **Vorlesen** geschrieben — wer sie im eigenen Fenster mitlesen kann,
+hat die Überraschung schon verloren, und ein bloßes `{{#if gm}}` im Template
+hätte jedes Wort trotzdem in den Browser geliefert, wo die Konsole es jedem
+zeigt, der nachsieht.
+
+Spieler sehen: Reisetag, Mondphase, Reisetempo, die Rollenliste mit allen
+Würfen, die Vorräte und das Logbuch. Läuft eine Auswertung, steht bei ihnen
+*„Die Spielleitung wertet den heutigen Tag gerade aus."* statt einer leeren
+Fläche.
+
+Bedienen können sie nur ihre eigenen Charaktere — Rolle wählen und würfeln.
+Der Wurf passiert dabei auf **ihrem** Client, damit ihre Würfel, ihre Module und
+ihre Vorteils-Tastenkürzel greifen.
+
+Willst du es anders, schaltet **„Tagesbericht mit Spielern teilen"** beides um:
+Der Bericht erscheint auch bei ihnen, und die Chatzusammenfassung beim
+Tagesabschluss geht an den ganzen Tisch statt nur an dich. Ausgeschaltet wird
+sie dir zugeflüstert.
 
 ---
 
@@ -327,6 +435,12 @@ wenn Träger, Lasttiere oder NSCs mittrinken.
 | Wasserbedarf pro Kopf und Tag | 2 Gallonen |
 | Nahrungsbedarf pro Kopf und Tag | 1 Pfund |
 | Karenztage bei Hunger | 2 |
+
+### Kämpfe und Sichtbarkeit
+| Option | Vorgabe |
+|---|---|
+| Gruppenstufe | 0 = aus den Bögen errechnen |
+| Tagesbericht mit Spielern teilen | **aus** |
 
 ### Folgen
 | Option | Vorgabe |
@@ -467,7 +581,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + 270 Integrationstests
+npm test             # Mondmathematik + ~590 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```
@@ -482,7 +596,11 @@ einen Namen und einen Text hat** und keine verwaisten Texte herumliegen.
 
 `npm test` fährt einen minimalen Foundry-Ersatz hoch
 (`tools/test/foundry-shim.mjs`) und prüft damit Zustandsübergänge, die
-Hex-Regeln, Wetter, Vorratsübertrag, Rechtetrennung und das gerenderte Template.
+Hex-Regeln, Reisearten, Wetter, Vorratsübertrag, Rechtetrennung, die
+XP-Arithmetik und das gerenderte Template. Darunter ein Lauf über 60 Seetage,
+der prüft, dass **kein einziges Landereignis** je in den Seepool leckt. Darunter ausdrücklich, dass **kein Ereignistext im
+Spieler-Kontext auftaucht** — nicht im Kontextobjekt, nicht im gerenderten
+Markup.
 
 ### Aufbau
 
@@ -495,6 +613,7 @@ Hex-Regeln, Wetter, Vorratsübertrag, Rechtetrennung und das gerenderte Template
 | `scripts/weather.mjs` | Gewürfeltes Wetter |
 | `scripts/roles.mjs` | Rollenliste, Reisende, Modifikatoren, Würfe |
 | `scripts/events.mjs` | Auswahl aus der Ereignistabelle |
+| `scripts/encounters.mjs` | XP-Budgets, Kampfgrößen für schwer und tödlich |
 | `scripts/resolve.mjs` | **Die Tagesmaschine** — Wetter + Würfe → Hex, Ereignisse, Folgen |
 | `scripts/consequences.mjs` | Schreibt Schaden und Erschöpfung auf die Bögen |
 | `scripts/socket.mjs` | Spieleraktionen → SL |

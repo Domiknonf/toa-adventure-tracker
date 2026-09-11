@@ -1,9 +1,10 @@
 import {
-  MODULE_ID, REFRESH_HOOK, PACE_ORDER, DEBOUNCE_MS, ROLE
+  MODULE_ID, REFRESH_HOOK, PACE_ORDER, DEBOUNCE_MS, ROLE, MODE_ORDER, TRAVEL_MODES,
+  DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import {
-  getState, setDay, adjustDay, completeDay, setPace, clearRolls, clearLog,
+  getState, setDay, adjustDay, completeDay, setPace, setMode, clearRolls, clearLog,
   setSupplies, clearReport
 } from "./state.mjs";
 import {
@@ -16,6 +17,7 @@ import { resolveDay } from "./resolve.mjs";
 import { applyConsequences, postDayToChat } from "./consequences.mjs";
 import { eventText, effectSummary } from "./events.mjs";
 import { weatherLabel } from "./weather.mjs";
+import { suggestionFor, partyLevel, budgets } from "./encounters.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -80,13 +82,33 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       disc: disc(),
       paces: this.#preparePaces(state),
       pace: state.pace,
+      modes: this.#prepareModes(state),
+      mode: state.mode,
       party,
       // Rolling can only be judged once every filled role has an answer; the
       // resolve button says so rather than silently producing a thin day.
       pending: party.filter(m => m.roleId && !m.record).length,
       unfilled: this.#prepareUnfilled(state),
       supplies: this.#prepareSupplies(state),
-      report: state.report ? this.#prepareReport(state.report) : null,
+      /**
+       * THE REPORT IS GM-ONLY UNLESS SHARED, AND IT IS WITHHELD HERE RATHER THAN
+       * HIDDEN IN THE TEMPLATE.
+       *
+       * The event prose is written to be read aloud. A player who can read it in
+       * their own window has already lost the surprise - and a template-level
+       * `{{#if gm}}` would still have shipped every word into their browser,
+       * where the console shows it to anyone who looks. So a player is simply
+       * never sent it.
+       */
+      report: (state.report && (gm || setting("shareReport")))
+        ? this.#prepareReport(state.report)
+        : null,
+      // Set when there IS a resolved day the viewer is not allowed to see, so
+      // the window can say "your GM is looking at today" instead of looking
+      // broken or empty.
+      reportHidden: !!state.report && !gm && !setting("shareReport"),
+      partyLevel: partyLevel(),
+      budget: budgets(),
       log: this.#prepareLog(state),
       exhaustion: worstExhaustion()
     };
@@ -107,14 +129,32 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     };
   }
 
-  /** The three pace buttons: hex ceiling and navigation modifier. */
+  /**
+   * How the party is travelling. Each button carries what that mode's ordinary
+   * day looks like, so the choice can be made by eye rather than from the README.
+   */
+  #prepareModes(state) {
+    return MODE_ORDER.map(key => ({
+      key,
+      active: state.mode === key,
+      label: game.i18n.localize(`${MODULE_ID}.mode.${key}`),
+      icon: TRAVEL_MODES[key].icon,
+      hint: game.i18n.localize(`${MODULE_ID}.mode.${key}Hint`),
+      // The three ceilings as "1 / 2 / 3", which says more about the mode than
+      // any adjective would.
+      range: PACE_ORDER.map(p => TRAVEL_MODES[key].hexes[p]).join(" / ")
+    }));
+  }
+
+  /** The three pace buttons: hex ceiling in the CURRENT mode, and modifiers. */
   #preparePaces(state) {
     const table = paceTable();
+    const mode = TRAVEL_MODES[state.mode] ?? TRAVEL_MODES[DEFAULT_MODE];
     return PACE_ORDER.map(key => ({
       key,
       active: state.pace === key,
       label: game.i18n.localize(`${MODULE_ID}.pace.${key}`),
-      max: table[key].max,
+      max: mode.hexes[key],
       mod: table[key].navMod,
       modLabel: signed(table[key].navMod),
       encounterMod: signedOrEmpty(table[key].encounterMod)
@@ -235,6 +275,8 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     return {
       hexes: report.hexes,
       hexLabel: game.i18n.localize(`${MODULE_ID}.app.hex${report.hexes === 1 ? "" : "es"}`),
+      mode: game.i18n.localize(`${MODULE_ID}.mode.${report.mode ?? DEFAULT_MODE}`),
+      modeIcon: (TRAVEL_MODES[report.mode] ?? TRAVEL_MODES[DEFAULT_MODE]).icon,
       weather: weatherLabel(report.weather?.key),
       weatherKey: report.weather?.key,
       rain: !!report.weather?.rain,
@@ -258,10 +300,10 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         text: eventText(event),
         blocks: !!event.blocks,
         good: event.category === "boon",
-        effects: effectSummary(event).map(e => ({
-          ...e,
-          label: effectLabel(e)
-        }))
+        effects: effectSummary(event).map(e => ({ ...e, label: effectLabel(e) })),
+        // How many of them make a real fight, for a GM who wants to run it
+        // rather than narrate it. Null for hazards and friendly meetings.
+        foe: suggestionFor(event)
       })),
       supplies: report.supplies,
       consequences: (report.consequences ?? []).map(c => ({
@@ -280,6 +322,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     const entries = [...(state.log ?? [])].reverse().map(entry => ({
       ...entry,
       paceLabel: game.i18n.localize(`${MODULE_ID}.pace.${entry.pace}`),
+      modeLabel: entry.mode ? game.i18n.localize(`${MODULE_ID}.mode.${entry.mode}`) : "",
       weatherLabel: entry.weather ? weatherLabel(entry.weather) : "",
       // Schema 1 logged miles. Those entries are kept as they were rather than
       // converted into a unit they were never measured in.
@@ -315,6 +358,19 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
 
     for (const button of this.element.querySelectorAll("[data-pace]")) {
       button.addEventListener("click", (event) => setPace(event.currentTarget.dataset.pace));
+    }
+
+    for (const button of this.element.querySelectorAll("[data-mode]")) {
+      button.addEventListener("click", (event) => setMode(event.currentTarget.dataset.mode));
+    }
+
+    const levelInput = this.element.querySelector("[data-party-level]");
+    if (levelInput) {
+      const commitLevel = () => game.settings.set(MODULE_ID, "partyLevel", Number(levelInput.value) || 0);
+      levelInput.addEventListener("change", commitLevel);
+      levelInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { event.preventDefault(); commitLevel(); }
+      });
     }
 
     // The day field commits on Enter and on losing focus, not per keystroke:
@@ -512,6 +568,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       return `<tr>
         <td>${entry.day}</td>
         <td>${entry.hexes ?? "&mdash;"}</td>
+        <td>${entry.mode ? game.i18n.localize(`${MODULE_ID}.mode.${entry.mode}`) : "&mdash;"}</td>
         <td>${entry.weather ? weatherLabel(entry.weather) : "&mdash;"}</td>
         <td>${game.i18n.localize(`${MODULE_ID}.pace.${entry.pace}`)}</td>
         <td>${events || "&mdash;"}</td>
@@ -525,7 +582,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     const content = `
       <table>
         <thead><tr>
-          <th>${L("day")}</th><th>${L("hexes")}</th><th>${L("weather")}</th>
+          <th>${L("day")}</th><th>${L("hexes")}</th><th>${L("mode")}</th><th>${L("weather")}</th>
           <th>${L("pace")}</th><th>${L("events")}</th>
           <th>${L("damage")}</th><th>${L("exhaustion")}</th>
         </tr></thead>

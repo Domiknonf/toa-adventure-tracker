@@ -5,7 +5,7 @@ import {
   getApp, openApp, refresh, registerRefresh, registerActorHooks, AdventureTracker
 } from "./app.mjs";
 import {
-  getState, setDay, adjustDay, completeDay, setPace, setSupplies, clearReport
+  getState, setDay, adjustDay, completeDay, setPace, setMode, setSupplies, clearReport
 } from "./state.mjs";
 import { getRoles, partyActors, modifierFor, worstExhaustion } from "./roles.mjs";
 import { resolveDay } from "./resolve.mjs";
@@ -59,6 +59,13 @@ Hooks.once("ready", () => {
     completeDay,
     /** Set the travel pace ("slow" | "normal" | "fast"). GM only. */
     setPace,
+    /**
+     * Set how the party is travelling: "foot" | "mount" | "canoe" | "ship".
+     * Decides the day's hex ceiling, which roles are offered and which events
+     * the world may throw at them. Clears the day, which was worked out for a
+     * different mode. GM only.
+     */
+    setMode,
     /** Set the water and food stocks, e.g. `{ water: 40, food: 20 }`. GM only. */
     setSupplies,
 

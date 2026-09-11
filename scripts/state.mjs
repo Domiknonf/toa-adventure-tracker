@@ -1,4 +1,6 @@
-import { MODULE_ID, STATE_SCHEMA, DEFAULT_PACE, LOG_LIMIT } from "./const.mjs";
+import {
+  MODULE_ID, STATE_SCHEMA, DEFAULT_PACE, DEFAULT_MODE, TRAVEL_MODES, LOG_LIMIT
+} from "./const.mjs";
 import { setting } from "./settings.mjs";
 
 /**
@@ -26,6 +28,12 @@ export function blankState() {
     day: 1,
     /** A key of the pace table (slow / normal / fast). */
     pace: DEFAULT_PACE,
+    /**
+     * How the party is travelling: on foot, mounted, by canoe or under sail.
+     * Decides the day's hex ceiling, which roles are on offer and which events
+     * the jungle (or the sea) is allowed to throw at them.
+     */
+    mode: DEFAULT_MODE,
     /** actorId -> roleId. At most one role per traveller. */
     assignments: {},
     /** actorId -> roll record. Cleared when the day is completed. */
@@ -143,6 +151,28 @@ export const adjustDay = (delta) => update(s => {
 
 export const setPace = (pace) => update(s => { s.pace = pace; });
 
+/**
+ * Switch how the party is travelling.
+ *
+ * Throws away the resolved report and the day's rolls: both were worked out for
+ * a different mode. A navigation roll made while walking is not the roll that
+ * would have been made at the helm, and the events already drawn may not even
+ * exist in the new mode - leaving velociraptors on the report after boarding a
+ * ship would be worse than asking for a re-roll.
+ *
+ * Assignments survive, minus anyone holding a role the new mode does not offer.
+ */
+export const setMode = (mode) => update(s => {
+  if (!TRAVEL_MODES[mode]) return;
+  s.mode = mode;
+  s.report = null;
+  s.rolls = {};
+  const offered = new Set(TRAVEL_MODES[mode].roles);
+  for (const [actorId, roleId] of Object.entries(s.assignments)) {
+    if (!offered.has(roleId)) delete s.assignments[actorId];
+  }
+});
+
 /* ------------------------------------------------------------------ */
 /*  Assignments and rolls                                              */
 /* ------------------------------------------------------------------ */
@@ -229,6 +259,7 @@ export const completeDay = () => update(s => {
   s.log.push({
     day: s.day,
     pace: s.pace,
+    mode: s.mode,
     hexes: report.hexes,
     weather: report.weather?.key ?? null,
     events: (report.events ?? []).map(e => e.id),

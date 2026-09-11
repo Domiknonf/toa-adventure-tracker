@@ -1,4 +1,6 @@
-import { MODULE_ID, DEFAULT_ROLES, ROLE, PARTY_SOURCE } from "./const.mjs";
+import {
+  MODULE_ID, DEFAULT_ROLES, ROLE, PARTY_SOURCE, TRAVEL_MODES, DEFAULT_MODE
+} from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import { getState } from "./state.mjs";
 
@@ -29,7 +31,7 @@ let warnedFor = null;
  * unknown id is appended, and `"hidden": true` removes a default. Order follows
  * the defaults, so tweaking a DC does not reshuffle the window.
  */
-export function getRoles() {
+export function getRoles(mode = getState().mode) {
   const merged = new Map(DEFAULT_ROLES.map(r => [r.id, foundry.utils.deepClone(r)]));
 
   for (const custom of customRoles()) {
@@ -39,7 +41,16 @@ export function getRoles() {
     merged.set(custom.id, foundry.utils.mergeObject(base, custom, { inplace: false }));
   }
 
-  return [...merged.values()].filter(isUsable);
+  const offered = TRAVEL_MODES[mode]?.roles ?? TRAVEL_MODES[DEFAULT_MODE].roles;
+  return [...merged.values()].filter(role => {
+    if (!isUsable(role)) return false;
+    // A DEFAULT role is only offered where the mode asks for it - nobody walks
+    // rearguard on a ship. A CUSTOM role the mode has never heard of is always
+    // offered, because the mode table cannot know about it and silently hiding
+    // somebody's own role would look like the setting had failed to save.
+    const isDefault = DEFAULT_ROLES.some(d => d.id === role.id);
+    return !isDefault || offered.includes(role.id);
+  });
 }
 
 /** Parse the customRoles setting, tolerating everything except silence. */
@@ -74,7 +85,7 @@ function isUsable(role) {
   return !!role?.id && (!!resolveSkill(role.skill) || !!resolveAbility(role.ability));
 }
 
-export const getRole = (id) => getRoles().find(r => r.id === id) ?? null;
+export const getRole = (id, mode) => getRoles(mode).find(r => r.id === id) ?? null;
 
 /* ------------------------------------------------------------------ */
 /*  Labels                                                             */
@@ -364,8 +375,10 @@ export function unitLabel(unit) {
  *   "pending"  somebody took it and has not rolled yet
  */
 export function roleStatus(roleId, state = getState()) {
-  const role = getRole(roleId);
-  if (!role) return { role: null, status: "unfilled", severity: "none" };
+  const role = getRole(roleId, state.mode);
+  // A role this mode does not offer is not "unfilled" - it does not exist here,
+  // and penalising a crew for having no rearguard at sea would be nonsense.
+  if (!role) return { role: null, status: "absent", severity: "none" };
 
   const actorId = Object.keys(state.assignments ?? {})
     .find(id => state.assignments[id] === roleId);

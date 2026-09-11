@@ -116,6 +116,20 @@ export function registerSettings() {
     range: { min: 0, max: 10, step: 1 }
   });
 
+  /* --- Encounter sizing --------------------------------------- */
+
+  /**
+   * The party's level, for the hard/deadly encounter suggestions.
+   *
+   * 0 means "work it out from the characters", which is right most of the time.
+   * Set it when the sheets do not reflect the table - a one-shot at level 6 run
+   * on level 1 characters, say.
+   */
+  reg("partyLevel", {
+    ...WORLD, type: Number, default: 0,
+    range: { min: 0, max: 20, step: 1 }
+  });
+
   /* --- Consequences ------------------------------------------ */
 
   /**
@@ -133,6 +147,20 @@ export function registerSettings() {
    * setting for a table that wants to roll its own saves at the table.
    */
   reg("rollSaves", { ...WORLD, type: Boolean, default: true });
+
+  /**
+   * Whether the day report reaches the players at all.
+   *
+   * OFF by default, and the window does not merely hide it - players are never
+   * sent the report in the first place (see app.mjs _prepareContext). The event
+   * texts are written to be read ALOUD; a player who can read ahead in their own
+   * window has already had the surprise spoiled, and hiding it in CSS would
+   * leave it sitting in the DOM for anyone curious enough to look.
+   *
+   * Switched on, the chat summary posted when the day completes goes to the
+   * whole table instead of just the GM.
+   */
+  reg("shareReport", { ...WORLD, type: Boolean, default: false });
 
   /* --- Per-user presentation --------------------------------- */
 

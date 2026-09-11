@@ -109,10 +109,15 @@ export async function postDayToChat(report, texts) {
       ${harm ? `<hr><ul>${harm}</ul>` : ""}
     </div>`;
 
+  // WHISPERED TO THE GM unless the table has opted in. The prose is written to
+  // be read aloud, so the default is that the GM reads it and the players hear
+  // it - not that it lands in their log a second before the GM opens their mouth.
+  const share = !!setting("shareReport");
+  const whisper = share ? [] : ChatMessage.getWhisperRecipients("GM").map(u => u.id);
+
   return ChatMessage.create({
     content,
-    // The day is the world's news, not one character's - so no speaker alias and
-    // no whisper: everyone at the table sees the same report.
+    whisper,
     flags: { [MODULE_ID]: { day: report.day } }
   });
 }

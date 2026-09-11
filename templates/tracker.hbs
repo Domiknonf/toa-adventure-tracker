@@ -66,6 +66,22 @@
           PACE
     ---------------------------------------------------------------- --}}
     <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.mode"}}</h2>
+      <div class="toa-modes">
+        {{#each modes}}
+        <button type="button" class="toa-mode {{#if active}}on{{/if}}"
+                data-mode="{{key}}" {{#unless ../gm}}disabled{{/unless}}
+                data-tooltip-text="{{hint}}">
+          <i class="{{icon}}"></i>
+          <span class="toa-mode-name">{{label}}</span>
+          <span class="toa-mode-range">{{range}}</span>
+        </button>
+        {{/each}}
+      </div>
+      <p class="toa-hint toa-compact">{{localize "toa-adventure-tracker.app.modeHint"}}</p>
+    </section>
+
+    <section class="toa-panel">
       <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.pace"}}</h2>
       <div class="toa-paces">
         {{#each paces}}
@@ -253,10 +269,30 @@
       <h2 class="toa-panel-title">
         {{localize "toa-adventure-tracker.app.report"}}
         <span class="toa-weather">
+          <i class="{{report.modeIcon}}"></i> {{report.mode}}
+          &middot;
           <i class="fa-solid {{#if report.rain}}fa-cloud-showers-heavy{{else}}fa-sun{{/if}}"></i>
           {{report.weather}}
         </span>
       </h2>
+
+      {{!-- The level the encounter suggestions are budgeted against. Editable
+            here as well as in the settings, because it is the one number a GM
+            changes mid-campaign. --}}
+      {{#if gm}}
+      <div class="toa-level">
+        <label>
+          {{localize "toa-adventure-tracker.app.partyLevel"}}
+          <input type="number" min="0" max="20" step="1" value="{{partyLevel}}" data-party-level>
+        </label>
+        <span class="toa-hint">
+          {{localize "toa-adventure-tracker.app.budgetFor"}}
+          {{budget.size}} &times; {{localize "toa-adventure-tracker.app.level"}} {{budget.level}}
+          &middot; {{localize "toa-adventure-tracker.app.hard"}} {{budget.hard}}
+          &middot; {{localize "toa-adventure-tracker.app.deadly"}} {{budget.deadly}} XP
+        </span>
+      </div>
+      {{/if}}
 
       <div class="toa-hexbox hex-{{report.hexes}}">
         <span class="toa-hexnum">{{report.hexes}}</span>
@@ -284,6 +320,29 @@
           {{#if effects.length}}
           <div class="toa-event-effects">
             {{#each effects}}<span class="toa-tag">{{label}}</span>{{/each}}
+          </div>
+          {{/if}}
+
+          {{!-- How many of them make a real fight. A suggestion, nothing more:
+                the module never spawns a token or starts combat. --}}
+          {{#if foe}}
+          <div class="toa-foe">
+            <i class="fa-solid fa-swords"></i>
+            <span class="toa-foe-name">{{foe.name}}</span>
+            <span class="toa-foe-cr">{{localize "toa-adventure-tracker.app.cr"}} {{foe.cr}}</span>
+            {{#if foe.overwhelming}}
+            <span class="toa-tag bad">{{localize "toa-adventure-tracker.app.overwhelming"}}</span>
+            {{else if foe.hardImpossible}}
+            {{!-- Even one is past "hard", so there is no hard number to give. --}}
+            <span class="toa-tag bad">
+              {{localize "toa-adventure-tracker.app.deadly"}}: {{foe.deadly}}&times;
+            </span>
+            {{else}}
+            <span class="toa-tag">{{localize "toa-adventure-tracker.app.hard"}}: {{foe.hard}}&times;</span>
+            <span class="toa-tag bad">
+              {{localize "toa-adventure-tracker.app.deadly"}}: {{foe.deadly}}&times;{{#if foe.capped}}+{{/if}}
+            </span>
+            {{/if}}
           </div>
           {{/if}}
         </li>
@@ -329,6 +388,15 @@
     </section>
     {{/if}}
 
+    {{#if reportHidden}}
+    <section class="toa-panel">
+      <p class="toa-hint toa-compact">
+        <i class="fa-solid fa-eye-slash"></i>
+        {{localize "toa-adventure-tracker.app.reportHidden"}}
+      </p>
+    </section>
+    {{/if}}
+
     {{!-- ---------------------------------------------------------------
           LOGBOOK
     ---------------------------------------------------------------- --}}
@@ -352,6 +420,7 @@
             <tr>
               <th>{{localize "toa-adventure-tracker.log.day"}}</th>
               <th>{{localize "toa-adventure-tracker.log.hexes"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.mode"}}</th>
               <th>{{localize "toa-adventure-tracker.log.weather"}}</th>
               <th>{{localize "toa-adventure-tracker.log.damage"}}</th>
               <th>{{localize "toa-adventure-tracker.log.exhaustion"}}</th>
@@ -362,6 +431,7 @@
             <tr>
               <td>{{day}}</td>
               <td>{{#if legacy}}&mdash;{{else}}{{hexes}}{{/if}}</td>
+              <td>{{#if modeLabel}}{{modeLabel}}{{else}}&mdash;{{/if}}</td>
               <td>{{#if weatherLabel}}{{weatherLabel}}{{else}}&mdash;{{/if}}</td>
               <td>{{#if damage}}{{damage}}{{else}}&mdash;{{/if}}</td>
               <td>{{#if exhaustion}}{{exhaustion}}{{else}}&mdash;{{/if}}</td>

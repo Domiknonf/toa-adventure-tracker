@@ -1,4 +1,4 @@
-import { MODULE_ID, EVENTS } from "./const.mjs";
+import { MODULE_ID, EVENTS, TRAVEL_MODES, DEFAULT_TERRAIN, DEFAULT_MODE } from "./const.mjs";
 
 /**
  * THE EVENT COMPILATION, selection side.
@@ -11,8 +11,25 @@ import { MODULE_ID, EVENTS } from "./const.mjs";
  * a day must be rolled once and then stay rolled.
  */
 
-/** Every event of one category. */
-export const byCategory = (category) => EVENTS.filter(e => e.category === category);
+/** An event's terrain. Events that do not name one are land events. */
+export const terrainOf = (event) => event?.terrain ?? DEFAULT_TERRAIN;
+
+/**
+ * Whether a travel mode can draw this event at all.
+ *
+ * "any" is always in play - thirst and a missed bearing happen wherever you
+ * are - and beyond that a mode only sees the pools it declares. That is what
+ * keeps velociraptors off the open sea and sahuagin out of the jungle.
+ */
+export function inMode(event, mode = DEFAULT_MODE) {
+  const terrain = terrainOf(event);
+  if (terrain === "any") return true;
+  return (TRAVEL_MODES[mode] ?? TRAVEL_MODES[DEFAULT_MODE]).terrains.includes(terrain);
+}
+
+/** Every event of one category that the given mode can draw. */
+export const byCategory = (category, mode = DEFAULT_MODE) =>
+  EVENTS.filter(e => e.category === category && inMode(e, mode));
 
 /**
  * One random event from a category, avoiding anything in `exclude`.
@@ -22,8 +39,8 @@ export const byCategory = (category) => EVENTS.filter(e => e.category === catego
  * exclusion empties the category, the filter is dropped rather than returning
  * nothing - a repeat beats a day with a hole in it.
  */
-export function pick(category, exclude = new Set()) {
-  const all = byCategory(category);
+export function pick(category, exclude = new Set(), mode = DEFAULT_MODE) {
+  const all = byCategory(category, mode);
   if (!all.length) return null;
   const fresh = all.filter(e => !exclude.has(e.id));
   const pool = fresh.length ? fresh : all;

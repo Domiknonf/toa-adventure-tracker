@@ -23,15 +23,17 @@ const state   = await import(`${R}/state.mjs`);
 const roles   = await import(`${R}/roles.mjs`);
 const moon    = await import(`${R}/moon.mjs`);
 const events  = await import(`${R}/events.mjs`);
+const enc     = await import(`${R}/encounters.mjs`);
 const weather = await import(`${R}/weather.mjs`);
 const resolve = await import(`${R}/resolve.mjs`);
 const conseq  = await import(`${R}/consequences.mjs`);
 const app     = await import(`${R}/app.mjs`);
 
 /** Reset to a clean, deterministic day. */
-async function freshDay({ pace = "normal", nav = null, assignments = {} } = {}) {
+async function freshDay({ pace = "normal", nav = null, assignments = {}, mode = "foot" } = {}) {
   settingValues.state = {};
   await state.setDay(1);
+  await state.setMode(mode);
   await state.setPace(pace);
   for (const [actorId, roleId] of Object.entries(assignments)) await state.assign(actorId, roleId);
   queue.d100.length = 0;
@@ -491,7 +493,10 @@ const playerHtml = template(await instance._prepareContext({}));
 check(!playerHtml.includes("data-action=\"completeDay\""), "a player sees no complete button");
 check(!playerHtml.includes("data-action=\"resolveDay\""), "and cannot resolve the day");
 check(playerHtml.includes("Gandalf"), "but still sees the whole party");
-check(playerHtml.includes("toa-hexbox"), "and the same result");
+// The hex result is part of the report, which players are not sent - they see
+// the placeholder instead and hear the outcome from the GM.
+check(!playerHtml.includes("toa-hexbox"), "and not the day's result, which is the GM's to narrate");
+check(playerHtml.includes("toa-role-select"), "they can still pick their own role");
 check(!/\{\{|\}\}/.test(playerHtml), "player view renders cleanly");
 check(!/toa-adventure-tracker\.[a-z]/i.test(visible(playerHtml)), "player view leaks no key");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
@@ -514,6 +519,266 @@ for (const event of (await import(`${R}/const.mjs`)).EVENTS) {
     check(!!effect.kind, `event "${event.id}" effect has a kind`);
   }
 }
+
+/* ------------------------------------------------------------------ */
+section("travel modes");
+
+const { TRAVEL_MODES, MODE_ORDER } = await import(`${R}/const.mjs`);
+check(MODE_ORDER.join(",") === "foot,mount,canoe,ship", "four modes in speed order");
+check(state.blankState().mode === "foot", "a fresh state travels on foot");
+
+// A ship outruns a canoe outruns a mule outruns a boot, at every pace.
+for (const pace of ["slow", "normal", "fast"]) {
+  const f = TRAVEL_MODES.foot.hexes[pace];
+  const m = TRAVEL_MODES.mount.hexes[pace];
+  const c = TRAVEL_MODES.canoe.hexes[pace];
+  const sh = TRAVEL_MODES.ship.hexes[pace];
+  check(sh >= c && c >= f && m >= f, `${pace}: ship ${sh} >= canoe ${c} >= foot ${f} (mount ${m})`);
+}
+// On foot the original rule still holds exactly: 0, 1 or 2 and nothing else.
+check(TRAVEL_MODES.foot.hexes.slow === 1 && TRAVEL_MODES.foot.hexes.normal === 1
+  && TRAVEL_MODES.foot.hexes.fast === 2, "on foot it is still 0/1/2 and nothing else");
+
+/**
+ * Each mode reaches its own ceiling on a good fast day, less whatever ate into
+ * it. The blocking term is not slack in the test: with only a navigator
+ * assigned, an unfilled quartermaster can still draw a camp event, and on a
+ * mount that pool contains a lame animal - which costs a hex and SHOULD. So the
+ * assertion is the rule itself (ceiling minus blockers) rather than a happy
+ * path that quietly passes seven runs in eight.
+ */
+for (const mode of MODE_ORDER) {
+  await freshDay({ mode, pace: "fast", nav: 20, assignments: { [gandalf.id]: "navigator" } });
+  await doRoll(gandalf);
+  queue.d100.push(99, 100);
+  const r = await resolve.resolveDay();
+  const blocked = r.events.filter(e => e.blocks).length;
+  const expected = Math.max(0, TRAVEL_MODES[mode].hexes.fast - blocked);
+  check(r.hexes === expected,
+    `${mode} fast: ceiling ${TRAVEL_MODES[mode].hexes.fast} less ${blocked} blocked = ${expected} (got ${r.hexes})`);
+  check(r.mode === mode, `${mode}: the report records the mode`);
+}
+
+// A lost day is zero in every mode - a ship off its bearing gets nowhere either.
+for (const mode of MODE_ORDER) {
+  await freshDay({ mode, pace: "normal", nav: 1, assignments: { [gandalf.id]: "navigator" } });
+  await doRoll(gandalf);
+  queue.d100.push(99, 100);
+  const r = await resolve.resolveDay();
+  check(r.hexes === 0, `${mode}: a failed navigation is still zero (got ${r.hexes})`);
+}
+
+// Hurrying without the margin falls back to the cruising ceiling, not to 1.
+await freshDay({ mode: "ship", pace: "fast", nav: 11, assignments: { [gandalf.id]: "navigator" } });
+const scrapeSea = await doRoll(gandalf);
+check(scrapeSea.success && scrapeSea.margin < 3, "a scraped navigation at sea");
+queue.d100.push(99, 100);
+let sea = await resolve.resolveDay();
+let seaBlocked = sea.events.filter(e => e.blocks).length;
+check(sea.hexes === Math.max(0, TRAVEL_MODES.ship.hexes.normal - seaBlocked),
+  `a scraped fast day at sea falls back to cruising (${TRAVEL_MODES.ship.hexes.normal} less ${seaBlocked}, got ${sea.hexes})`);
+check(sea.reasons.some(r => r.key === "fastNoMargin"), "and says the margin was not there");
+
+// The cartographer salvages half the pace's ceiling, never less than one.
+await freshDay({ mode: "ship", pace: "normal", assignments: { [gandalf.id]: "cartographer", [bilbo.id]: "navigator" } });
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 100);
+sea = await resolve.resolveDay();
+seaBlocked = sea.events.filter(e => e.blocks).length;
+const salvaged = Math.max(1, Math.floor(TRAVEL_MODES.ship.hexes.normal / 2));
+check(sea.hexes === Math.max(0, salvaged - seaBlocked),
+  `a rescued day at sea salvages half (${salvaged} less ${seaBlocked}, got ${sea.hexes})`);
+check(salvaged < TRAVEL_MODES.ship.hexes.normal, "which is less than a full day's run");
+check(sea.reasons.some(r => r.key === "rescued"), "and the report credits the chart");
+
+/* --- the pools are actually separated ---------------------------- */
+// Velociraptors must never appear at sea, and sahuagin never in the jungle.
+const raptorEvent = events.byCategory("ambush", "foot").find(e => e.foe?.key === "velociraptor");
+check(!!raptorEvent, "raptors are in the foot pool");
+check(!events.byCategory("ambush", "ship").some(e => e.foe?.key === "velociraptor"),
+  "raptors are NOT in the sea pool");
+check(events.byCategory("ambush", "ship").some(e => e.foe?.key === "sahuagin"),
+  "sahuagin are in the sea pool");
+check(!events.byCategory("ambush", "foot").some(e => e.foe?.key === "sahuagin"),
+  "sahuagin are NOT in the jungle pool");
+check(events.byCategory("ambush", "canoe").some(e => e.foe?.key === "giantCrocodile"),
+  "crocodiles are in the river pool");
+check(events.byCategory("camp", "mount").some(e => e.id === "mountLame"),
+  "mount troubles only reach mounted travel");
+check(!events.byCategory("camp", "foot").some(e => e.id === "mountLame"),
+  "...and not walkers");
+
+// Thirst happens wherever you are.
+for (const mode of MODE_ORDER) {
+  check(events.byCategory("thirst", mode).length > 0, `${mode} can still run out of water`);
+  check(events.byCategory("lost", mode).length > 0, `${mode} has a way to get lost`);
+  check(events.byCategory("boon", mode).length > 0, `${mode} has at least one good day`);
+}
+
+// Over many resolved days, a ship must never draw a land event.
+await freshDay({ mode: "ship", pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "vanguard" } });
+const landIds = new Set((await import(`${R}/const.mjs`)).EVENTS
+  .filter(e => (e.terrain ?? "land") === "land").map(e => e.id));
+let leaked = 0;
+for (let i = 0; i < 60; i++) {
+  await state.setDay(i + 1);
+  await state.assign(gandalf.id, "navigator");
+  await state.assign(bilbo.id, "vanguard");
+  dice.d20 = 1 + Math.floor(Math.random() * 20); await doRoll(gandalf);
+  dice.d20 = 1 + Math.floor(Math.random() * 20); await doRoll(bilbo);
+  queue.d100.length = 0;
+  const r = await resolve.resolveDay();
+  for (const e of r.events) if (landIds.has(e.id)) leaked++;
+}
+check(leaked === 0, `no land event ever leaked into 60 days at sea (${leaked} leaks)`);
+
+/* --- roles follow the mode --------------------------------------- */
+check(roles.getRoles("foot").some(r => r.id === "rearguard"), "a walking party has a rearguard");
+check(!roles.getRoles("ship").some(r => r.id === "rearguard"), "a ship has none - there are no tracks");
+check(roles.getRoles("ship").some(r => r.id === "navigator"), "but it still has a navigator");
+
+// A role the mode does not offer must not count as an unfilled failure.
+await freshDay({ mode: "ship", pace: "normal", assignments: { [gandalf.id]: "navigator" } });
+const rearAtSea = roles.roleStatus("rearguard", state.getState());
+check(rearAtSea.status === "absent", "the rearguard is absent at sea, not unfilled");
+check(roles.roleFailed(rearAtSea) === false, "and absence is not a failure");
+
+// Switching mode drops anyone holding a role the new mode has no use for.
+await freshDay({ mode: "foot", assignments: { [gandalf.id]: "rearguard", [bilbo.id]: "navigator" } });
+check(state.getState().assignments[gandalf.id] === "rearguard", "walking rearguard assigned");
+await state.setMode("ship");
+check(state.getState().assignments[gandalf.id] === undefined, "boarding a ship drops the rearguard");
+check(state.getState().assignments[bilbo.id] === "navigator", "but keeps the navigator");
+check(state.getState().report === null && Object.keys(state.getState().rolls).length === 0,
+  "and clears the day, which was worked out for a different mode");
+
+/* ------------------------------------------------------------------ */
+section("encounter sizing");
+
+// The DMG budget table, checked at a level somebody actually plays at.
+const constModEarly = await import(`${R}/const.mjs`);
+settingValues.partyLevel = 6;
+let b = enc.budgets();
+check(b.level === 6, "the configured level wins");
+check(b.size === 2, "budget counts the characters, not the bearers");
+check(b.hard === 900 * 2 && b.deadly === 1400 * 2, `level 6 x2: hard ${b.hard}, deadly ${b.deadly}`);
+
+settingValues.partyLevel = 0;
+check(enc.partyLevel() === 5, "level 0 derives from the sheets (both level 5)");
+gandalf.system.details.level = 9;
+check(enc.partyLevel() === 7, "and averages rather than taking the highest");
+gandalf.system.details.level = 5;
+settingValues.partyLevel = 6;
+
+// The crowd multiplier is a step function, straight out of the DMG.
+check(enc.multiplierFor(1) === 1, "one monster: x1");
+check(enc.multiplierFor(2) === 1.5, "two: x1.5");
+check(enc.multiplierFor(5) === 2, "three to six: x2");
+check(enc.multiplierFor(9) === 2.5, "seven to ten: x2.5");
+check(enc.multiplierFor(20) === 4, "fifteen or more: x4");
+
+// Velociraptors (CR 1/4, 50 XP) against a level-6 pair: hard 1800, deadly 2800.
+// 12 x 50 x 3 = 1800 exactly; 15 would be 15 x 50 x 4 = 3000, past deadly.
+const raptorSize = enc.countFor("1/4", 1800);
+check(raptorSize > 0 && raptorSize <= 12, `CR 1/4 into a 1800 budget gives ${raptorSize}`);
+check(enc.adjustedXP(50, raptorSize) <= 1800, "the suggested count fits the budget");
+check(enc.adjustedXP(50, raptorSize + 1) > 1800 || raptorSize === 12,
+  "and one more would not (or the cap was hit)");
+
+// A tyrannosaurus (CR 8, 3900 XP) is past a level-6 pair's deadly budget alone.
+check(enc.countFor("8", b.deadly) === 0, "one T-Rex is already beyond deadly for them");
+const trex = events.byCategory("encounter").find(e => e.foe?.key === "tyrannosaurus");
+const trexSuggestion = enc.suggestionFor(trex);
+check(trexSuggestion.overwhelming === true, "and the suggestion says so");
+check(trexSuggestion.name === "Tyrannosaurus", "with a translated name");
+
+// The same creature against a high-level party is no longer overwhelming.
+settingValues.partyLevel = 20;
+check(enc.suggestionFor(trex).overwhelming === false, "at level 20 a T-Rex is manageable");
+check(enc.suggestionFor(trex).hard >= 1, "and a hard count is offered");
+settingValues.partyLevel = 6;
+
+// A creature that is past "hard" alone must not advertise "0x hard".
+// A pair of level-3 characters: hard 450 XP, deadly 800. An assassin vine is
+// 700 - past hard on its own, but still a fight they could survive.
+settingValues.partyLevel = 3;
+const vine = constModEarly.EVENTS.find(e => e.foe?.key === "assassinVine");
+const vs = enc.suggestionFor(vine);
+check(vs.hard === 0 && vs.deadly >= 1, `one assassin vine is past hard but inside deadly (hard ${vs.hard}, deadly ${vs.deadly})`);
+check(vs.hardImpossible === true, "and it is flagged so the window omits the hard figure");
+check(vs.overwhelming === false, "it is not overwhelming, though - one is runnable");
+settingValues.partyLevel = 6;
+
+// Hazards and friendly meetings must NOT get an encounter size.
+const quicksand = events.byCategory("ambush").find(e => e.id === "quicksand");
+check(enc.suggestionFor(quicksand) === null, "a hazard gets no encounter suggestion");
+const tabaxi = events.byCategory("encounter").find(e => e.id === "tabaxiHunter");
+check(enc.suggestionFor(tabaxi) === null, "a friendly meeting gets none either");
+
+// Every foe in the tables must produce a usable suggestion at a mid level.
+for (const event of constModEarly.EVENTS.filter(e => e.foe)) {
+  const sug = enc.suggestionFor(event, 8);
+  check(!!sug, `event "${event.id}" produces a suggestion`);
+  check(sug.name && !sug.name.includes("adventure-tracker"), `foe of "${event.id}" has a real name`);
+  check(sug.xp > 0, `foe of "${event.id}" has an XP value`);
+  check(sug.hard >= sug.deadly - 20, `"${event.id}": hard (${sug.hard}) is not wildly above deadly (${sug.deadly})`);
+  check(sug.deadly >= sug.hard || sug.overwhelming, `"${event.id}": deadly count >= hard count`);
+  check(sug.hard > 0 || sug.hardImpossible || sug.overwhelming,
+    `"${event.id}": a zero hard count is always flagged rather than shown`);
+}
+
+/* ------------------------------------------------------------------ */
+section("the report stays with the GM");
+settingValues.state = {};
+settingValues.shareReport = false;
+await state.setDay(4);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 18; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 1);       // an ambush, so there is prose worth hiding
+const secret = await resolve.resolveDay();
+check(secret.events.length > 0, "the day produced events");
+
+const gmCtx = await new app.AdventureTracker()._prepareContext({});
+check(!!gmCtx.report, "the GM gets the report");
+check(gmCtx.report.events.length > 0, "with its events");
+
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+const playerCtx = await new app.AdventureTracker()._prepareContext({});
+check(playerCtx.report === null, "a player is not sent the report at all");
+check(playerCtx.reportHidden === true, "but is told the GM is working on it");
+// The point of withholding at the data level: the prose must not be anywhere in
+// what reaches the player, not even hidden behind a template condition.
+const playerJson = JSON.stringify(playerCtx);
+for (const event of secret.events) {
+  const prose = events.eventText(event);
+  check(!playerJson.includes(prose), `event prose "${event.id}" is absent from the player context`);
+  check(!playerJson.includes(event.id), `event id "${event.id}" is absent too`);
+}
+const playerMarkup = compileTemplate()(playerCtx);
+for (const event of secret.events) {
+  check(!playerMarkup.includes(events.eventText(event)), `prose "${event.id}" never reaches the player's DOM`);
+}
+
+// Shared, the same player sees it.
+settingValues.shareReport = true;
+const sharedCtx = await new app.AdventureTracker()._prepareContext({});
+check(!!sharedCtx.report, "with sharing on, players get the report");
+check(sharedCtx.reportHidden === false, "and no longer see the placeholder");
+settingValues.shareReport = false;
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+
+// The chat summary follows the same rule.
+chatMessages.length = 0;
+await conseq.postDayToChat(secret, { weather: "Klar", events: [] });
+check(chatMessages[0].whisper?.length > 0, "the chat summary is whispered to the GM by default");
+settingValues.shareReport = true;
+chatMessages.length = 0;
+await conseq.postDayToChat(secret, { weather: "Klar", events: [] });
+check(chatMessages[0].whisper?.length === 0, "and goes to the table when shared");
+settingValues.shareReport = false;
 
 /* ------------------------------------------------------------------ */
 section("journal export");

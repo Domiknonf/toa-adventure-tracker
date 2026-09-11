@@ -82,7 +82,7 @@ globalThis.CONFIG = {
 };
 
 /* --- Actors ------------------------------------------------------- */
-export function makeActor({ id, name, skills = {}, abilities = {}, owner = true, hp = 30, exhaustion = 0 }) {
+export function makeActor({ id, name, skills = {}, abilities = {}, owner = true, hp = 30, exhaustion = 0, level = 5 }) {
   return {
     id, name, uuid: `Actor.${id}`, type: "character",
     img: `icons/${id}.webp`,
@@ -92,6 +92,7 @@ export function makeActor({ id, name, skills = {}, abilities = {}, owner = true,
     system: {
       isCreature: true,
       attributes: { hp: { value: hp, max: hp }, exhaustion },
+      details: { level },
       skills: Object.fromEntries(Object.entries(skills).map(([k, v]) => [k, { total: v }])),
       abilities: Object.fromEntries(Object.entries(abilities).map(([k, v]) => [k, { mod: v }]))
     },
@@ -187,6 +188,7 @@ export const messages = [];
 
 globalThis.ChatMessage = {
   getSpeaker: () => ({}),
+  getWhisperRecipients: () => [{ id: "gm" }],
   create: async (data) => { chatMessages.push(data); return data; }
 };
 export const chatMessages = [];

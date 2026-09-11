@@ -83,22 +83,104 @@ export const MOON_DISC = { size: 96, radius: 40 };
  * pick up its own pace rules for free.
  */
 export const PACES = {
-  slow:   { max: 1, navMod:  5, encounterMod: -10, order: 10 },
-  normal: { max: 1, navMod:  0, encounterMod:   0, order: 20 },
+  slow:   { navMod:  5, encounterMod: -10, order: 10 },
+  normal: { navMod:  0, encounterMod:   0, order: 20 },
   // -3 rather than the -5 a miles-based model would use. Under the hex rule a
   // failed navigation costs the WHOLE day rather than half of it, so -5 made
   // hurrying strictly worse than walking - measured over 300 simulated days it
   // averaged 0.40 hexes against normal pace's 0.69, which is not a gamble but a
   // trap. At -3 it averages about the same as normal with far more spread: more
   // lost days, and the only pace that ever makes two. Both are settings.
-  fast:   { max: 2, navMod: -3, encounterMod:  10, order: 30 }
+  fast:   { navMod: -3, encounterMod:  10, order: 30 }
 };
+
+/* ------------------------------------------------------------------ */
+/*  Travel modes                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * HOW THE PARTY IS TRAVELLING.
+ *
+ * The pace says how hard they are pushing; the MODE says what they are pushing.
+ * A day under sail covers ground a day of hacking through jungle cannot, and
+ * that difference belongs here rather than in the pace table - otherwise "fast"
+ * would have to mean two different things at once.
+ *
+ * Fields:
+ *   hexes     the day's ceiling per pace. This is what a good day gives; a bad
+ *             navigation roll still takes it to 0, whatever the mode.
+ *   terrains  which event pools the day draws from (see EVENTS.terrain). "any"
+ *             events are always in play on top of these - thirst and a missed
+ *             bearing happen wherever you are.
+ *   roles     which roles the mode offers. A ship has no tracks to cover, so
+ *             asking someone to walk rearguard on one is asking them to stand
+ *             at the stern and feel useful.
+ *   water     multiplier on how much the WEATHER puts in the barrels. At sea
+ *             rain is the only fresh water there is, and a becalmed week is a
+ *             real problem - which is why the sea has its own foul-water event
+ *             for the crew that gives in and drinks what is over the side.
+ *
+ * Deliberately NOT settings. Four modes times three paces is twelve numbers
+ * nobody wants to tune in a settings sheet, and the shape of the table - that a
+ * ship outruns a canoe outruns a mule outruns a boot - is the rule rather than
+ * a preference.
+ */
+export const TRAVEL_MODES = {
+  // The original model, unchanged: 0, 1 or 2 hexes and nothing else.
+  foot: {
+    hexes: { slow: 1, normal: 1, fast: 2 },
+    terrains: ["land"],
+    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
+            "quartermaster", "medic", "cartographer"],
+    water: 1,
+    icon: "fa-solid fa-person-hiking",
+    order: 10
+  },
+  // Faster over open ground, and the jungle has opinions about that: the mount
+  // pool carries its own ways for a day to go wrong.
+  mount: {
+    hexes: { slow: 1, normal: 2, fast: 3 },
+    terrains: ["land", "mount"],
+    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
+            "quartermaster", "medic", "cartographer"],
+    water: 1,
+    icon: "fa-solid fa-horse",
+    order: 20
+  },
+  // The river does half the work. You still camp on the bank, so the land pool
+  // stays in play alongside the river one.
+  canoe: {
+    hexes: { slow: 1, normal: 2, fast: 3 },
+    terrains: ["land", "river"],
+    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
+            "quartermaster", "medic", "cartographer"],
+    water: 1,
+    icon: "fa-solid fa-sailboat",
+    order: 30
+  },
+  // Much faster, and everything else gets harder. No tracks to cover, and the
+  // only drinkable water is what falls out of the sky.
+  ship: {
+    hexes: { slow: 2, normal: 3, fast: 5 },
+    terrains: ["sea"],
+    roles: ["navigator", "vanguard", "waterbearer", "forager",
+            "quartermaster", "medic", "cartographer"],
+    water: 1,
+    icon: "fa-solid fa-ship",
+    order: 40
+  }
+};
+
+export const MODE_ORDER = Object.keys(TRAVEL_MODES)
+  .sort((a, b) => TRAVEL_MODES[a].order - TRAVEL_MODES[b].order);
+
+export const DEFAULT_MODE = "foot";
+
+/** Terrain an event belongs to. Events without one are land events. */
+export const DEFAULT_TERRAIN = "land";
 
 export const PACE_ORDER = Object.keys(PACES).sort((a, b) => PACES[a].order - PACES[b].order);
 export const DEFAULT_PACE = "normal";
-
-/** Hexes a party covers on an ordinary day before anything helps or hinders. */
-export const BASE_HEXES = 1;
 
 /**
  * How far past the DC the navigator must land for a fast day to make two hexes.
@@ -367,33 +449,33 @@ export const EVENT_CHANCE = {
  */
 export const EVENTS = [
   /* --- Ambushes: the vanguard missed it ------------------------- */
-  { id: "raptors",      category: "ambush", damage: "2d6", blocks: true,  target: "party" },
-  { id: "zombieHorde",  category: "ambush", damage: "2d8", blocks: true,  target: "party" },
-  { id: "snake",        category: "ambush", damage: "1d8", save: { ability: "con", dc: 13 }, exhaustion: 1, target: "random" },
-  { id: "pterafolk",    category: "ambush", damage: "2d6", blocks: true,  target: "random" },
-  { id: "batiri",       category: "ambush", damage: "1d10", blocks: true, target: "party" },
-  { id: "assassinVine", category: "ambush", damage: "1d10", save: { ability: "str", dc: 14 }, target: "random" },
-  { id: "stirges",      category: "ambush", damage: "1d6", exhaustion: 1, target: "random" },
-  { id: "girallon",     category: "ambush", damage: "3d6", blocks: true,  target: "random" },
-  { id: "yuanti",       category: "ambush", damage: "2d6", blocks: true,  target: "party" },
+  { id: "raptors",      category: "ambush", damage: "2d6", blocks: true,  target: "party" , foe: { key: "velociraptor", cr: "1/4" }},
+  { id: "zombieHorde",  category: "ambush", damage: "2d8", blocks: true,  target: "party" , foe: { key: "zombie", cr: "1/4" }},
+  { id: "snake",        category: "ambush", damage: "1d8", save: { ability: "con", dc: 13 }, exhaustion: 1, target: "random" , foe: { key: "giantPoisonousSnake", cr: "1/4" }},
+  { id: "pterafolk",    category: "ambush", damage: "2d6", blocks: true,  target: "random" , foe: { key: "pterafolk", cr: "1" }},
+  { id: "batiri",       category: "ambush", damage: "1d10", blocks: true, target: "party" , foe: { key: "goblin", cr: "1/4" }},
+  { id: "assassinVine", category: "ambush", damage: "1d10", save: { ability: "str", dc: 14 }, target: "random" , foe: { key: "assassinVine", cr: "3" }},
+  { id: "stirges",      category: "ambush", damage: "1d6", exhaustion: 1, target: "random" , foe: { key: "stirge", cr: "1/8" }},
+  { id: "girallon",     category: "ambush", damage: "3d6", blocks: true,  target: "random" , foe: { key: "girallon", cr: "4" }},
+  { id: "yuanti",       category: "ambush", damage: "2d6", blocks: true,  target: "party" , foe: { key: "yuantiPureblood", cr: "1" }},
   { id: "quicksand",    category: "ambush", damage: "1d6", save: { ability: "str", dc: 13 }, blocks: true, target: "random" },
 
   /* --- Encounters spotted in time: the vanguard earned its keep -- */
-  { id: "tRexTracks",   category: "encounter", blocks: true,  target: "party" },
-  { id: "raptorsSeen",  category: "encounter", blocks: false, target: "party" },
-  { id: "zombiesSeen",  category: "encounter", blocks: true,  target: "party" },
-  { id: "grungPatrol",  category: "encounter", blocks: false, target: "party" },
-  { id: "hadrosaurs",   category: "encounter", blocks: false, target: "party" },
+  { id: "tRexTracks",   category: "encounter", blocks: true,  target: "party" , foe: { key: "tyrannosaurus", cr: "8" }},
+  { id: "raptorsSeen",  category: "encounter", blocks: false, target: "party" , foe: { key: "velociraptor", cr: "1/4" }},
+  { id: "zombiesSeen",  category: "encounter", blocks: true,  target: "party" , foe: { key: "zombie", cr: "1/4" }},
+  { id: "grungPatrol",  category: "encounter", blocks: false, target: "party" , foe: { key: "grung", cr: "1/4" }},
+  { id: "hadrosaurs",   category: "encounter", blocks: false, target: "party" , foe: { key: "hadrosaurus", cr: "1/4" }},
   { id: "tabaxiHunter", category: "encounter", blocks: false, target: "party" },
-  { id: "vegepygmies",  category: "encounter", blocks: true,  target: "party" },
-  { id: "aldani",       category: "encounter", blocks: false, target: "party" },
-  { id: "flailSnail",   category: "encounter", blocks: false, target: "party" },
+  { id: "vegepygmies",  category: "encounter", blocks: true,  target: "party" , foe: { key: "vegepygmy", cr: "1/4" }},
+  { id: "aldani",       category: "encounter", blocks: false, target: "party" , foe: { key: "aldani", cr: "2" }},
+  { id: "flailSnail",   category: "encounter", blocks: false, target: "party" , foe: { key: "flailSnail", cr: "3" }},
 
   /* --- Pursuit: the rearguard left a trail ---------------------- */
-  { id: "followedEyes", category: "pursuit", blocks: false, target: "party" },
-  { id: "batiriTrail",  category: "pursuit", damage: "1d6", target: "random" },
-  { id: "undeadFollow", category: "pursuit", blocks: false, target: "party" },
-  { id: "kamadan",      category: "pursuit", damage: "2d6", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" },
+  { id: "followedEyes", category: "pursuit", blocks: false, target: "party" , terrain: "any"},
+  { id: "batiriTrail",  category: "pursuit", damage: "1d6", target: "random" , foe: { key: "goblin", cr: "1/4" }},
+  { id: "undeadFollow", category: "pursuit", blocks: false, target: "party" , foe: { key: "zombie", cr: "1/4" }},
+  { id: "kamadan",      category: "pursuit", damage: "2d6", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" , foe: { key: "kamadan", cr: "4" }},
   { id: "drumsAtNight", category: "pursuit", exhaustion: 1, target: "party" },
 
   /* --- Lost: no map to fall back on ----------------------------- */
@@ -404,9 +486,9 @@ export const EVENTS = [
   { id: "swampDetour",  category: "lost", target: "party" },
 
   /* --- Detour: lost, but the cartographer got them back --------- */
-  { id: "backtrack",    category: "detour", target: "party" },
-  { id: "mapRedrawn",   category: "detour", target: "party" },
-  { id: "landmark",     category: "detour", target: "party" },
+  { id: "backtrack",    category: "detour", target: "party" , terrain: "any"},
+  { id: "mapRedrawn",   category: "detour", target: "party" , terrain: "any"},
+  { id: "landmark",     category: "detour", target: "party" , terrain: "any"},
 
   /* --- Foul water ----------------------------------------------- */
   { id: "stagnant",     category: "foul", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
@@ -415,13 +497,13 @@ export const EVENTS = [
   { id: "brackish",     category: "foul", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" },
 
   /* --- Thirst ---------------------------------------------------- */
-  { id: "throatsDry",   category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" },
-  { id: "rationedSips", category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" },
-  { id: "heatHaze",     category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" },
+  { id: "throatsDry",   category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
+  { id: "rationedSips", category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
+  { id: "heatHaze",     category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
 
   /* --- Hunger ---------------------------------------------------- */
-  { id: "bellyEmpty",   category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" },
-  { id: "rotten",       category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" },
+  { id: "bellyEmpty",   category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" , terrain: "any"},
+  { id: "rotten",       category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" , terrain: "any"},
 
   /* --- A camp that was not a rest -------------------------------- */
   { id: "wetCamp",      category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
@@ -432,7 +514,7 @@ export const EVENTS = [
   /* --- Storms ----------------------------------------------------- */
   { id: "monsoon",      category: "storm", blocks: true, target: "party" },
   { id: "mudslide",     category: "storm", damage: "2d6", save: { ability: "dex", dc: 13 }, blocks: true, target: "party" },
-  { id: "lightning",    category: "storm", damage: "3d6", save: { ability: "dex", dc: 15 }, target: "random" },
+  { id: "lightning",    category: "storm", damage: "3d6", save: { ability: "dex", dc: 15 }, target: "random" , terrain: "any"},
   { id: "riverFlood",   category: "storm", blocks: true, target: "party" },
 
   /* --- The jungle's good days ------------------------------------- */
@@ -440,7 +522,40 @@ export const EVENTS = [
   { id: "ruinShelter",  category: "boon", heals: 1, target: "party" },
   { id: "freshSpring",  category: "boon", target: "party" },
   { id: "gameTrail",    category: "boon", target: "party" },
-  { id: "fruitGrove",   category: "boon", target: "party" }
+  { id: "fruitGrove",   category: "boon", target: "party" },
+
+  /* --- River: the canoe's own troubles ---------------------------- */
+  { id: "crocodiles",   category: "ambush", terrain: "river", damage: "2d10", blocks: true, target: "random", foe: { key: "giantCrocodile", cr: "5" } },
+  { id: "riverHag",     category: "ambush", terrain: "river", damage: "2d6", save: { ability: "wis", dc: 13 }, target: "party", foe: { key: "seaHag", cr: "2" } },
+  { id: "bankAmbush",   category: "ambush", terrain: "river", damage: "1d10", blocks: true, target: "party", foe: { key: "goblin", cr: "1/4" } },
+  { id: "hippos",       category: "encounter", terrain: "river", blocks: true, target: "party", foe: { key: "hippopotamus", cr: "4" } },
+  { id: "tradeCanoe",   category: "encounter", terrain: "river", target: "party" },
+  { id: "driftwood",    category: "encounter", terrain: "river", blocks: true, target: "party" },
+  { id: "wrongBranch",  category: "lost", terrain: "river", target: "party" },
+  { id: "rapids",       category: "storm", terrain: "river", damage: "2d6", save: { ability: "dex", dc: 14 }, blocks: true, target: "party" },
+  { id: "muddyBank",    category: "camp", terrain: "river", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
+  { id: "swiftCurrent", category: "boon", terrain: "river", target: "party" },
+
+  /* --- Sea: the ship's own troubles ------------------------------- */
+  { id: "sharks",       category: "ambush", terrain: "sea", damage: "2d8", blocks: true, target: "random", foe: { key: "hunterShark", cr: "2" } },
+  { id: "pirates",      category: "ambush", terrain: "sea", damage: "2d6", blocks: true, target: "party", foe: { key: "pirate", cr: "1/8" } },
+  { id: "sahuagin",     category: "ambush", terrain: "sea", damage: "2d6", blocks: true, target: "party", foe: { key: "sahuagin", cr: "1/2" } },
+  { id: "krakenArm",    category: "ambush", terrain: "sea", damage: "2d10", save: { ability: "str", dc: 14 }, blocks: true, target: "random", foe: { key: "giantOctopus", cr: "1" } },
+  { id: "whale",        category: "encounter", terrain: "sea", target: "party" },
+  { id: "sailOnHorizon", category: "encounter", terrain: "sea", target: "party" },
+  { id: "reef",         category: "encounter", terrain: "sea", blocks: true, target: "party" },
+  { id: "offCourse",    category: "lost", terrain: "sea", target: "party" },
+  { id: "seaStorm",     category: "storm", terrain: "sea", damage: "2d6", save: { ability: "dex", dc: 13 }, blocks: true, target: "party" },
+  { id: "becalmed",     category: "storm", terrain: "sea", blocks: true, target: "party" },
+  { id: "nightWatch",   category: "camp", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
+  { id: "saltwater",    category: "foul", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 14 }, target: "party" },
+  { id: "followingWind", category: "boon", terrain: "sea", target: "party" },
+  { id: "dolphins",     category: "boon", terrain: "sea", heals: 1, target: "party" },
+
+  /* --- Mounts: what a day on horseback costs ---------------------- */
+  { id: "mountLame",    category: "camp", terrain: "mount", blocks: true, target: "party" },
+  { id: "mountBolted",  category: "ambush", terrain: "mount", damage: "1d6", save: { ability: "dex", dc: 12 }, target: "random" },
+  { id: "mountSpent",   category: "camp", terrain: "mount", exhaustion: 1, target: "party" }
 ];
 
 /** Event categories, for grouping and for the "one per category" rule. */
@@ -464,3 +579,80 @@ export const PARTY_SOURCE = { GROUP: "group", PLAYERS: "players" };
 
 /** Debounce for re-rendering open windows after a state change, in ms. */
 export const DEBOUNCE_MS = 60;
+
+/* ------------------------------------------------------------------ */
+/*  Encounter sizing                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ENCOUNTER BUDGETS.
+ *
+ * The event says a pack of velociraptors turned up; this table answers "how
+ * many", so a GM who wants to actually run the fight has a number instead of a
+ * guess. Suggestions only - nothing here spawns a token or starts combat.
+ *
+ * These are the 2014 DMG XP thresholds per character, which is the edition Tomb
+ * of Annihilation was written for. Index is the character level, so entry [6] is
+ * a 6th-level character. Index 0 is unused padding so the level reads directly.
+ */
+export const XP_THRESHOLDS = [
+  null,
+  { hard:   75, deadly:   100 },  //  1
+  { hard:  150, deadly:   200 },  //  2
+  { hard:  225, deadly:   400 },  //  3
+  { hard:  375, deadly:   500 },  //  4
+  { hard:  750, deadly:  1100 },  //  5
+  { hard:  900, deadly:  1400 },  //  6
+  { hard: 1100, deadly:  1700 },  //  7
+  { hard: 1400, deadly:  2100 },  //  8
+  { hard: 1600, deadly:  2400 },  //  9
+  { hard: 1900, deadly:  2800 },  // 10
+  { hard: 2400, deadly:  3600 },  // 11
+  { hard: 3000, deadly:  4500 },  // 12
+  { hard: 3400, deadly:  5100 },  // 13
+  { hard: 3800, deadly:  5900 },  // 14
+  { hard: 4300, deadly:  6400 },  // 15
+  { hard: 4800, deadly:  7200 },  // 16
+  { hard: 5900, deadly:  8800 },  // 17
+  { hard: 6500, deadly:  9500 },  // 18
+  { hard: 7300, deadly: 10900 },  // 19
+  { hard: 8500, deadly: 12700 }   // 20
+];
+
+export const MAX_LEVEL = XP_THRESHOLDS.length - 1;
+
+/** Experience a creature of each challenge rating is worth (2014 DMG). */
+export const CR_XP = {
+  "0": 10, "1/8": 25, "1/4": 50, "1/2": 100,
+  "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800, "6": 2300, "7": 2900,
+  "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000,
+  "14": 11500, "15": 13000, "16": 15000, "17": 18000, "18": 20000, "19": 22000,
+  "20": 25000, "21": 33000, "22": 41000, "23": 50000, "24": 62000, "25": 75000,
+  "26": 90000, "27": 105000, "28": 120000, "29": 135000, "30": 155000
+};
+
+/**
+ * The "encounter multiplier": a crowd is harder than the sum of its parts.
+ *
+ * `upTo` is the highest monster count the multiplier applies to, read in order.
+ * Straight from the DMG's own table, and the reason four raptors are not simply
+ * twice as dangerous as two.
+ */
+export const ENCOUNTER_MULTIPLIERS = [
+  { upTo: 1, factor: 1 },
+  { upTo: 2, factor: 1.5 },
+  { upTo: 6, factor: 2 },
+  { upTo: 10, factor: 2.5 },
+  { upTo: 14, factor: 3 },
+  { upTo: Infinity, factor: 4 }
+];
+
+/**
+ * Most creatures of one kind worth suggesting.
+ *
+ * A cap, not a rule: against a low-CR foe the arithmetic will happily propose
+ * forty stirges for a high-level party, which is technically a deadly encounter
+ * and practically an afternoon of rolling initiative. Past this the suggestion
+ * says "swarm" and leaves the staging to the GM.
+ */
+export const MAX_FOES = 12;

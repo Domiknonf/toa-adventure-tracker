@@ -202,6 +202,99 @@ if (!missingEvents) ok(`every event has a name and text in all languages (${even
        real entry goes unwritten. */
 const knownEventIds = new Set(eventIds);
 
+/* 12. EVERY FOE HAS A NAME, IN EVERY LANGUAGE. Same reasoning as the event
+       prose: an encounter suggestion with no name prints its own key next to
+       the challenge rating, in front of the table. */
+const foeKeys = [...new Set([...constSrc.matchAll(/foe:\s*\{\s*key:\s*"(\w+)"/g)].map(m => m[1]))];
+let missingFoes = 0;
+for (const file of langs) {
+  for (const key of foeKeys) {
+    const full = `${PREFIX}foe.${key}`;
+    if (!(full in tables[file])) { fail(`${file}: foe "${key}" has no name ("${full}")`); missingFoes++; }
+  }
+}
+if (!missingFoes) ok(`every foe has a name in all languages (${foeKeys.length} foes)`);
+
+/* 13. EVERY FOE'S CHALLENGE RATING IS ONE THE XP TABLE KNOWS. A CR with no XP
+       value silently produces no suggestion at all - the event just loses its
+       encounter line, which reads as "this one is not a fight" rather than as a
+       typo. */
+const crValues = [...constSrc.matchAll(/foe:\s*\{[^}]*cr:\s*"([^"]+)"/g)].map(m => m[1]);
+const crTable = constSrc.match(/export const CR_XP = \{([\s\S]*?)\};/)?.[1] ?? "";
+const knownCRs = new Set([...crTable.matchAll(/"([^"]+)":/g)].map(m => m[1]));
+let badCR = 0;
+for (const cr of new Set(crValues)) {
+  if (!knownCRs.has(cr)) { fail(`foe challenge rating "${cr}" is not in CR_XP`); badCR++; }
+}
+if (!badCR) ok(`every foe CR is in the XP table (${new Set(crValues).size} ratings)`);
+
+/* 14. EVERY TRAVEL MODE CAN ACTUALLY DRAW EVERY CATEGORY IT USES.
+       A mode whose terrain pool has no "lost" event produces a lost day with no
+       explanation - the hex count drops to zero and the report says nothing
+       about why. That failure is invisible in the source and only shows up on
+       the one day in three that the navigator misses, so it is checked here.
+
+       `pursuit` is exempt for modes with no rearguard: the engine never asks
+       for it, because a role the mode does not offer cannot fail. */
+const modeBlock = constSrc.match(/export const TRAVEL_MODES = \{([\s\S]*?)\n\};/)?.[1] ?? "";
+const modes = {};
+for (const m of modeBlock.matchAll(/^\s{2}(\w+):\s*\{/gm)) {
+  const name = m[1];
+  const rest = modeBlock.slice(m.index);
+  const terrains = rest.match(/terrains:\s*\[([^\]]*)\]/)?.[1] ?? "";
+  const roleList = rest.match(/roles:\s*\[([^\]]*)\]/)?.[1] ?? "";
+  modes[name] = {
+    terrains: [...terrains.matchAll(/"(\w+)"/g)].map(x => x[1]),
+    roles: [...roleList.matchAll(/"(\w+)"/g)].map(x => x[1])
+  };
+}
+
+const eventBlock = constSrc.match(/export const EVENTS = \[([\s\S]*?)\n\];/)?.[1] ?? "";
+const eventRows = eventBlock.split("\n").filter(l => l.includes("{ id:")).map(line => ({
+  id: line.match(/id:\s*"(\w+)"/)?.[1],
+  category: line.match(/category:\s*"(\w+)"/)?.[1],
+  terrain: line.match(/terrain:\s*"(\w+)"/)?.[1] ?? "land"
+}));
+
+const USED_CATEGORIES = ["ambush", "encounter", "lost", "detour", "foul",
+  "thirst", "hunger", "camp", "storm", "boon"];
+let deadPools = 0;
+for (const [name, mode] of Object.entries(modes)) {
+  const needed = [...USED_CATEGORIES];
+  if (mode.roles.includes("rearguard")) needed.push("pursuit");
+  for (const category of needed) {
+    const available = eventRows.filter(e =>
+      e.category === category && (e.terrain === "any" || mode.terrains.includes(e.terrain)));
+    if (!available.length) {
+      fail(`travel mode "${name}" has no "${category}" event it can draw`);
+      deadPools++;
+    }
+  }
+}
+if (!deadPools) ok(`every travel mode can draw every category it uses (${Object.keys(modes).length} modes)`);
+
+/* 15. EVERY ROLE A MODE OFFERS ACTUALLY EXISTS. A typo here silently removes a
+       role from that mode rather than erroring - the dropdown is simply one
+       entry shorter and nobody notices which. */
+const defaultRoleIds = new Set(roleIds);
+let badRoles = 0;
+for (const [name, mode] of Object.entries(modes)) {
+  for (const role of mode.roles) {
+    if (!defaultRoleIds.has(role)) { fail(`travel mode "${name}" offers unknown role "${role}"`); badRoles++; }
+  }
+}
+if (!badRoles) ok("every mode's roles exist");
+
+/* 16. EVERY EVENT TERRAIN IS ONE SOME MODE CAN REACH. A misspelled terrain
+       makes an event unreachable in every mode - it is in the table, it has
+       prose, and it can never fire. */
+const reachable = new Set(["any", ...Object.values(modes).flatMap(m => m.terrains)]);
+let unreachable = 0;
+for (const terrain of new Set(eventRows.map(e => e.terrain))) {
+  if (!reachable.has(terrain)) { fail(`no travel mode can reach terrain "${terrain}"`); unreachable++; }
+}
+if (!unreachable) ok(`every event terrain is reachable (${[...new Set(eventRows.map(e => e.terrain))].join(", ")})`);
+
 let orphans = 0;
 for (const key of Object.keys(tables[reference])) {
   const match = key.match(/^toa-adventure-tracker\.event\.(\w+)$/);

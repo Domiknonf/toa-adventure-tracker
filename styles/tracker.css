@@ -163,6 +163,32 @@
   /*  Pace                                                             */
   /* ---------------------------------------------------------------- */
 
+  .toa-modes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+  }
+
+  .toa-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.45rem 0.3rem;
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    background: rgba(0, 0, 0, 0.18);
+    line-height: 1.25;
+    height: auto;
+  }
+
+  .toa-mode.on { border-color: var(--toa-accent); box-shadow: inset 0 0 0 1px var(--toa-accent); }
+  .toa-mode[disabled] { opacity: 0.65; cursor: default; }
+  .toa-mode i { font-size: 1.1rem; color: var(--toa-accent); }
+  .toa-mode-name { font-weight: 700; }
+  /* The three ceilings as "1 / 2 / 3" - says more about a mode than an adjective. */
+  .toa-mode-range { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+
   .toa-paces {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -501,6 +527,35 @@
   .toa-tag.bad { border-color: var(--toa-bad); color: var(--toa-bad); }
   .toa-tag.good { border-color: var(--toa-ok); color: var(--toa-ok); }
 
+  /* The encounter suggestion. Visually a footnote to the event, because that is
+     what it is: arithmetic offered to the GM, not part of what happened. */
+  .toa-foe {
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--toa-line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-dim);
+  }
+
+  .toa-foe-name { font-weight: 700; color: var(--toa-text); }
+  .toa-foe-cr { color: var(--toa-dim); }
+
+  .toa-level {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .toa-level label { display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+  .toa-level input { width: 4rem; text-align: center; }
+  .toa-level .toa-hint { margin: 0; }
+
   .toa-sub-title {
     margin: 0.85rem 0 0.35rem;
     font-size: var(--font-size-12, 0.75rem);
@@ -599,7 +654,33 @@
 
     /* Three pace cards side by side stop being readable well before the window
        stops being usable. */
-    .toa-paces { grid-template-columns: 1fr; }
+    .toa-modes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+  }
+
+  .toa-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.45rem 0.3rem;
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    background: rgba(0, 0, 0, 0.18);
+    line-height: 1.25;
+    height: auto;
+  }
+
+  .toa-mode.on { border-color: var(--toa-accent); box-shadow: inset 0 0 0 1px var(--toa-accent); }
+  .toa-mode[disabled] { opacity: 0.65; cursor: default; }
+  .toa-mode i { font-size: 1.1rem; color: var(--toa-accent); }
+  .toa-mode-name { font-weight: 700; }
+  /* The three ceilings as "1 / 2 / 3" - says more about a mode than an adjective. */
+  .toa-mode-range { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+
+  .toa-paces { grid-template-columns: 1fr; }
 
     /* Portrait and name on one line, the task and the roll stacked under it. */
     .toa-member {
