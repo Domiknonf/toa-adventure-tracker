@@ -1,0 +1,324 @@
+{{!-- ApplicationV2 requires every PARTS template to render EXACTLY ONE root
+      element, so this wrapper is structural, not cosmetic. It is also what the
+      stylesheet's container query measures, which is what lets the whole window
+      fold into a single column on a narrow drag. --}}
+<div class="toa-root">
+
+  {{#if noGM}}
+  <div class="toa-banner" role="status">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>{{localize "toa-adventure-tracker.notify.noGM"}}</span>
+  </div>
+  {{/if}}
+
+  <div class="toa-scroll">
+
+    {{!-- ---------------------------------------------------------------
+          DAY + MOON
+          The two things that are true of the day itself, before anybody
+          has done anything with it.
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel toa-head">
+
+      <div class="toa-day">
+        <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.day"}}</h2>
+
+        <div class="toa-day-row">
+          {{#if gm}}
+          <button type="button" class="toa-step" data-action="dayDown"
+                  data-tooltip="toa-adventure-tracker.app.dayDown"
+                  aria-label="{{localize 'toa-adventure-tracker.app.dayDown'}}">
+            <i class="fa-solid fa-minus"></i>
+          </button>
+
+          {{!-- Commits on Enter or blur, never per keystroke - see app.mjs
+                _onRender for why a per-keystroke write races its own render. --}}
+          <input class="toa-day-input" type="number" min="1" step="1"
+                 value="{{day}}" data-day-input
+                 aria-label="{{localize 'toa-adventure-tracker.app.daySet'}}">
+
+          <button type="button" class="toa-step" data-action="dayUp"
+                  data-tooltip="toa-adventure-tracker.app.dayUp"
+                  aria-label="{{localize 'toa-adventure-tracker.app.dayUp'}}">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+          {{else}}
+          <span class="toa-day-static">{{day}}</span>
+          {{/if}}
+        </div>
+
+        {{#if gm}}
+        <div class="toa-day-actions">
+          <button type="button" class="toa-btn toa-btn-primary" data-action="completeDay">
+            <i class="fa-solid fa-flag-checkered"></i>
+            <span>{{localize "toa-adventure-tracker.app.completeDay"}}</span>
+          </button>
+          <button type="button" class="toa-btn" data-action="clearRolls"
+                  data-tooltip="toa-adventure-tracker.app.clearRollsHint">
+            <i class="fa-solid fa-eraser"></i>
+            <span>{{localize "toa-adventure-tracker.app.clearRolls"}}</span>
+          </button>
+        </div>
+        {{/if}}
+      </div>
+
+      {{!-- The moon disc. Drawn, not an image: the cycle length is a setting, so
+            there is no fixed set of pictures to ship. The dark disc is the full
+            circle; the lit path is laid over it (see moon.discPath). --}}
+      <figure class="toa-moon" data-tooltip-text="{{moon.tooltip}}">
+        <svg class="toa-moon-svg" viewBox="0 0 {{disc.size}} {{disc.size}}"
+             width="{{disc.size}}" height="{{disc.size}}" role="img"
+             aria-label="{{moon.label}} &ndash; {{moon.percent}}%">
+          <circle class="toa-moon-dark" cx="{{disc.centre}}" cy="{{disc.centre}}" r="{{disc.radius}}"/>
+          {{#if moon.path}}<path class="toa-moon-lit" d="{{moon.path}}"/>{{/if}}
+          <circle class="toa-moon-rim" cx="{{disc.centre}}" cy="{{disc.centre}}" r="{{disc.radius}}"/>
+        </svg>
+        <figcaption class="toa-moon-caption">
+          <strong>{{moon.label}}</strong>
+          <span class="toa-moon-meta">
+            {{moon.percent}}%{{#if moon.trend}} &middot; {{moon.trend}}{{/if}}
+          </span>
+        </figcaption>
+      </figure>
+    </section>
+
+    {{!-- ---------------------------------------------------------------
+          PACE + WEATHER
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.pace"}}</h2>
+
+      <div class="toa-paces">
+        {{#each paces}}
+        <button type="button" class="toa-pace {{#if active}}on{{/if}}"
+                data-pace="{{key}}" {{#unless ../gm}}disabled{{/unless}}>
+          <span class="toa-pace-name">{{label}}</span>
+          <span class="toa-pace-miles">{{miles}} {{localize "toa-adventure-tracker.unit.milesShort"}}</span>
+          {{!-- The modifier is on the navigation roll only, which the label says
+                outright so nobody reads it as a blanket bonus. --}}
+          <span class="toa-pace-mod">{{modLabel}} {{localize "toa-adventure-tracker.app.onNavigation"}}</span>
+        </button>
+        {{/each}}
+      </div>
+
+      <label class="toa-check">
+        <input type="checkbox" data-rain {{checked rain}} {{#unless gm}}disabled{{/unless}}>
+        <span>{{localize "toa-adventure-tracker.app.rainToday"}}</span>
+      </label>
+    </section>
+
+    {{!-- ---------------------------------------------------------------
+          THE PARTY
+          One row per traveller. Controls are enabled per row from
+          ownership (context.party[].editable), never hidden - a player
+          should see that the GM can roll for somebody else.
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.party"}}</h2>
+
+      {{#if party.length}}
+      <ul class="toa-party">
+        {{#each party}}
+        <li class="toa-member {{#unless editable}}toa-readonly{{/unless}}">
+
+          <img class="toa-portrait" src="{{img}}" alt="" loading="lazy">
+
+          <div class="toa-member-main">
+            <div class="toa-member-name">{{name}}</div>
+
+            <select class="toa-task-select" data-task-select data-actor-id="{{id}}"
+                    {{#unless editable}}disabled{{/unless}}
+                    aria-label="{{localize 'toa-adventure-tracker.app.chooseTask'}}">
+              <option value="">{{localize "toa-adventure-tracker.app.noTask"}}</option>
+              {{#each options}}
+              <option value="{{id}}" {{#if selected}}selected{{/if}} title="{{hint}}">{{label}} ({{mod}})</option>
+              {{/each}}
+            </select>
+
+            {{#if taskId}}
+            <div class="toa-member-check">
+              {{#if icon}}<i class="{{icon}}"></i>{{/if}}
+              {{check}}{{#if mod}} {{mod}}{{/if}}
+              {{#if paceMod}}<span class="toa-pacemod">{{paceMod}} {{localize "toa-adventure-tracker.app.paceShort"}}</span>{{/if}}
+              {{#if dc}}<span class="toa-dc">{{localize "toa-adventure-tracker.app.dc"}} {{dc}}</span>{{/if}}
+            </div>
+            {{!-- The task's own description. Kept on the row rather than only in
+                  the dropdown, where it vanishes the moment a choice is made. --}}
+            {{#if hint}}<div class="toa-member-hint">{{hint}}</div>{{/if}}
+            {{/if}}
+          </div>
+
+          <div class="toa-member-roll">
+            {{#if record}}
+            {{!-- The one animated thing in the module: a result fading in is how
+                  you notice somebody else's roll landed. Everything else is
+                  static on purpose. --}}
+            <div class="toa-result toa-appear
+                        {{#if record.undecided}}neutral{{else}}{{#if record.success}}ok{{else}}bad{{/if}}{{/if}}"
+                 data-tooltip-text="{{record.formula}}">
+              <span class="toa-total">{{record.total}}</span>
+              {{#unless record.undecided}}
+              <span class="toa-verdict">
+                {{#if record.success}}{{localize "toa-adventure-tracker.app.success"}}
+                {{else}}{{localize "toa-adventure-tracker.app.failure"}}{{/if}}
+              </span>
+              {{/unless}}
+              {{#if record.yield}}
+              <span class="toa-yield">+{{record.yield.total}} {{record.yield.unit}}</span>
+              {{/if}}
+            </div>
+            {{/if}}
+
+            {{#if canRoll}}
+            <button type="button" class="toa-btn toa-roll" data-action="roll" data-actor-id="{{id}}">
+              <i class="fa-solid fa-dice-d20"></i>
+              <span>{{#if record}}{{localize "toa-adventure-tracker.app.reroll"}}
+                    {{else}}{{localize "toa-adventure-tracker.app.roll"}}{{/if}}</span>
+            </button>
+            {{/if}}
+          </div>
+        </li>
+        {{/each}}
+      </ul>
+      {{else}}
+      <p class="toa-empty">{{localize "toa-adventure-tracker.app.noParty"}}</p>
+      {{/if}}
+    </section>
+
+    {{!-- ---------------------------------------------------------------
+          DISTANCE
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.distance"}}</h2>
+
+      <div class="toa-distance {{#if distance.lost}}lost{{/if}}">
+        <div class="toa-miles">
+          <span class="toa-miles-value">{{distance.miles}}</span>
+          <span class="toa-miles-unit">{{localize "toa-adventure-tracker.unit.miles"}}</span>
+        </div>
+        <div class="toa-hexes">
+          {{localize "toa-adventure-tracker.app.hexes" }}:
+          <strong>{{distance.hexes}}</strong>
+          <span class="toa-hint">({{distance.hexSize}} {{localize "toa-adventure-tracker.unit.milesPerHex"}})</span>
+        </div>
+      </div>
+
+      {{#if distance.lost}}
+      <p class="toa-warn">
+        <i class="fa-solid fa-map-location-dot"></i>
+        {{localize "toa-adventure-tracker.app.lost"}}
+      </p>
+      {{else if distance.pending}}
+      <p class="toa-hint">{{localize "toa-adventure-tracker.app.navPending"}}</p>
+      {{/if}}
+    </section>
+
+    {{!-- ---------------------------------------------------------------
+          SUPPLIES
+          Hints only. The CON save is never rolled from here - the brief
+          is explicit about that, and it is the GM's call anyway.
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.supplies"}}</h2>
+
+      <dl class="toa-supply">
+        <div>
+          <dt>{{localize "toa-adventure-tracker.app.travelers"}}</dt>
+          <dd>{{supplies.travelers}}</dd>
+        </div>
+        <div>
+          <dt>{{localize "toa-adventure-tracker.app.waterNeed"}}</dt>
+          <dd>{{supplies.need}} {{supplies.waterUnit}}</dd>
+        </div>
+        <div>
+          <dt>{{localize "toa-adventure-tracker.app.waterFound"}}</dt>
+          <dd>{{#if supplies.water}}{{supplies.water}} {{supplies.waterUnit}}{{else}}&mdash;{{/if}}</dd>
+        </div>
+        <div>
+          <dt>{{localize "toa-adventure-tracker.app.foodFound"}}</dt>
+          <dd>{{#if supplies.food}}{{supplies.food}} {{supplies.foodUnit}}{{else}}&mdash;{{/if}}</dd>
+        </div>
+      </dl>
+
+      {{#if supplies.byRain}}
+      <p class="toa-ok">
+        <i class="fa-solid fa-cloud-rain"></i>
+        {{localize "toa-adventure-tracker.app.coveredByRain"}}
+      </p>
+      {{else if supplies.covered}}
+      <p class="toa-ok">
+        <i class="fa-solid fa-check"></i>
+        {{localize "toa-adventure-tracker.app.coveredByWater"}}
+      </p>
+      {{else}}
+      <p class="toa-warn">
+        <i class="fa-solid fa-droplet-slash"></i>
+        {{localize "toa-adventure-tracker.app.thirsty" }}
+        <strong>{{supplies.missing}} {{supplies.waterUnit}}</strong>
+        &mdash;
+        {{localize "toa-adventure-tracker.app.conSaveHint"}} {{supplies.conSaveDC}}
+      </p>
+      {{/if}}
+    </section>
+
+    {{!-- ---------------------------------------------------------------
+          LOGBOOK
+    ---------------------------------------------------------------- --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">
+        {{localize "toa-adventure-tracker.app.log"}}
+        {{#unless log.empty}}
+        <span class="toa-total-miles">
+          {{localize "toa-adventure-tracker.log.totalShort"}}: {{log.totalMiles}}
+          {{localize "toa-adventure-tracker.unit.milesShort"}}
+        </span>
+        {{/unless}}
+      </h2>
+
+      {{#if log.empty}}
+      <p class="toa-empty">{{localize "toa-adventure-tracker.app.noLog"}}</p>
+      {{else}}
+      <div class="toa-table-wrap">
+        <table class="toa-log">
+          <thead>
+            <tr>
+              <th>{{localize "toa-adventure-tracker.log.day"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.pace"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.miles"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.lost"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.water"}}</th>
+              <th>{{localize "toa-adventure-tracker.log.food"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each log.entries}}
+            <tr>
+              <td>{{day}}</td>
+              <td>{{paceLabel}}</td>
+              <td>{{miles}}</td>
+              <td>{{#if lost}}<i class="fa-solid fa-check toa-bad-icon"></i>{{else}}&mdash;{{/if}}</td>
+              <td>{{#if water}}{{water}}{{else}}&mdash;{{/if}}</td>
+              <td>{{#if food}}{{food}}{{else}}&mdash;{{/if}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+      {{/if}}
+
+      {{#if gm}}
+      <div class="toa-day-actions">
+        <button type="button" class="toa-btn" data-action="exportLog">
+          <i class="fa-solid fa-book"></i>
+          <span>{{localize "toa-adventure-tracker.app.exportLog"}}</span>
+        </button>
+        <button type="button" class="toa-btn" data-action="clearLog">
+          <i class="fa-solid fa-trash"></i>
+          <span>{{localize "toa-adventure-tracker.app.clearLog"}}</span>
+        </button>
+      </div>
+      {{/if}}
+    </section>
+
+  </div>
+</div>

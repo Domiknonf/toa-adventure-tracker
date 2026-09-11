@@ -1,0 +1,15 @@
+{
+  "name": "toa-adventure-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node tools/verify.mjs",
+    "test": "node tools/test/moon-test.mjs && node tools/test/run-tests.mjs",
+    "check": "npm run verify && npm test",
+    "build:packs": "node tools/build-packs.mjs"
+  },
+  "devDependencies": {
+    "classic-level": "^3.0.0",
+    "handlebars": "^4.7.8"
+  }
+}

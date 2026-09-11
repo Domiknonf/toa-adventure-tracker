@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+/**
+ * The checks `node --check` cannot see, every one of which is a mistake that is
+ * invisible in the source and obvious only in a running world. Run from the repo
+ * root:
+ *
+ *   node tools/verify.mjs
+ *
+ * It reads files and never writes any, so it is safe to run at any time. It does
+ * NOT replace opening the module in Foundry - it catches the class of error that
+ * costs a reload to find.
+ */
+import fs from "node:fs";
+import path from "node:path";
+
+const MODULE_ID = "toa-adventure-tracker";
+const PREFIX = `${MODULE_ID}.`;
+
+let bad = 0;
+const fail = (msg) => { console.log("FAIL  " + msg); bad++; };
+const ok = (msg) => console.log("ok    " + msg);
+
+const scripts = fs.readdirSync("scripts").filter(f => f.endsWith(".mjs"));
+const templates = fs.readdirSync("templates").filter(f => f.endsWith(".hbs"));
+
+/* 1. IMPORT CYCLES. ESM tolerates some, but a cycle in a Foundry module does not
+      announce itself: it resolves to a half-initialised binding, and the symptom
+      is a window that renders once and then silently stops. This file exists
+      largely because settings.mjs -> app.mjs -> state.mjs -> settings.mjs was a
+      real cycle during development (see REFRESH_HOOK). */
+const graph = {};
+for (const f of scripts) {
+  const src = fs.readFileSync(path.join("scripts", f), "utf8");
+  graph[f] = [...src.matchAll(/from\s+"\.\/([\w.-]+\.mjs)"/g)].map(m => m[1]);
+}
+const state = {};
+const walk = (node, stack) => {
+  if (state[node] === "done") return;
+  if (state[node] === "open") return fail(`import cycle: ${[...stack, node].join(" -> ")}`);
+  state[node] = "open";
+  for (const dep of graph[node] ?? []) {
+    if (!graph[dep]) fail(`${node} imports missing file ${dep}`);
+    else walk(dep, [...stack, node]);
+  }
+  state[node] = "done";
+};
+for (const node of Object.keys(graph)) walk(node, []);
+if (!bad) ok(`import graph acyclic (${Object.keys(graph).length} modules)`);
+
+/* 2. EVERY PARTS TEMPLATE RENDERS EXACTLY ONE ROOT ELEMENT. Counted with a depth
+      counter rather than by balancing tags: two siblings and zero roots both
+      throw "Template part ... must render a single HTML element", and the
+      application then never appears at all. */
+const VOID_TAGS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input",
+  "link", "meta", "source", "track", "wbr"]);
+for (const file of templates) {
+  const src = fs.readFileSync(path.join("templates", file), "utf8")
+    .replace(/\{\{![\s\S]*?\}\}/g, "");   // handlebars comments may contain markup
+  let depth = 0;
+  let roots = 0;
+  for (const m of src.matchAll(/<(\/?)([a-zA-Z][\w-]*)([^>]*?)(\/?)>/g)) {
+    const [, closing, tag, attrs, selfClosing] = m;
+    if (closing) { depth--; continue; }
+    if (depth === 0) roots++;
+    if (!VOID_TAGS.has(tag.toLowerCase()) && !selfClosing && !attrs.endsWith("/")) depth++;
+  }
+  if (roots === 1) ok(`${file}: exactly one root element`);
+  else fail(`${file}: ${roots} root elements (must be exactly 1)`);
+}
+
+/* 3. EVERY data-action HAS A HANDLER. A button wired to nothing looks completely
+      normal and simply does nothing when clicked. */
+const handlers = new Set();
+for (const file of scripts) {
+  const src = fs.readFileSync(path.join("scripts", file), "utf8");
+  const block = src.match(/actions:\s*\{([\s\S]*?)\n\s{4}\}/);
+  if (block) for (const m of block[1].matchAll(/^\s*(\w+):/gm)) handlers.add(m[1]);
+}
+let unhandled = 0;
+for (const file of templates) {
+  const src = fs.readFileSync(path.join("templates", file), "utf8");
+  for (const m of src.matchAll(/data-action="([\w-]+)"/g)) {
+    if (!handlers.has(m[1])) { fail(`${file}: data-action="${m[1]}" has no handler`); unhandled++; }
+  }
+}
+if (!unhandled) ok(`every data-action has a handler (${handlers.size} declared)`);
+
+/* 4. NO i18n KEY IS BOTH A LEAF AND A BRANCH. Foundry expands the dotted keys into
+      a nested object, so shipping "x.roll" AND "x.roll.hint" asks one key to be a
+      string and an object at once - which takes down the WHOLE translation table,
+      not just that key. JSON.parse cannot see it. */
+const langs = fs.readdirSync("lang").filter(f => f.endsWith(".json"));
+const tables = {};
+for (const file of langs) {
+  const table = JSON.parse(fs.readFileSync(path.join("lang", file), "utf8"));
+  tables[file] = table;
+  const keys = Object.keys(table);
+  let shadowed = 0;
+  for (const key of keys) {
+    const branch = keys.find(other => other !== key && other.startsWith(key + "."));
+    if (branch) { fail(`${file}: key is both leaf and branch: "${key}" vs "${branch}"`); shadowed++; }
+  }
+  if (!shadowed) ok(`${file}: no key shadows another (${keys.length} keys)`);
+}
+
+/* 5. EVERY LANGUAGE HAS THE SAME KEYS. A key present in one file and missing in
+      another shows the raw key path to half the table and nobody else. */
+const [reference, ...others] = langs;
+for (const file of others) {
+  const missing = Object.keys(tables[reference]).filter(k => !(k in tables[file]));
+  const extra = Object.keys(tables[file]).filter(k => !(k in tables[reference]));
+  for (const key of missing) fail(`${file}: missing key "${key}" (present in ${reference})`);
+  for (const key of extra) fail(`${file}: extra key "${key}" (absent from ${reference})`);
+  if (!missing.length && !extra.length) ok(`${file}: same key set as ${reference}`);
+}
+
+/* 6. EVERY STATICALLY REFERENCED i18n KEY EXISTS. Interpolated keys - the
+      `${MODULE_ID}.task.${task.id}.label` family - cannot be checked here and are
+      skipped on purpose; they are exactly the ones that fall back gracefully. */
+const known = new Set(Object.keys(tables[reference]));
+let missingKeys = 0;
+for (const dir of ["scripts", "templates"]) {
+  for (const file of fs.readdirSync(dir)) {
+    // Hook names are built from MODULE_ID exactly like i18n keys are, and are not
+    // translation keys at all - so the lines that declare one are dropped before
+    // scanning rather than each being special-cased downstream.
+    const src = fs.readFileSync(path.join(dir, file), "utf8")
+      .replace(/^.*\b\w+_HOOK\s*=.*$/gm, "");
+    const seen = new Set();
+    for (const m of src.matchAll(/`\$\{MODULE_ID\}\.([\w.]+)`/g)) seen.add(PREFIX + m[1]);
+    for (const m of src.matchAll(/"(toa-adventure-tracker\.[\w.]+)"/g)) seen.add(m[1]);
+    for (const key of seen) {
+      if (!known.has(key)) { fail(`${dir}/${file}: i18n key "${key}" is not in lang/${reference}`); missingKeys++; }
+    }
+  }
+}
+if (!missingKeys) ok("every statically referenced i18n key exists");
+
+/* 7. THE MANIFEST POINTS AT FILES THAT EXIST. A typo'd path is a module that
+      loads with no styles, no language and no obvious reason why. */
+const manifest = JSON.parse(fs.readFileSync("module.json", "utf8"));
+let missingFiles = 0;
+const needFile = (p, what) => {
+  if (!fs.existsSync(p)) { fail(`module.json: ${what} "${p}" does not exist`); missingFiles++; }
+};
+for (const p of manifest.esmodules ?? []) needFile(p, "esmodule");
+for (const p of manifest.styles ?? []) needFile(p, "style");
+for (const l of manifest.languages ?? []) needFile(l.path, "language");
+for (const pack of manifest.packs ?? []) needFile(pack.path, "pack");
+if (manifest.id !== MODULE_ID) fail(`module.json: id is "${manifest.id}", expected "${MODULE_ID}"`);
+if (!missingFiles) ok(`module.json: every referenced path exists`);
+
+/* 8. TEMPLATES REFERENCED FROM PARTS EXIST, and every template on disk is used.
+      An unreferenced template is usually a rename that only got done halfway. */
+const referenced = new Set();
+for (const file of scripts) {
+  const src = fs.readFileSync(path.join("scripts", file), "utf8");
+  for (const m of src.matchAll(/templates\/([\w.-]+\.hbs)/g)) referenced.add(m[1]);
+}
+for (const t of referenced) {
+  if (!templates.includes(t)) fail(`scripts reference templates/${t}, which does not exist`);
+}
+for (const t of templates) {
+  if (!referenced.has(t)) fail(`templates/${t} is never referenced from scripts`);
+}
+if (referenced.size === templates.length) ok(`templates all referenced (${templates.length})`);
+
+/* 9. THE DEFAULT TASK LIST HAS A LABEL FOR EVERY ENTRY. A task whose label key is
+      missing renders its own key path into the dropdown - legible enough to ship
+      by accident and wrong enough to notice at the table. */
+const constSrc = fs.readFileSync("scripts/const.mjs", "utf8");
+const taskIds = [...constSrc.matchAll(/^\s{4}id:\s*"([\w-]+)"/gm)].map(m => m[1]);
+let missingLabels = 0;
+for (const id of taskIds) {
+  if (!known.has(`${PREFIX}task.${id}.label`)) {
+    fail(`default task "${id}" has no label key (${PREFIX}task.${id}.label)`);
+    missingLabels++;
+  }
+}
+if (!missingLabels) ok(`every default task has a label (${taskIds.length} tasks)`);
+
+console.log(bad ? `\n${bad} problem(s)` : "\nall checks passed");
+process.exit(bad ? 1 : 0);

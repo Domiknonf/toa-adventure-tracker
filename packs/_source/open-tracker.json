@@ -1,0 +1,21 @@
+{
+  "_id": "toaOpenTracker01",
+  "name": "Wildnisreise öffnen",
+  "type": "script",
+  "author": null,
+  "img": "icons/environment/wilderness/camp-improvised.webp",
+  "scope": "global",
+  "command": "// Öffnet das Wildnisreise-Fenster.\n//\n// Das Fenster ist für alle da: Spieler sehen denselben Reisetag, dieselbe\n// Mondphase und dieselben Würfe, können aber nur ihre eigenen Charaktere\n// steuern. Es ist also unbedenklich, dieses Makro auf die gemeinsame\n// Hotbar zu legen.\nconst api = game.modules.get(\"toa-adventure-tracker\")?.api;\n\nif (!api) {\n  ui.notifications.error(\"Das Modul 'Wildnisreise' ist nicht aktiv.\");\n} else {\n  api.open();\n}\n\n// Weitere Möglichkeiten (nur SL):\n//   api.setDay(12);            // Reisetag direkt setzen\n//   api.adjustDay(1);          // einen Tag weiter\n//   api.completeDay();         // Tag abschließen und protokollieren\n//   api.setPace(\"fast\");       // Reisetempo wechseln\n//   api.setRain(true);         // Regen für heute einschalten\n//\n// Lesen darf jeder:\n//   api.getState();            // der komplette Zustand\n//   api.summarise();           // Strecke, Wasser, Nahrung\n//   api.moonFor(30);           // Mondphase eines beliebigen Tages\n",
+  "folder": null,
+  "sort": 0,
+  "ownership": { "default": 2 },
+  "flags": {},
+  "_stats": {
+    "systemId": "dnd5e",
+    "systemVersion": "5.3.3",
+    "coreVersion": "13.351",
+    "createdTime": null,
+    "modifiedTime": null,
+    "lastModifiedBy": null
+  }
+}

@@ -1,0 +1,456 @@
+/* Foundry v13 uses CSS layers. Declaring our own keeps core styles from winning
+   specificity fights without a single !important. */
+@layer modules {
+
+  /* Palette. DERIVED from Foundry's own theme variables wherever one exists, with
+     a literal fallback for the case where it does not - so the window follows the
+     user's light/dark choice instead of committing to one look. The accents are
+     ours, because core has no "the party got lost" colour. */
+  .toa-tracker {
+    --toa-gap: 0.75rem;
+    --toa-radius: 6px;
+
+    --toa-text: var(--color-text-primary, #eee);
+    --toa-dim: var(--color-text-subtle, #9d9d9d);
+    --toa-panel: var(--color-cool-5-25, rgba(255, 255, 255, 0.045));
+    --toa-line: var(--color-border-light-tertiary, rgba(255, 255, 255, 0.12));
+
+    --toa-accent: #d9a441;
+    --toa-ok: #5aa64f;
+    --toa-bad: #c0503f;
+    --toa-neutral: #7c8794;
+
+    --toa-moon-lit: #f3e6c4;
+    --toa-moon-dark: #1d2128;
+
+    /* Zeroed under prefers-reduced-motion, below. */
+    --toa-anim: 180ms;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Layout                                                           */
+  /* ---------------------------------------------------------------- */
+
+  .toa-tracker .window-content {
+    padding: 0;
+    /* The scroll lives on .toa-scroll so the no-GM banner can stay pinned. */
+    overflow: hidden;
+  }
+
+  .toa-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    color: var(--toa-text);
+    /* THE reflow trigger. A container query rather than a media query because
+       this is a resizable window, not a viewport: the window can be 400px wide on
+       a 4K screen, and only the window's own width should decide the layout. */
+    container-type: inline-size;
+    container-name: toa;
+  }
+
+  .toa-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--toa-gap);
+    display: flex;
+    flex-direction: column;
+    gap: var(--toa-gap);
+  }
+
+  .toa-panel {
+    background: var(--toa-panel);
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    padding: var(--toa-gap);
+  }
+
+  .toa-panel-title {
+    margin: 0 0 0.5rem;
+    font-size: var(--font-size-13, 0.8125rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--toa-dim);
+    border-bottom: 1px solid var(--toa-line);
+    padding-bottom: 0.3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Day + moon                                                       */
+  /* ---------------------------------------------------------------- */
+
+  .toa-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--toa-gap);
+    align-items: center;
+  }
+
+  .toa-day-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .toa-day-input,
+  .toa-day-static {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--toa-accent);
+    text-align: center;
+    width: 4.5rem;
+  }
+
+  .toa-day-input {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    color: var(--toa-accent);
+  }
+
+  /* The number spinners are redundant next to the +/- buttons and make the field
+     narrower than the value it holds. */
+  .toa-day-input::-webkit-outer-spin-button,
+  .toa-day-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .toa-day-input { -moz-appearance: textfield; appearance: textfield; }
+
+  .toa-step {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    line-height: 1;
+    border-radius: var(--toa-radius);
+  }
+
+  .toa-day-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  .toa-moon {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .toa-moon-svg { display: block; }
+  .toa-moon-dark { fill: var(--toa-moon-dark); }
+  .toa-moon-lit { fill: var(--toa-moon-lit); }
+  /* Drawn last, over both, so a crescent still reads as part of a whole disc. */
+  .toa-moon-rim { fill: none; stroke: var(--toa-line); stroke-width: 1.5; }
+
+  .toa-moon-caption {
+    text-align: center;
+    font-size: var(--font-size-12, 0.75rem);
+    line-height: 1.35;
+  }
+
+  .toa-moon-meta { display: block; color: var(--toa-dim); }
+
+  /* ---------------------------------------------------------------- */
+  /*  Pace                                                             */
+  /* ---------------------------------------------------------------- */
+
+  .toa-paces {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+
+  .toa-pace {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.45rem 0.3rem;
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    background: rgba(0, 0, 0, 0.18);
+    text-align: center;
+    line-height: 1.25;
+    height: auto;
+  }
+
+  .toa-pace.on {
+    border-color: var(--toa-accent);
+    box-shadow: inset 0 0 0 1px var(--toa-accent);
+  }
+
+  .toa-pace[disabled] { opacity: 0.65; cursor: default; }
+
+  .toa-pace-name { font-weight: 700; }
+  .toa-pace-miles { color: var(--toa-accent); }
+  .toa-pace-mod { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+
+  .toa-check {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+  }
+
+  .toa-check input { flex: 0 0 auto; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Party                                                            */
+  /* ---------------------------------------------------------------- */
+
+  .toa-party {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .toa-member {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.45rem;
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  /* Read-only rows are dimmed rather than stripped: a player should be able to
+     see that the GM can roll for somebody else's character. */
+  .toa-member.toa-readonly { opacity: 0.82; }
+
+  .toa-portrait {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    object-fit: cover;
+    flex: 0 0 auto;
+  }
+
+  .toa-member-main { min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+  .toa-member-name { font-weight: 700; }
+
+  .toa-task-select { width: 100%; }
+
+  .toa-member-check {
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .toa-dc, .toa-pacemod {
+    border: 1px solid var(--toa-line);
+    border-radius: 3px;
+    padding: 0 0.3rem;
+  }
+
+  .toa-pacemod { color: var(--toa-accent); }
+
+  /* The chosen task's description. Wraps rather than truncating: it is one short
+     sentence, and half of it would be worse than none. */
+  .toa-member-hint {
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-dim);
+    line-height: 1.35;
+  }
+
+  .toa-member-roll {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    justify-content: flex-end;
+  }
+
+  .toa-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--toa-radius);
+    border: 1px solid var(--toa-line);
+    min-width: 4.2rem;
+  }
+
+  .toa-result.ok      { border-color: var(--toa-ok);      background: rgba(90, 166, 79, 0.14); }
+  .toa-result.bad     { border-color: var(--toa-bad);     background: rgba(192, 80, 63, 0.14); }
+  .toa-result.neutral { border-color: var(--toa-neutral); background: rgba(124, 135, 148, 0.14); }
+
+  .toa-total { font-size: 1.25rem; font-weight: 700; }
+  .toa-verdict, .toa-yield { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+  .toa-yield { color: var(--toa-accent); }
+
+  .toa-roll { white-space: nowrap; }
+
+  /* THE ONLY ANIMATION IN THE MODULE, and deliberately so: a result appearing is
+     the one thing that happens without this client having done anything, so it is
+     the one thing worth drawing the eye to. */
+  .toa-appear { animation: toa-appear var(--toa-anim) ease-out; }
+
+  @keyframes toa-appear {
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Distance + supplies                                              */
+  /* ---------------------------------------------------------------- */
+
+  .toa-distance {
+    display: flex;
+    align-items: baseline;
+    gap: var(--toa-gap);
+    flex-wrap: wrap;
+  }
+
+  .toa-miles { display: flex; align-items: baseline; gap: 0.3rem; }
+  .toa-miles-value { font-size: 2rem; font-weight: 700; color: var(--toa-accent); line-height: 1; }
+  .toa-miles-unit { color: var(--toa-dim); }
+  .toa-distance.lost .toa-miles-value { color: var(--toa-bad); }
+
+  .toa-supply {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .toa-supply > div {
+    border: 1px solid var(--toa-line);
+    border-radius: var(--toa-radius);
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .toa-supply dt {
+    font-size: var(--font-size-11, 0.6875rem);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--toa-dim);
+  }
+
+  .toa-supply dd { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Notices                                                          */
+  /* ---------------------------------------------------------------- */
+
+  .toa-warn, .toa-ok, .toa-hint, .toa-empty {
+    margin: 0.55rem 0 0;
+    font-size: var(--font-size-12, 0.75rem);
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .toa-warn  { color: var(--toa-bad); }
+  .toa-ok    { color: var(--toa-ok); }
+  .toa-hint, .toa-empty { color: var(--toa-dim); }
+  .toa-bad-icon { color: var(--toa-bad); }
+
+  .toa-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem var(--toa-gap);
+    background: rgba(192, 80, 63, 0.18);
+    border-bottom: 1px solid var(--toa-bad);
+    color: var(--toa-text);
+    font-size: var(--font-size-12, 0.75rem);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Logbook                                                          */
+  /* ---------------------------------------------------------------- */
+
+  /* The one element allowed to scroll sideways. Everything else reflows; a table
+     with six columns cannot, and squeezing it would make it unreadable instead. */
+  .toa-table-wrap { overflow-x: auto; }
+
+  .toa-log { width: 100%; border-collapse: collapse; font-size: var(--font-size-12, 0.75rem); }
+  .toa-log th, .toa-log td { padding: 0.25rem 0.4rem; text-align: left; white-space: nowrap; }
+  .toa-log thead th { color: var(--toa-dim); border-bottom: 1px solid var(--toa-line); }
+  .toa-log tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.035); }
+
+  .toa-total-miles {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--toa-accent);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Buttons                                                          */
+  /* ---------------------------------------------------------------- */
+
+  .toa-tracker .toa-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: auto;
+    padding: 0.3rem 0.6rem;
+    line-height: 1.3;
+    border-radius: var(--toa-radius);
+  }
+
+  .toa-tracker .toa-btn-primary {
+    border-color: var(--toa-accent);
+    color: var(--toa-accent);
+  }
+
+  .toa-tracker button[disabled] { opacity: 0.55; cursor: default; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Narrow: one column                                               */
+  /* ---------------------------------------------------------------- */
+
+  /* Keyed to the WINDOW's width (see container-type above), so this fires on a
+     narrow drag regardless of screen size. */
+  @container toa (max-width: 460px) {
+    .toa-head {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .toa-day-actions { justify-content: center; }
+
+    /* Three pace cards side by side stop being readable well before the window
+       stops being usable. */
+    .toa-paces { grid-template-columns: 1fr; }
+
+    /* Portrait and name on one line, the task and the roll stacked under it. */
+    .toa-member {
+      grid-template-columns: auto minmax(0, 1fr);
+      row-gap: 0.45rem;
+    }
+
+    .toa-member-roll {
+      grid-column: 1 / -1;
+      justify-content: space-between;
+    }
+  }
+
+  /* Respect the OS setting. The result animation is the only thing this turns
+     off, which is the whole reason there is only one. */
+  @media (prefers-reduced-motion: reduce) {
+    .toa-tracker { --toa-anim: 0ms; }
+    .toa-appear { animation: none; }
+  }
+}

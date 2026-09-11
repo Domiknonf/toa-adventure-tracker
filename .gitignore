@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+*.zip
+
+# LevelDB writes a lock file whenever the pack is opened; it is per-process
+# state, not content. The pack itself IS committed - Foundry needs it at runtime
+# and cannot build it from packs/_source on its own.
+packs/*/LOCK
