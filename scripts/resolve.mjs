@@ -154,6 +154,23 @@ export async function resolveDay() {
     roles: Object.fromEntries(Object.entries(roles).map(([id, s]) => [id, {
       status: s.status, actorId: s.actorId ?? null, critical: roleCritical(s)
     }])),
+    /**
+     * What everyone rolled, as plain numbers.
+     *
+     * Kept on the report because the batch deliberately creates no chat cards
+     * (see roles.rollRole) - without this the day's checks would exist only in
+     * the window and vanish when the day is completed. They go out together in
+     * the chat summary instead: one message, no dice.
+     */
+    rolls: Object.values(roles)
+      .filter(s => s.record)
+      .map(s => ({
+        actorName: s.record.actorName,
+        roleId: s.role.id,
+        total: s.record.total,
+        dc: s.record.dc,
+        success: s.record.success
+      })),
     at: Date.now()
   };
 

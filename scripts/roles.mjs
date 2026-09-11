@@ -293,9 +293,8 @@ export async function rollRole(actor, role, { event, batch = false } = {}) {
    *
    * "Roll & resolve the day" fires six checks in a row. Asking
    * normal/advantage/disadvantage six times is not six decisions, it is the
-   * same click six times - and it is the single thing that made running a day
-   * tedious. A single roll from one row still respects the per-user setting,
-   * because that one IS a decision.
+   * same click six times. A single roll from one row still respects the
+   * per-user setting, because that one IS a decision.
    *
    * Advantage is not lost by this: Foundry's own keybinds still apply through
    * `config.event`, and any module that decides advantage from the actor's
@@ -303,9 +302,26 @@ export async function rollRole(actor, role, { event, batch = false } = {}) {
    * this roll goes through either way.
    */
   const dialog = { configure: !batch && !setting("skipRollDialog") };
-  // `create: false` stops dnd5e creating the chat card at all, which is what
-  // keeps a batch of eight role checks from becoming eight 3D dice animations.
-  const message = setting("rollsToChat") ? {} : { create: false };
+
+  /**
+   * A BATCH NEVER POSTS TO CHAT EITHER, whatever the world setting says.
+   *
+   * This is not about tidiness, it is about the clock. A chat card carrying a
+   * roll is what Dice So Nice hooks: it throws physical dice across the screen,
+   * which costs frames on a busy scene, and it QUEUES - six cards means six
+   * animations one after another, with the batch awaiting each in turn. Running
+   * a travel day became half a minute of watching dice settle.
+   *
+   * `create: false` makes dnd5e evaluate the roll and hand it straight back
+   * without ever creating a message, so no `createChatMessage` hook fires and
+   * nothing has anything to animate. The results are not lost: they are on the
+   * roles panel immediately and go out together in the day's chat summary.
+   *
+   * The `rollsToChat` setting still governs a SINGLE roll from one row, which
+   * is the one a table actually wants to watch land.
+   */
+  const quiet = batch || !setting("rollsToChat");
+  const message = quiet ? { create: false } : {};
 
   let rolls;
   if (check.type === "skill") {
@@ -340,7 +356,7 @@ export async function rollRole(actor, role, { event, batch = false } = {}) {
     at: Date.now()
   };
 
-  if (success && role.yield?.formula) record.yield = await rollYield(actor, role);
+  if (success && role.yield?.formula) record.yield = await rollYield(actor, role, quiet);
 
   return record;
 }
@@ -356,7 +372,7 @@ export async function rollRole(actor, role, { event, batch = false } = {}) {
  * default "1d6 + @mod" means by "1d6 + WIS". The actor's full roll data sits
  * underneath, so a custom formula can reach `@abilities.wis.mod` or `@prof`.
  */
-async function rollYield(actor, role) {
+async function rollYield(actor, role, quiet = false) {
   const mod = modifierFor(actor, role) ?? 0;
   let roll;
   try {
@@ -369,7 +385,9 @@ async function rollYield(actor, role) {
     return null;
   }
 
-  if (setting("rollsToChat")) {
+  // Same reasoning as the check above: a yield card is a chat card, and a chat
+  // card carrying a roll is another handful of dice on the screen.
+  if (!quiet) {
     await roll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor }),
       flavor: game.i18n.format(`${MODULE_ID}.chat.yield`, {

@@ -340,8 +340,8 @@
   "toa-adventure-tracker.app.stillAwake": "Noch wach:",
   "toa-adventure-tracker.settings.advanceOnLongRest.name": "Tag bei langer Rast automatisch weiterzählen",
   "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Sobald alle Reisenden eine lange Rast mit „neuer Tag“ gemacht haben, wird der Reisetag abgeschlossen und weitergezählt — mitsamt Bericht, Logbucheintrag und Folgen, falls der Tag ausgewertet wurde. Ein Tag, an dem noch nicht gereist wurde, wird nie weitergezählt, damit der Zähler nicht doppelt springt. Ausgeschaltet bekommst du nur einen Hinweis.",
-  "toa-adventure-tracker.settings.rollsToChat.name": "Würfe in den Chat schreiben",
-  "toa-adventure-tracker.settings.rollsToChat.hint": "An erscheint jeder Rollenwurf als Chatkarte — sichtbar für alle, mit 3D-Würfeln, falls Dice So Nice läuft. Aus wird stumm gewürfelt: Acht Rollen auf einen Schlag sind dann sofort fertig statt acht Würfelanimationen nacheinander. Die Ergebnisse stehen weiterhin in der Rollenliste und im Bericht. Die Rettungswürfe der Auswertung landen ohnehin nie im Chat.",
+  "toa-adventure-tracker.settings.rollsToChat.name": "Einzelwürfe in den Chat schreiben",
+  "toa-adventure-tracker.settings.rollsToChat.hint": "Betrifft nur Würfe, die du einzeln in einer Zeile auslöst. Sammelwürfe („Tag würfeln & auswerten“, „Alles würfeln“) erzeugen grundsätzlich keine Chatnachricht — eine Chatkarte mit Wurf ist genau das, was Dice So Nice animiert, und sechs davon nacheinander kosten eine halbe Minute. Die Ergebnisse stehen sofort in der Rollenliste und gesammelt in der Tageszusammenfassung.",
   "toa-adventure-tracker.reason.exceptional": "Ein hervorragender Kurs — ein Hexfeld mehr, als das Tempo verspricht.",
   "toa-adventure-tracker.app.runDay": "Tag würfeln & auswerten",
   "toa-adventure-tracker.app.applyNow": "Folgen anwenden",
@@ -362,5 +362,6 @@
   "toa-adventure-tracker.role.cartographer.effect": "Fängt einen misslungenen Navigationswurf auf: statt null Hexfelder die halbe Tagesstrecke, mindestens eins.",
   "toa-adventure-tracker.unfilled.fail": "Gilt als misslungener Wurf.",
   "toa-adventure-tracker.unfilled.worse": "Gilt als misslungener Wurf — und die Strafe fällt härter aus.",
-  "toa-adventure-tracker.unfilled.none": "Kostet nichts."
+  "toa-adventure-tracker.unfilled.none": "Kostet nichts.",
+  "toa-adventure-tracker.chat.checks": "Proben des Tages"
 }

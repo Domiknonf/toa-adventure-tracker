@@ -92,6 +92,23 @@ export async function postDayToChat(report, texts) {
   const rows = (texts.events ?? []).map(e => `
     <li><strong>${foundry.utils.escapeHTML(e.title)}</strong><br>${foundry.utils.escapeHTML(e.text)}</li>`).join("");
 
+  /**
+   * The day's checks as one block of text.
+   *
+   * Text, deliberately - not Roll objects. A chat message carrying a roll is
+   * exactly what Dice So Nice animates, and the whole point of rolling the
+   * batch quietly was to keep six sets of dice off the screen. Putting them
+   * back here as rolls would undo it at the last step.
+   */
+  const checks = (report.rolls ?? []).map(r => {
+    const role = game.i18n.localize(`${MODULE_ID}.role.${r.roleId}.label`);
+    const verdict = r.success === null || r.success === undefined
+      ? ""
+      : ` &mdash; ${game.i18n.localize(`${MODULE_ID}.app.${r.success ? "success" : "failure"}`)}`;
+    return `<li>${foundry.utils.escapeHTML(r.actorName)} &middot; ${foundry.utils.escapeHTML(role)}: `
+      + `<strong>${r.total}</strong>${r.dc ? ` / ${r.dc}` : ""}${verdict}</li>`;
+  }).join("");
+
   const harm = (report.consequences ?? []).map(c => {
     const bits = [];
     if (c.damage) bits.push(game.i18n.format(`${MODULE_ID}.chat.damage`, { n: c.damage }));
@@ -106,6 +123,7 @@ export async function postDayToChat(report, texts) {
       <p class="toa-chat-hexes"><strong>${game.i18n.format(`${MODULE_ID}.chat.hexes`, { n: report.hexes })}</strong></p>
       <p class="toa-chat-weather">${foundry.utils.escapeHTML(texts.weather ?? "")}</p>
       ${rows ? `<ul>${rows}</ul>` : `<p>${game.i18n.localize(`${MODULE_ID}.chat.quietDay`)}</p>`}
+      ${checks ? `<hr><p class="toa-chat-label">${game.i18n.localize(`${MODULE_ID}.chat.checks`)}</p><ul>${checks}</ul>` : ""}
       ${harm ? `<hr><ul>${harm}</ul>` : ""}
     </div>`;
 

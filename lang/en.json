@@ -340,8 +340,8 @@
   "toa-adventure-tracker.app.stillAwake": "Still awake:",
   "toa-adventure-tracker.settings.advanceOnLongRest.name": "Advance the day on a long rest",
   "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Once every traveller has taken a long rest with \"new day\", the travel day is completed and the counter moves — report, logbook entry and consequences included, if the day was resolved. A day nobody has travelled yet never advances, so the counter cannot jump twice. Switched off you just get a notification.",
-  "toa-adventure-tracker.settings.rollsToChat.name": "Post rolls to chat",
-  "toa-adventure-tracker.settings.rollsToChat.hint": "On, every role check appears as a chat card — visible to all, with 3D dice if Dice So Nice is running. Off, rolling is silent: eight roles at once finish instantly instead of playing eight dice animations in a row. The results still show on the roles panel and in the report. The saving throws made during resolution never reach chat either way.",
+  "toa-adventure-tracker.settings.rollsToChat.name": "Post single rolls to chat",
+  "toa-adventure-tracker.settings.rollsToChat.hint": "Applies only to rolls you trigger from a single row. Batch rolls (‚Roll & resolve the day‘, ‚Roll everything‘) never create a chat message — a chat card carrying a roll is exactly what Dice So Nice animates, and six in a row cost half a minute. The results appear on the roles panel at once and together in the day summary.",
   "toa-adventure-tracker.reason.exceptional": "An exceptional bearing — one hex more than the pace promises.",
   "toa-adventure-tracker.app.runDay": "Roll & resolve the day",
   "toa-adventure-tracker.app.applyNow": "Apply consequences",
@@ -362,5 +362,6 @@
   "toa-adventure-tracker.role.cartographer.effect": "Catches a failed navigation roll: half the day's distance instead of none, and never less than one hex.",
   "toa-adventure-tracker.unfilled.fail": "Counts as a failed roll.",
   "toa-adventure-tracker.unfilled.worse": "Counts as a failed roll, and the penalty is sharpened.",
-  "toa-adventure-tracker.unfilled.none": "Costs nothing."
+  "toa-adventure-tracker.unfilled.none": "Costs nothing.",
+  "toa-adventure-tracker.chat.checks": "The day's checks"
 }

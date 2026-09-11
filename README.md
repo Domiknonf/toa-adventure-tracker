@@ -473,27 +473,43 @@ Charakterbogen und keine Handlung in diesem Werkzeug.
 
 ## Würfel und Tempo am Tisch
 
-Eine Tagesauswertung würfelt viel: Wetter, Begegnung, Schaden — und vor allem
-**einen Rettungswurf pro Reisendem pro Ereignis**. Mit *Dice So Nice* wird aus
-jeder dieser Chatkarten eine 3D-Würfelanimation, und aus einem Klick eine
-Minute Zuschauen.
+Wenn *Dice So Nice* läuft, ist jede Chatkarte mit einem Wurf ein Satz Würfel,
+der physisch über den Bildschirm rollt. Das kostet Bilder pro Sekunde, und vor
+allem: die Animationen **reihen sich aneinander**, während der Sammelwurf jede
+einzelne abwartet. Aus einem Reisetag wurde so eine halbe Minute Zuschauen.
 
-Deshalb erzeugt die Auswertung **überhaupt keine Chatnachrichten**:
+Deshalb erzeugt das Modul für alles, was es selbst im Hintergrund würfelt,
+**gar keine Chatnachricht** — ohne Nachricht gibt es keinen
+`createChatMessage`-Hook, und ohne Hook hat Dice So Nice nichts zu animieren:
 
-- Wetter-, Begegnungs- und Schadenswürfe waren nie Chatkarten — sie werden nur
-  ausgewertet.
-- Die **Rettungswürfe** laufen jetzt mit `create: false`, gehen also durch die
-  dnd5e-Mechanik (alle Boni und Effekte greifen), erzeugen aber keine Karte.
-  Die Zahlen sind nicht verloren: Sie stehen im Tagesbericht bei den Folgen,
-  als `KON 14/12`.
+- **Sammelwürfe** („Tag würfeln & auswerten", „Alles würfeln") — grundsätzlich,
+  nicht als Einstellung. Sechs Proben sind sofort fertig.
+- **Rettungswürfe** der Auswertung. Laufen weiter durch die dnd5e-Mechanik, also
+  greifen alle Boni und Effekte; nur die Karte entfällt. Die Zahlen stehen im
+  Bericht bei den Folgen als `KON 14/12`.
+- **Wetter-, Begegnungs- und Schadenswürfe** waren nie Chatkarten.
 
-Bleiben die **Rollenwürfe** — die sichtbare, gewollte Hälfte. Die gehen weiter
-in den Chat. Wer auch die still haben will, schaltet **„Würfe in den Chat
-schreiben"** aus: Dann sind acht Rollen auf einen Schlag sofort fertig statt
-acht Animationen nacheinander. Die Ergebnisse stehen weiterhin in der
-Rollenliste und im Bericht.
+**Verloren geht dabei nichts.** Die Ergebnisse stehen sofort in der Rollenliste,
+und beim Tagesabschluss gehen sie gesammelt in **eine** Chatnachricht — als
+Text, nicht als Würfe. Sie dort wieder als Roll-Objekte einzusetzen würde die
+Würfel im letzten Schritt zurück auf den Bildschirm holen.
 
----
+Was bleibt, ist der **Einzelwurf aus einer Zeile** — der eine, den ein Tisch
+tatsächlich landen sehen will. Den steuert die Weltoption *„Einzelwürfe in den
+Chat schreiben"*; ausgeschaltet ist dann wirklich alles still.
+
+### Vorteil und Nachteil
+
+Sammelwürfe fragen auch nicht mehr nach *normal / Vorteil / Nachteil*. Sechsmal
+dieselbe Auswahl zu klicken sind nicht sechs Entscheidungen. Ein Einzelwurf
+fragt weiterhin, denn das **ist** eine.
+
+Verloren geht dadurch nichts: Foundrys eigene Tastenkürzel greifen weiterhin,
+und Module, die Vorteil aus dem Zustand des Charakters ableiten — **Midi QoL**
+zum Beispiel — hängen an derselben dnd5e-Pipeline, durch die diese Würfe ohnehin
+laufen. Eine Integration braucht es dafür nicht, und eine Abhängigkeit ist es
+ausdrücklich nicht.
+
 
 ## Weltoptionen
 
@@ -697,7 +713,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~705 Integrationstests
+npm test             # Mondmathematik + ~720 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```

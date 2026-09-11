@@ -1300,6 +1300,72 @@ check([...gandalf.calls, ...bilbo.calls].filter(c => c.method !== "rollSavingThr
   "running the whole day prompts for nothing");
 
 /* ------------------------------------------------------------------ */
+section("a batch never puts dice on the screen");
+
+/**
+ * The real cost of Dice So Nice is not tidiness, it is the clock: a chat card
+ * carrying a roll throws physical dice across the screen, the animations QUEUE,
+ * and the batch awaits each one. Six checks became half a minute of watching.
+ *
+ * So a batch creates no chat messages AT ALL - not as a setting, as a rule.
+ * Without a message there is no createChatMessage hook and nothing to animate.
+ */
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+settingValues.state = {};
+settingValues.rollsToChat = true;        // even with the setting ON
+await state.setDay(40);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+chatMessages.length = 0;
+gandalf.calls.length = 0; bilbo.calls.length = 0;
+dice.d20 = 14;
+queue.d100.push(99, 100);
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+
+check(chatMessages.length === 0,
+  `running the whole day creates no chat message at all (got ${chatMessages.length})`);
+const batchCalls = [...gandalf.calls, ...bilbo.calls].filter(c => c.method !== "rollSavingThrow");
+check(batchCalls.length === 2, "both roles were rolled");
+check(batchCalls.every(c => c.message?.create === false),
+  "every batch roll suppressed its chat card");
+check(batchCalls.every(c => c.dialog?.configure === false), "and prompted for nothing");
+
+// The results are not lost - the window has them immediately...
+const batchState = state.getState();
+check(Object.keys(batchState.rolls).length === 2, "the results are on the board");
+check(Number.isFinite(batchState.rolls[gandalf.id].total), "with real totals");
+
+// ...and the report carries them so the day summary can print them.
+check(batchState.report.rolls?.length === 2, "the report carries the day's checks");
+check(batchState.report.rolls.every(r => r.actorName && Number.isFinite(r.total)),
+  "each with a name and a number");
+
+// The summary prints them as TEXT. Re-introducing them as rolls would put the
+// dice straight back on the screen at the last step.
+chatMessages.length = 0;
+await conseq.postDayToChat(batchState.report, { weather: "Klar", events: [] });
+check(chatMessages.length === 1, "the day goes out as exactly one message");
+const summary = chatMessages[0].content;
+check(summary.includes("Gandalf") && summary.includes("Bilbo"), "naming both travellers");
+check(summary.includes(String(batchState.report.rolls[0].total)), "and their totals");
+check(!summary.includes("<ol class=\"dice-rolls\"") && !summary.includes("dice-roll"),
+  "as plain text, with no roll markup for anything to animate");
+
+// A SINGLE roll from one row is the one a table wants to watch, and still posts.
+chatMessages.length = 0;
+await state.setDay(41);
+await state.assign(gandalf.id, "navigator");
+await doRoll(gandalf);
+check(chatMessages.length === 1, "a single roll still posts, with the setting on");
+settingValues.rollsToChat = false;
+chatMessages.length = 0;
+await state.setDay(42);
+await state.assign(gandalf.id, "navigator");
+await doRoll(gandalf);
+check(chatMessages.length === 0, "and is silent with the setting off");
+settingValues.rollsToChat = true;
+
+/* ------------------------------------------------------------------ */
 section("journal export");
 journals.length = 0;
 settingValues.state = {};
