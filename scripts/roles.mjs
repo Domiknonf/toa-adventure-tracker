@@ -245,10 +245,18 @@ export function worstExhaustion(actors = partyActors()) {
 /*  Rolling                                                            */
 /* ------------------------------------------------------------------ */
 
-/** The navigation modifier of the current pace. Applies to the navigator alone. */
+/**
+ * What the current pace does to this role's roll.
+ *
+ * Not just the navigator any more. A fast pace is paid for in PERCEPTION and
+ * STEALTH - the vanguard and the rearguard - which is where 5e charges it and,
+ * unlike a navigation penalty, leaves hurrying actually faster (see PACES).
+ */
 export function paceModifierFor(role, state = getState()) {
-  if (role?.id !== ROLE.NAVIGATOR) return 0;
-  return paceTable()[state.pace]?.navMod ?? 0;
+  const pace = paceTable()[state.pace];
+  if (!pace || !role?.id) return 0;
+  if (role.id === ROLE.NAVIGATOR) return pace.navMod ?? 0;
+  return pace.mods?.[role.id] ?? 0;
 }
 
 /**
@@ -286,14 +294,17 @@ export async function rollRole(actor, role, { event } = {}) {
   if (setting("usePaceRules")) config.pace = state.pace;
 
   const dialog = { configure: !setting("skipRollDialog") };
+  // `create: false` stops dnd5e creating the chat card at all, which is what
+  // keeps a batch of eight role checks from becoming eight 3D dice animations.
+  const message = setting("rollsToChat") ? {} : { create: false };
 
   let rolls;
   if (check.type === "skill") {
     config.skill = check.key;
-    rolls = await actor.rollSkill(config, dialog, {});
+    rolls = await actor.rollSkill(config, dialog, message);
   } else {
     config.ability = check.key;
-    rolls = await actor.rollAbilityCheck(config, dialog, {});
+    rolls = await actor.rollAbilityCheck(config, dialog, message);
   }
 
   if (!rolls?.length) return null;
@@ -349,13 +360,15 @@ async function rollYield(actor, role) {
     return null;
   }
 
-  await roll.toMessage({
-    speaker: ChatMessage.getSpeaker({ actor }),
-    flavor: game.i18n.format(`${MODULE_ID}.chat.yield`, {
-      role: roleLabel(role),
-      unit: unitLabel(role.yield.unit)
-    })
-  });
+  if (setting("rollsToChat")) {
+    await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: game.i18n.format(`${MODULE_ID}.chat.yield`, {
+        role: roleLabel(role),
+        unit: unitLabel(role.yield.unit)
+      })
+    });
+  }
 
   return { total: roll.total, formula: roll.formula, unit: role.yield.unit ?? null };
 }

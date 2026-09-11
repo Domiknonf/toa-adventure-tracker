@@ -213,8 +213,18 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       label: game.i18n.localize(`${MODULE_ID}.pace.${key}`),
       max: mode.hexes[key],
       mod: table[key].navMod,
-      modLabel: signed(table[key].navMod),
-      encounterMod: signedOrEmpty(table[key].encounterMod)
+      modLabel: signedOrEmpty(table[key].navMod),
+      encounterMod: signedOrEmpty(table[key].encounterMod),
+      /**
+       * What the pace does to the OTHER roles - which is where a fast pace is
+       * actually paid for. Without this on the card, "schnell" looks like pure
+       * upside right up until the ambush.
+       */
+      roleMods: Object.entries(table[key].mods ?? {}).map(([roleId, value]) => ({
+        label: game.i18n.localize(`${MODULE_ID}.role.${roleId}.label`),
+        mod: signed(value),
+        bad: value < 0
+      }))
     }));
   }
 
@@ -365,6 +375,18 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       supplies: report.supplies,
       consequences: (report.consequences ?? []).map(c => ({
         ...c,
+        /**
+         * What each save actually rolled. The engine makes these without a chat
+         * card (a dozen 3D animations per day is not information, it is a
+         * wait), so this is the only place the numbers appear.
+         */
+        saves: (c.from ?? []).filter(f => f.saved !== null && Number.isFinite(f.total)).map(f => ({
+          total: f.total,
+          dc: f.dc,
+          saved: f.saved,
+          ability: game.i18n.localize(CONFIG.DND5E?.abilities?.[f.ability]?.abbreviation
+            ?? CONFIG.DND5E?.abilities?.[f.ability]?.label ?? f.ability ?? "")
+        })),
         // Saved against everything that offered a save: worth calling out,
         // because otherwise a traveller with nothing next to their name looks
         // like an oversight rather than a good night.

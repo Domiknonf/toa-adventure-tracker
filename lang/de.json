@@ -240,11 +240,11 @@
   "toa-adventure-tracker.settings.fullMoonDay.name": "Tag des ersten Vollmonds",
   "toa-adventure-tracker.settings.fullMoonDay.hint": "Der Reisetag, an dem Vollmond ist. Alle weiteren Phasen ergeben sich daraus. Vorgabe: 1.",
   "toa-adventure-tracker.settings.slowNavMod.name": "Langsam: Modifikator",
-  "toa-adventure-tracker.settings.slowNavMod.hint": "Modifikator auf den Navigationswurf bei langsamem Tempo. Vorgabe: +5.",
+  "toa-adventure-tracker.settings.slowNavMod.hint": "Modifikator auf den Navigationswurf bei langsamem Tempo. Vorgabe: +1. Höhere Werte machen langsames Reisen schnell zur immer richtigen Antwort — bei +5 verlor ein langsamer Tag nur in 28 % der Fälle den Weg gegenüber 44 % bei normalem, und das bei gleicher Strecke.",
   "toa-adventure-tracker.settings.normalNavMod.name": "Normal: Modifikator",
-  "toa-adventure-tracker.settings.normalNavMod.hint": "Modifikator auf den Navigationswurf bei normalem Tempo. Vorgabe: 0.",
+  "toa-adventure-tracker.settings.normalNavMod.hint": "Modifikator auf den Navigationswurf bei normalem Tempo. Vorgabe: 0. Normales Tempo ist das einzige, das bei einem hervorragenden Wurf ein Hexfeld über seiner Obergrenze herausholt — deshalb lohnt es sich überhaupt.",
   "toa-adventure-tracker.settings.fastNavMod.name": "Schnell: Modifikator",
-  "toa-adventure-tracker.settings.fastNavMod.hint": "Modifikator auf den Navigationswurf bei schnellem Tempo. Vorgabe: −3. Nur bei schnellem Tempo sind überhaupt 2 Hexfelder möglich — dafür gehen mehr Tage ganz verloren.",
+  "toa-adventure-tracker.settings.fastNavMod.hint": "Modifikator auf den Navigationswurf bei schnellem Tempo. Vorgabe: 0. Schnelles Reisen wird bewusst NICHT über die Navigation bestraft, sondern über Vorhut und Wahrnehmung sowie Nachhut und Heimlichkeit (je −5) — ein Navigationsmalus machte schnelles Tempo messbar langsamer als normales, weil ein Fehlwurf den ganzen Tag kostet.",
   "toa-adventure-tracker.settings.usePaceRules.name": "Tempo-Regeln des Systems anwenden",
   "toa-adventure-tracker.settings.usePaceRules.hint": "Gibt das Reisetempo zusätzlich an dnd5e weiter, sodass dessen eigene Regeln greifen (z. B. Vorteil auf Heimlichkeit bei langsamem Tempo). Unabhängig vom Modifikator oben.",
   "toa-adventure-tracker.settings.stormChance.name": "Sturmwahrscheinlichkeit (%)",
@@ -387,5 +387,8 @@
   "toa-adventure-tracker.app.rested": "Lange Rast",
   "toa-adventure-tracker.app.stillAwake": "Noch wach:",
   "toa-adventure-tracker.settings.advanceOnLongRest.name": "Tag bei langer Rast automatisch weiterzählen",
-  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Sobald alle Reisenden eine lange Rast mit „neuer Tag“ gemacht haben, wird der Reisetag abgeschlossen und weitergezählt — mitsamt Bericht, Logbucheintrag und Folgen, falls der Tag ausgewertet wurde. Ein Tag, an dem noch nicht gereist wurde, wird nie weitergezählt, damit der Zähler nicht doppelt springt. Ausgeschaltet bekommst du nur einen Hinweis."
+  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Sobald alle Reisenden eine lange Rast mit „neuer Tag“ gemacht haben, wird der Reisetag abgeschlossen und weitergezählt — mitsamt Bericht, Logbucheintrag und Folgen, falls der Tag ausgewertet wurde. Ein Tag, an dem noch nicht gereist wurde, wird nie weitergezählt, damit der Zähler nicht doppelt springt. Ausgeschaltet bekommst du nur einen Hinweis.",
+  "toa-adventure-tracker.settings.rollsToChat.name": "Würfe in den Chat schreiben",
+  "toa-adventure-tracker.settings.rollsToChat.hint": "An erscheint jeder Rollenwurf als Chatkarte — sichtbar für alle, mit 3D-Würfeln, falls Dice So Nice läuft. Aus wird stumm gewürfelt: Acht Rollen auf einen Schlag sind dann sofort fertig statt acht Würfelanimationen nacheinander. Die Ergebnisse stehen weiterhin in der Rollenliste und im Bericht. Die Rettungswürfe der Auswertung landen ohnehin nie im Chat.",
+  "toa-adventure-tracker.reason.exceptional": "Ein hervorragender Kurs — ein Hexfeld mehr, als das Tempo verspricht."
 }

@@ -230,7 +230,19 @@
 
   .toa-pace-name { font-weight: 700; }
   .toa-pace-miles { color: var(--toa-accent); }
-  .toa-pace-mod { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+  .toa-pace-mod {
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-dim);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.05rem 0.35rem;
+  }
+
+  /* What a pace costs the other roles. Coloured because "-5 Vorhut" is the
+     price of hurrying, and it should not read like more upside. */
+  .toa-mod-bad { color: var(--toa-bad); }
+  .toa-mod-good { color: var(--toa-ok); }
 
   .toa-check {
     display: flex;

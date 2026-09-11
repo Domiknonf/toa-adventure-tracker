@@ -240,11 +240,11 @@
   "toa-adventure-tracker.settings.fullMoonDay.name": "Day of the first full moon",
   "toa-adventure-tracker.settings.fullMoonDay.hint": "The travel day that is a full moon. Every other phase follows from it. Default: 1.",
   "toa-adventure-tracker.settings.slowNavMod.name": "Slow: modifier",
-  "toa-adventure-tracker.settings.slowNavMod.hint": "Modifier on the navigation roll at a slow pace. Default: +5.",
+  "toa-adventure-tracker.settings.slowNavMod.hint": "Modifier on the navigation roll at a slow pace. Default: +1. Higher values quickly make slow travel the right answer every morning — at +5 a slow day lost the way only 28% of the time against a normal day's 44%, for the same ground covered.",
   "toa-adventure-tracker.settings.normalNavMod.name": "Normal: modifier",
-  "toa-adventure-tracker.settings.normalNavMod.hint": "Modifier on the navigation roll at a normal pace. Default: 0.",
+  "toa-adventure-tracker.settings.normalNavMod.hint": "Modifier on the navigation roll at a normal pace. Default: 0. Normal is the only pace that can squeeze one hex above its ceiling on an exceptional roll — which is what makes it worth taking at all.",
   "toa-adventure-tracker.settings.fastNavMod.name": "Fast: modifier",
-  "toa-adventure-tracker.settings.fastNavMod.hint": "Modifier on the navigation roll at a fast pace. Default: −3. Only a fast pace can reach 2 hexes at all — at the cost of more days lost entirely.",
+  "toa-adventure-tracker.settings.fastNavMod.hint": "Modifier on the navigation roll at a fast pace. Default: 0. Hurrying is deliberately NOT charged on navigation but on the vanguard's perception and the rearguard's stealth (-5 each) — a navigation penalty made a fast pace measurably slower than a normal one, because a failed roll costs the whole day.",
   "toa-adventure-tracker.settings.usePaceRules.name": "Apply the system's pace rules",
   "toa-adventure-tracker.settings.usePaceRules.hint": "Also hands the travel pace to dnd5e so its own rules apply (advantage on Stealth while slow, and so on). Independent of the modifier above.",
   "toa-adventure-tracker.settings.stormChance.name": "Storm chance (%)",
@@ -387,5 +387,8 @@
   "toa-adventure-tracker.app.rested": "Long rest",
   "toa-adventure-tracker.app.stillAwake": "Still awake:",
   "toa-adventure-tracker.settings.advanceOnLongRest.name": "Advance the day on a long rest",
-  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Once every traveller has taken a long rest with \"new day\", the travel day is completed and the counter moves — report, logbook entry and consequences included, if the day was resolved. A day nobody has travelled yet never advances, so the counter cannot jump twice. Switched off you just get a notification."
+  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Once every traveller has taken a long rest with \"new day\", the travel day is completed and the counter moves — report, logbook entry and consequences included, if the day was resolved. A day nobody has travelled yet never advances, so the counter cannot jump twice. Switched off you just get a notification.",
+  "toa-adventure-tracker.settings.rollsToChat.name": "Post rolls to chat",
+  "toa-adventure-tracker.settings.rollsToChat.hint": "On, every role check appears as a chat card — visible to all, with 3D dice if Dice So Nice is running. Off, rolling is silent: eight roles at once finish instantly instead of playing eight dice animations in a row. The results still show on the roles panel and in the report. The saving throws made during resolution never reach chat either way.",
+  "toa-adventure-tracker.reason.exceptional": "An exceptional bearing — one hex more than the pace promises."
 }

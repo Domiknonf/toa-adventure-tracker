@@ -99,13 +99,39 @@ check(events.pick("nonexistent") === null, "an unknown category returns null");
 /* ------------------------------------------------------------------ */
 section("movement: 0, 1 or 2 hexes and nothing else");
 
-// Navigation succeeds at normal pace -> exactly one hex.
-await freshDay({ pace: "normal", nav: 18, assignments: { [gandalf.id]: "navigator" } });
-await doRoll(gandalf);
+// A modest success at normal pace is exactly one hex.
+await freshDay({ pace: "normal", nav: 7, assignments: { [gandalf.id]: "navigator" } });
+const modest = await doRoll(gandalf);
+check(modest.success === true && modest.margin < 8, `a modest success: margin ${modest.margin}`);
 queue.d100.push(99, 99);          // dry, no encounter
 let report = await resolve.resolveDay();
-check(report.hexes === 1, `normal pace + success = 1 hex (got ${report.hexes})`);
+check(report.hexes === 1, `normal pace + modest success = 1 hex (got ${report.hexes})`);
 check(report.reasons.some(r => r.key === "navigated"), "the reason says the navigator held course");
+
+/**
+ * An EXCEPTIONAL bearing at normal pace makes one hex more.
+ *
+ * This is the only thing normal pace has that slow does not. Without it slow
+ * would be strictly better on foot - same ground, better navigation, fewer
+ * encounters - and an option nobody can ever have a reason to pick is not an
+ * option. Slow must never reach this, which the next block asserts.
+ */
+await freshDay({ pace: "normal", nav: 20, assignments: { [gandalf.id]: "navigator" } });
+const exceptional = await doRoll(gandalf);
+check(exceptional.margin >= 8, `an exceptional bearing: margin ${exceptional.margin}`);
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes === 2, `normal pace + exceptional = 2 hexes (got ${report.hexes})`);
+check(report.reasons.some(r => r.key === "exceptional"), "and the report says why");
+
+// Slow pace can NEVER reach it, however well the roll goes.
+await freshDay({ pace: "slow", nav: 20, assignments: { [gandalf.id]: "navigator" } });
+const slowRoll = await doRoll(gandalf);
+check(slowRoll.margin >= 8, "the same exceptional bearing at slow pace");
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes === 1, `slow pace stays at 1 even on a great roll (got ${report.hexes})`);
+check(!report.reasons.some(r => r.key === "exceptional"), "no bonus hex for going carefully");
 
 // Navigation fails, nobody keeps a map -> lost, no ground at all.
 await freshDay({ pace: "normal", nav: 1, assignments: { [gandalf.id]: "navigator" } });
@@ -125,7 +151,7 @@ check(report.hexes === 2, `fast + big margin = 2 hexes (got ${report.hexes})`);
 check(report.reasons.some(r => r.key === "fastPace"), "the second hex is explained");
 
 // Fast pace scraping the DC -> still one. The margin rule is what gives pace risk.
-await freshDay({ pace: "fast", nav: 11, assignments: { [gandalf.id]: "navigator" } });
+await freshDay({ pace: "fast", nav: 7, assignments: { [gandalf.id]: "navigator" } });
 const scrape = await doRoll(gandalf);
 check(scrape.success === true && scrape.margin < 5, `a scrape: total ${scrape.total}, margin ${scrape.margin}`);
 queue.d100.push(99, 99);
@@ -149,6 +175,56 @@ for (const pace of ["slow", "normal", "fast"]) {
     check(r.hexes >= 0 && r.hexes <= 2 && Number.isInteger(r.hexes),
       `hexes stay 0..2 (${pace}/${face} gave ${r.hexes})`);
   }
+}
+
+/* ------------------------------------------------------------------ */
+section("a fast pace is paid for in perception, not navigation");
+
+/**
+ * The fix for a real design fault. Charging fast pace on the NAVIGATION roll
+ * made hurrying slower than walking, because a failed navigation costs the
+ * whole day. 5e charges it on perception and stealth instead - so the vanguard
+ * and the rearguard carry it, and the day still covers more ground.
+ */
+const navRole = roles.getRole("navigator");
+const vanRole = roles.getRole("vanguard");
+const rearRole = roles.getRole("rearguard");
+
+await state.setPace("fast");
+check(roles.paceModifierFor(navRole) === 0, "a fast pace does NOT penalise navigation");
+check(roles.paceModifierFor(vanRole) === -5, "it penalises the vanguard");
+check(roles.paceModifierFor(rearRole) === -5, "and the rearguard");
+
+await state.setPace("slow");
+check(roles.paceModifierFor(rearRole) === 5, "a slow pace helps the rearguard hide");
+check(roles.paceModifierFor(vanRole) === 0, "and leaves the vanguard alone");
+
+await state.setPace("normal");
+check(roles.paceModifierFor(navRole) === 0, "normal pace is neutral throughout");
+check(roles.paceModifierFor(vanRole) === 0, "...for the vanguard");
+check(roles.paceModifierFor(rearRole) === 0, "...and the rearguard");
+
+// The modifier has to actually reach the roll, as a named term.
+await freshDay({ pace: "fast", nav: 12, assignments: { [bilbo.id]: "vanguard" } });
+bilbo.calls.length = 0;
+await doRoll(bilbo);
+const vanCall = bilbo.calls[0];
+check(vanCall.config.rolls?.[0]?.parts?.[0] === "@pace", "the pace reaches the vanguard roll");
+check(vanCall.config.rolls[0].data.pace === -5, "as -5");
+
+// And a fast pace must still be the FASTEST. Same roll, three paces.
+// Survival +9 against DC 15, so a d20 of 12 is a margin of 6: past the fast
+// threshold of 3, short of the normal-pace bonus at 8. That band is precisely
+// what separates the three paces on one and the same roll.
+for (const [pace, expected] of [["slow", 1], ["normal", 1], ["fast", 2]]) {
+  await freshDay({ pace, nav: 12, assignments: { [gandalf.id]: "navigator" } });
+  const rec = await doRoll(gandalf);
+  check(rec.success === true, `${pace}: the same roll succeeds`);
+  queue.d100.push(99, 100);
+  const r = await resolve.resolveDay();
+  const blocked = r.events.filter(e => e.blocks).length;
+  check(r.hexes === Math.max(0, expected - blocked),
+    `${pace} on the same roll gives ${expected} less ${blocked} blocked (got ${r.hexes})`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -321,7 +397,14 @@ const exhausted = report.consequences.find(c => c.exhaustion > 0);
 if (exhausted) {
   const actor = game.actors.get(exhausted.actorId);
   check(actor.system.attributes.exhaustion > 0, "exhaustion was written to the sheet");
-  actor.system.attributes.exhaustion = 0;
+}
+// Reset EVERY traveller, not just the one found above. A day can exhaust
+// several, and leaving one at 3 silently caps the travel of every later test -
+// which is exactly how this leaked into the travel-mode section and made it
+// fail roughly one run in three.
+for (const a of [gandalf, bilbo, notMine]) {
+  a.system.attributes.exhaustion = 0;
+  a.system.attributes.hp.value = a.system.attributes.hp.max;
 }
 
 // With the setting off, nothing is written but the report still says what would happen.
@@ -529,6 +612,9 @@ for (const event of (await import(`${R}/const.mjs`)).EVENTS) {
 section("travel modes");
 
 const { TRAVEL_MODES, MODE_ORDER } = await import(`${R}/const.mjs`);
+// Movement is capped by exhaustion, so start these from a rested party or the
+// ceilings below measure the cap instead of the mode.
+for (const a of [gandalf, bilbo, notMine]) a.system.attributes.exhaustion = 0;
 check(MODE_ORDER.join(",") === "foot,mount,canoe,ship", "four modes in speed order");
 check(state.blankState().mode === "foot", "a fresh state travels on foot");
 
@@ -574,7 +660,7 @@ for (const mode of MODE_ORDER) {
 }
 
 // Hurrying without the margin falls back to the cruising ceiling, not to 1.
-await freshDay({ mode: "ship", pace: "fast", nav: 11, assignments: { [gandalf.id]: "navigator" } });
+await freshDay({ mode: "ship", pace: "fast", nav: 7, assignments: { [gandalf.id]: "navigator" } });
 const scrapeSea = await doRoll(gandalf);
 check(scrapeSea.success && scrapeSea.margin < 3, "a scraped navigation at sea");
 queue.d100.push(99, 100);
@@ -990,6 +1076,82 @@ await socketHandler({ action: "rested", data: { actorId: notMine.id }, userId: "
 console.warn = realWarn3;
 check(!state.getState().rested[notMine.id], "but not for a character they do not own");
 settingValues.advanceOnLongRest = false;
+
+/* ------------------------------------------------------------------ */
+section("resolution does not flood chat (Dice So Nice)");
+settingValues.state = {};
+settingValues.rollsToChat = true;
+await state.setDay(6);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 18; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+saveResult.value = false;
+
+// Everything the ENGINE rolls during resolution must be silent: weather,
+// encounter, damage and - the expensive one - a saving throw per traveller per
+// event. Each chat card is a 3D dice animation for anyone running Dice So Nice.
+chatMessages.length = 0;
+queue.d100.push(99, 1);           // an ambush, so there are saves to make
+const noisy = await resolve.resolveDay();
+check(noisy.events.length > 0, "the day produced events");
+check(chatMessages.length === 0,
+  `resolving a day creates no chat messages at all (got ${chatMessages.length})`);
+
+// Every save must have been asked for with create:false.
+const saveCalls = [...gandalf.calls, ...bilbo.calls].filter(c => c.method === "rollSavingThrow");
+check(saveCalls.length > 0, "saving throws were actually rolled");
+check(saveCalls.every(c => c.message?.create === false),
+  "and every one of them suppressed its chat card");
+
+// The numbers are not lost - they surface in the report instead.
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+let rc = await new app.AdventureTracker()._prepareContext({});
+const withSaves = rc.report.consequences.filter(c => c.saves.length);
+if (withSaves.length) {
+  check(withSaves.every(c => c.saves.every(v => Number.isFinite(v.total) && Number.isFinite(v.dc))),
+    "the report shows what each silent save rolled, against which DC");
+  const html = compileTemplate()(rc);
+  check(/\d+\/\d+/.test(html), "and the markup prints it");
+}
+
+/* --- the switch quiets the role rolls too ------------------------- */
+settingValues.rollsToChat = true;
+chatMessages.length = 0;
+await state.setDay(1);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 15; await doRoll(gandalf);
+check(chatMessages.length === 1,
+  `with the switch on, a role check posts a card (got ${chatMessages.length}: ${JSON.stringify(chatMessages)})`);
+
+settingValues.rollsToChat = false;
+chatMessages.length = 0;
+await state.setDay(2);
+await state.assign(gandalf.id, "navigator");
+await doRoll(gandalf);
+check(chatMessages.length === 0, "with it off, the same roll is silent");
+const quietCall = gandalf.calls[gandalf.calls.length - 1];
+check(quietCall.message?.create === false, "because create:false reached the system");
+
+// A silent roll must still produce a usable result - quiet, not skipped.
+const quietRecord = state.getState().rolls[gandalf.id];
+check(Number.isFinite(quietRecord?.total), "a silent roll still has a total");
+check(quietRecord.success === true, "and a verdict");
+
+// Yields follow the same switch.
+chatMessages.length = 0;
+await state.setDay(3);
+await state.assign(gandalf.id, "waterbearer");
+dice.d20 = 20; const quietYield = await doRoll(gandalf);
+check(quietYield.yield?.total > 0, "a silent yield still produces its amount");
+check(chatMessages.length === 0, "and posts nothing");
+
+settingValues.rollsToChat = true;
+chatMessages.length = 0;
+await state.setDay(4);
+await state.assign(gandalf.id, "waterbearer");
+await doRoll(gandalf);
+check(chatMessages.length >= 1, "with the switch on the yield is announced again");
 
 /* ------------------------------------------------------------------ */
 section("journal export");

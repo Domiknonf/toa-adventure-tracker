@@ -1,7 +1,7 @@
 import {
   MODULE_ID, ROLE, EXHAUSTION_LIMITS, EVENT_CATEGORY, BOON_CHANCE,
   SUPPLY_DEFAULTS, ENCOUNTER_DEFAULTS, EVENT_CHANCE, MARGIN_FOR_EXTRA_HEX,
-  TRAVEL_MODES, DEFAULT_MODE
+  MARGIN_FOR_BONUS_HEX, TRAVEL_MODES, DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import { getState, isWriter, setReport } from "./state.mjs";
@@ -204,6 +204,9 @@ function resolveMovement({ state, roles, pace, events, rescued, actors, mode }) 
   // ceiling comes from the mode rather than from the pace alone.
   const target = table.hexes[state.pace] ?? table.hexes.normal;
   const cruising = table.hexes.normal;
+  // The most this day can yield. Normally the pace's own ceiling, but an
+  // exceptional bearing at normal pace lifts it by one (see below).
+  let ceiling = target;
   let hexes = target;
 
   const nav = roles[ROLE.NAVIGATOR];
@@ -223,17 +226,26 @@ function resolveMovement({ state, roles, pace, events, rescued, actors, mode }) 
     hexes = salvaged;
   } else {
     reasons.push({ key: "navigated", delta: 0 });
-    // Pushing beyond the cruising ceiling has to be EARNED. Without the margin
-    // rule "fast" would simply be "more", and the pace would carry no risk
-    // worth weighing against its extra encounters and its worse navigation.
+    const margin = nav.record?.margin ?? 0;
+
     if (target > cruising) {
-      const margin = nav.record?.margin ?? 0;
+      // Pushing beyond the cruising ceiling has to be EARNED. Without the
+      // margin rule "fast" would simply be "more", and the pace would carry no
+      // risk worth weighing against its encounters and its worse navigation.
       if (margin >= MARGIN_FOR_EXTRA_HEX) {
         reasons.push({ key: "fastPace", delta: target - cruising });
       } else {
         hexes = cruising;
         reasons.push({ key: "fastNoMargin", delta: cruising - target });
       }
+    } else if (state.pace === "normal" && margin >= MARGIN_FOR_BONUS_HEX) {
+      // THE REASON NORMAL PACE EXISTS. Where a mode's slow and normal ceilings
+      // are identical - on foot they are both 1 - slow would otherwise be
+      // strictly better: same ground, better navigation, fewer encounters. This
+      // is the ceiling slow can never reach.
+      ceiling = target + 1;
+      hexes = ceiling;
+      reasons.push({ key: "exceptional", delta: 1 });
     }
   }
 
@@ -255,7 +267,7 @@ function resolveMovement({ state, roles, pace, events, rescued, actors, mode }) 
     }
   }
 
-  return { hexes: Math.clamp(hexes, 0, target), reasons, target, mode };
+  return { hexes: Math.clamp(hexes, 0, ceiling), reasons, target, ceiling, mode };
 }
 
 /* ------------------------------------------------------------------ */
@@ -386,8 +398,11 @@ async function resolveConsequences(events, actors) {
 
     for (const actor of targets) {
       let saved = false;
+      let total = null;
       if (event.save) {
-        saved = rolling ? await rollSave(actor, event.save) : false;
+        const outcome = rolling ? await rollSave(actor, event.save) : { saved: false, total: null };
+        saved = outcome.saved;
+        total = outcome.total;
       }
 
       const entry = get(actor);
@@ -399,27 +414,48 @@ async function resolveConsequences(events, actors) {
         if (event.exhaustion) entry.exhaustion += event.exhaustion;
       }
       if (event.heals) entry.heals += event.heals;
-      entry.from.push({ event: event.id, saved: event.save ? saved : null });
+      entry.from.push({
+        event: event.id,
+        saved: event.save ? saved : null,
+        // The number, kept because the card that would have shown it is
+        // deliberately not created (see rollSave). The report prints it.
+        total,
+        dc: event.save?.dc ?? null,
+        ability: event.save?.ability ?? null
+      });
     }
   }
 
   return [...perActor.values()].filter(e => e.damage || e.exhaustion || e.heals);
 }
 
-/** One saving throw, through the system so every bonus and effect applies. */
+/**
+ * One saving throw, through the system so every bonus and effect applies.
+ *
+ * NO DIALOG and NO CHAT CARD.
+ *
+ * The dialog is obvious: this fires once per traveller per event, and a stack
+ * of prompts mid-resolution is not a decision anybody wants to make.
+ *
+ * The chat card is the important one. Resolving a bad day can call this a dozen
+ * times, and every card is a 3D dice animation for anyone running Dice So Nice
+ * - which turns one click into a minute of watching dice land. `create: false`
+ * makes dnd5e evaluate the roll and hand it back WITHOUT creating the message,
+ * so nothing downstream ever sees it. The numbers are not lost: each total goes
+ * into the report, which is where the GM reads the day anyway.
+ */
 async function rollSave(actor, { ability, dc }) {
   try {
     const rolls = await actor.rollSavingThrow(
       { ability, target: dc },
-      // Never a dialog here: this fires once per traveller per event, and a
-      // stack of prompts mid-resolution is not a decision anybody wants to make.
       { configure: false },
-      {}
+      { create: false }
     );
     const roll = rolls?.[0];
-    return !!roll && roll.total >= dc;
+    if (!roll) return { saved: false, total: null };
+    return { saved: roll.total >= dc, total: roll.total };
   } catch (error) {
     console.warn(`${MODULE_ID} | saving throw failed for ${actor.name}`, error);
-    return false;
+    return { saved: false, total: null };
   }
 }

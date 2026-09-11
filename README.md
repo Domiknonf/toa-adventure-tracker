@@ -23,6 +23,7 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Die Rollen](#die-rollen)
 - [Reisearten: zu Fuß, Reittier, Kanu, Schiff](#reisearten-zu-fuß-reittier-kanu-schiff)
 - [Wie die Tagesstrecke entsteht](#wie-die-tagesstrecke-entsteht)
+- [Würfel und Tempo am Tisch](#würfel-und-tempo-am-tisch)
 - [Wetter](#wetter)
 - [Vorräte, Durst und Hunger](#vorräte-durst-und-hunger)
 - [Ereignisse](#ereignisse)
@@ -169,6 +170,7 @@ Tabelle oben). Darauf wirken, in dieser Reihenfolge:
 |---|---|
 | Navigation misslungen, **kein** Kartograph | **0** — verlaufen, der Tag ist weg (in jeder Reiseart) |
 | Navigation misslungen, Kartograph erfolgreich | die **Hälfte** der Obergrenze, mindestens 1 |
+| Normales Tempo, Navigation um ≥ 8 übertroffen | **+1** über der Obergrenze |
 | Schnelles Tempo, Navigation um **weniger als 3** übertroffen | zurück auf die Normal-Obergrenze |
 | Ein blockierendes Ereignis (Sturm, Kampf, Flaute, Riff) | **−1** je Ereignis |
 | Erschöpfung Grad ≥ 3 in der Gruppe | höchstens **1** |
@@ -179,22 +181,54 @@ ist eine Zahl, über die am Tisch gestritten wird.
 
 ### Die drei Tempi
 
-| Tempo | Navigation | Begegnungen |
-|---|---|---|
-| Langsam | **+5** | −10 % |
-| Normal | 0 | — |
-| Schnell | **−3** | +10 % |
+| Tempo | Navigation | Vorhut | Nachhut | Begegnungen | Obergrenze |
+|---|:--:|:--:|:--:|:--:|---|
+| Langsam | +1 | — | **+5** | −10 % | fest |
+| Normal | 0 | — | — | — | **+1 bei Vorsprung ≥ 8** |
+| Schnell | 0 | **−5** | **−5** | +10 % | höher, ab Vorsprung ≥ 3 |
+
+Gemessen über je 300 Tage zu Fuß, gleiche Gruppe, Vorhut und Nachhut besetzt:
+
+| Tempo | Hexfelder/Tag | Schaden/Tag | Begegnungstage |
+|---|:--:|:--:|:--:|
+| Langsam | 0,62 | 1,1 | 6 % |
+| Normal | 0,79 | 1,7 | 22 % |
+| Schnell | **1,04** | **3,5** | **39 %** |
+
+Unter Segeln dasselbe Muster: 1,37 → 2,20 → 2,74 Hexfelder bei 0,8 → 1,8 → 4,0
+Schaden pro Tag.
+
+Schnell kommt am weitesten **und** kostet dreimal so viel Blut. Das ist der
+Handel.
+
+> **Zwei Fehler, die hier drinsteckten — beide gefunden, indem gerechnet statt
+> geraten wurde.**
+>
+> **Erstens war normales Tempo sinnlos.** Zu Fuß sind langsam und normal beide
+> bei einem Hexfeld gedeckelt. Mit +5 auf Navigation verlor ein langsamer Tag
+> nur in 28 % der Fälle den Weg gegenüber 44 % bei normalem — bei *gleicher
+> Strecke und weniger Begegnungen*. Langsam war damit immer die richtige
+> Antwort. Behoben durch einen kleineren Bonus (+1) und dadurch, dass
+> **normales Tempo als einziges bei einem Vorsprung von 8 ein Hexfeld über
+> seiner Obergrenze herausholt**. Langsam erreicht das nie.
+>
+> **Zweitens war schnelles Tempo langsamer als normales** — 0,70 gegen 0,77
+> Hexfelder pro Tag. Ursache: Ich hatte schnellem Tempo einen Malus auf die
+> *Navigation* gegeben, und weil ein misslungener Navigationswurf den **ganzen**
+> Tag kostet, fraßen die verlorenen Tage die Zwei-Hex-Tage auf. Ein Tempo, das
+> weniger Strecke macht *und* mehr Ärger einsammelt, ist kein Risiko, sondern
+> ein Fehler.
+>
+> 5e berechnet schnelles Reisen ohnehin nicht über die Navigation, sondern über
+> **Wahrnehmung (−5 passiv) und fehlende Heimlichkeit** — also genau über Vorhut
+> und Nachhut. Dorthin verschoben stimmt beides: Schnell kommt am weitesten und
+> bezahlt es damit, in Dinge hineinzulaufen. Eine misslungene Vorhut ist ein
+> Hinterhalt statt einer Sichtung, eine misslungene Nachhut heftet euch etwas an
+> die Fersen.
 
 Schnelles Tempo hebt die Obergrenze — aber nur, wenn die Navigation den SG um
-mindestens 3 übertrifft. Sonst kommt ihr auf das Normalmaß, habt aber die
-schlechtere Probe und die zusätzlichen Begegnungen schon bezahlt.
-
-> **Warum −3 und nicht −5?** Die ursprüngliche Vorgabe war −5, aber die galt
-> einem Meilen-Modell, in dem ein misslungener Navigationswurf die Strecke
-> *halbierte*. Im Hex-Modell kostet er den **ganzen** Tag. Über 300 simulierte
-> Tage kam schnelles Tempo mit −5 auf 0,40 Hexfelder gegenüber 0,69 bei
-> normalem — das ist kein Risiko, das ist eine Falle. Mit −3 liegen beide gleich
-> auf, aber schnell streut viel weiter. Beide Werte sind Weltoptionen.
+mindestens 3 übertrifft. Sonst kommt ihr auf das Normalmaß, habt die
+zusätzlichen Begegnungen aber schon bezahlt.
 
 Zum Vergleich, gleiche Gruppe zu Fuß, normales Tempo, **mit** Kartograph statt
 Vorhut: 0,83 Hexfelder pro Tag statt 0,66 und nur 17 % verlorene Tage. Die
@@ -438,6 +472,30 @@ Charakterbogen und keine Handlung in diesem Werkzeug.
 
 ---
 
+## Würfel und Tempo am Tisch
+
+Eine Tagesauswertung würfelt viel: Wetter, Begegnung, Schaden — und vor allem
+**einen Rettungswurf pro Reisendem pro Ereignis**. Mit *Dice So Nice* wird aus
+jeder dieser Chatkarten eine 3D-Würfelanimation, und aus einem Klick eine
+Minute Zuschauen.
+
+Deshalb erzeugt die Auswertung **überhaupt keine Chatnachrichten**:
+
+- Wetter-, Begegnungs- und Schadenswürfe waren nie Chatkarten — sie werden nur
+  ausgewertet.
+- Die **Rettungswürfe** laufen jetzt mit `create: false`, gehen also durch die
+  dnd5e-Mechanik (alle Boni und Effekte greifen), erzeugen aber keine Karte.
+  Die Zahlen sind nicht verloren: Sie stehen im Tagesbericht bei den Folgen,
+  als `KON 14/12`.
+
+Bleiben die **Rollenwürfe** — die sichtbare, gewollte Hälfte. Die gehen weiter
+in den Chat. Wer auch die still haben will, schaltet **„Würfe in den Chat
+schreiben"** aus: Dann sind acht Rollen auf einen Schlag sofort fertig statt
+acht Animationen nacheinander. Die Ergebnisse stehen weiterhin in der
+Rollenliste und im Bericht.
+
+---
+
 ## Weltoptionen
 
 Alle unter **Game Settings → Configure Settings → Wildnisreise**, weltweit
@@ -507,6 +565,7 @@ wenn Träger, Lasttiere oder NSCs mittrinken.
 | Option | Vorgabe |
 |---|---|
 | Tag bei langer Rast automatisch weiterzählen | **aus** |
+| Würfe in den Chat schreiben | an |
 
 ### Folgen
 | Option | Vorgabe |
@@ -651,7 +710,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~660 Integrationstests
+npm test             # Mondmathematik + ~680 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```

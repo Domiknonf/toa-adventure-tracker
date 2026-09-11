@@ -46,6 +46,9 @@ export function registerSettings() {
 
   // Only the navigation modifier is tunable; the hex ceiling of each pace is a
   // rule of the module (0/1/2 and nothing else), not a number to drift.
+  // Only the NAVIGATION modifier is a setting. What a pace does to the other
+  // roles is the rule that makes the three paces differ at all (see PACES), so
+  // it is not a knob that can be turned until they collapse into each other.
   for (const pace of PACE_ORDER) {
     reg(`${pace}NavMod`, { ...WORLD, type: Number, default: PACES[pace].navMod });
   }
@@ -185,6 +188,23 @@ export function registerSettings() {
    * rested - that notification costs nothing and is useful on its own.
    */
   reg("advanceOnLongRest", { ...WORLD, type: Boolean, default: false });
+
+  /**
+   * Whether the role checks and yield rolls produce chat cards.
+   *
+   * ON by default: "Gandalf rolled 18 on Survival" is the visible, meaningful
+   * part of a travel day and belongs in the log everyone can see.
+   *
+   * Switched OFF, rolling eight roles is instant rather than eight 3D dice
+   * animations in a row, which is the difference between a click and a minute
+   * for anyone running Dice So Nice. Nothing is lost - the totals are on the
+   * roles panel and the outcome is in the report.
+   *
+   * The saving throws the engine makes during resolution are NOT covered by
+   * this and never reach chat either way: a dozen cards nobody asked for is
+   * noise whatever your dice settings (see resolve.rollSave).
+   */
+  reg("rollsToChat", { ...WORLD, type: Boolean, default: true });
 
   /* --- Per-user presentation --------------------------------- */
 

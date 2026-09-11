@@ -83,15 +83,49 @@ export const MOON_DISC = { size: 96, radius: 40 };
  * pick up its own pace rules for free.
  */
 export const PACES = {
-  slow:   { navMod:  5, encounterMod: -10, order: 10 },
-  normal: { navMod:  0, encounterMod:   0, order: 20 },
-  // -3 rather than the -5 a miles-based model would use. Under the hex rule a
-  // failed navigation costs the WHOLE day rather than half of it, so -5 made
-  // hurrying strictly worse than walking - measured over 300 simulated days it
-  // averaged 0.40 hexes against normal pace's 0.69, which is not a gamble but a
-  // trap. At -3 it averages about the same as normal with far more spread: more
-  // lost days, and the only pace that ever makes two. Both are settings.
-  fast:   { navMod: -3, encounterMod:  10, order: 30 }
+  /**
+   * THE THREE PACES.
+   *
+   * `navMod` modifies the NAVIGATION roll; `mods` modifies the other roles;
+   * `encounterMod` shifts the day's encounter chance in percentage points.
+   *
+   * WHAT A FAST PACE COSTS, and why it is not the navigation roll:
+   *
+   * 5e prices a fast pace in PERCEPTION (-5 passive) and in being unable to
+   * move stealthily - not in getting lost. An earlier draft here charged it -3
+   * on navigation instead, and that quietly made hurrying pointless: a failed
+   * navigation costs the WHOLE day, so the extra lost days ate the two-hex days
+   * and fast came out SLOWER than normal - 0.70 hexes a day against 0.77, over
+   * 300 measured days each. A pace that covers less ground and meets more
+   * trouble is not a trade, it is a mistake.
+   *
+   * Charging it where 5e charges it fixes both at once: fast covers the most
+   * ground and pays by walking into things. A failed vanguard is an ambush
+   * instead of a sighting, and a failed rearguard is something on your trail -
+   * which is exactly what "we were moving too fast to look properly" means.
+   *
+   * Slow is the mirror: it covers the least ground and hides best.
+   */
+  slow: {
+    // A token edge, not a decisive one. At +5 slow was simply the right answer
+    // every morning (see MARGIN_FOR_BONUS_HEX).
+    navMod: 1,
+    mods: { rearguard: 5 },
+    encounterMod: -10,
+    order: 10
+  },
+  normal: {
+    navMod: 0,
+    mods: {},
+    encounterMod: 0,
+    order: 20
+  },
+  fast: {
+    navMod: 0,
+    mods: { vanguard: -5, rearguard: -5 },
+    encounterMod: 10,
+    order: 30
+  }
 };
 
 /* ------------------------------------------------------------------ */
@@ -190,6 +224,20 @@ export const DEFAULT_PACE = "normal";
  * second hex effectively never happens and fast pace is pure downside.
  */
 export const MARGIN_FOR_EXTRA_HEX = 3;
+
+/**
+ * How far past the DC a NORMAL day must land to squeeze out one extra hex.
+ *
+ * This exists to stop slow pace being a free lunch. Wherever a mode's slow and
+ * normal ceilings are the same - on foot they are both 1 - slow would otherwise
+ * be strictly better than normal: same ground, better navigation, fewer
+ * encounters, nothing given up. An option nobody can have a reason to pick is
+ * not an option.
+ *
+ * So normal keeps a ceiling slow can never reach: on an exceptional bearing it
+ * makes one hex more.
+ */
+export const MARGIN_FOR_BONUS_HEX = 8;
 
 /**
  * Party exhaustion ceilings on the day's travel.

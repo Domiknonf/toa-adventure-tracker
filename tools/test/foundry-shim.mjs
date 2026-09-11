@@ -111,8 +111,11 @@ export function makeActor({ id, name, skills = {}, abilities = {}, owner = true,
       return this;
     },
     /** Saves obey `saveResult`: true = everyone passes, false = everyone fails. */
-    async rollSavingThrow(config) {
-      this.calls.push({ method: "rollSavingThrow", config });
+    async rollSavingThrow(config, dialog, message = {}) {
+      this.calls.push({ method: "rollSavingThrow", config, dialog, message });
+      // dnd5e only creates the card when create is not false; the shim has to
+      // match, or a test cannot tell a silent save from a noisy one.
+      if (message.create !== false) chatMessages.push({ roll: "save", actor: this.id });
       const pass = saveResult.value;
       return [{ total: pass ? 99 : 1, options: { target: config.target } }];
     },
@@ -120,12 +123,16 @@ export function makeActor({ id, name, skills = {}, abilities = {}, owner = true,
     // Records how it was called, so a test can assert the roll went through the
     // system's own entry point with the right configuration.
     calls: [],
-    async rollSkill(config, dialog, message) {
+    async rollSkill(config, dialog, message = {}) {
       this.calls.push({ method: "rollSkill", config, dialog, message });
+      // dnd5e only creates the card when `create` is not false. The shim has to
+      // match, or a test cannot tell a silent roll from a noisy one.
+      if (message.create !== false) chatMessages.push({ roll: "skill", actor: this.id });
       return [makeRoll(config, this.system.skills[config.skill]?.total ?? 0)];
     },
-    async rollAbilityCheck(config, dialog, message) {
+    async rollAbilityCheck(config, dialog, message = {}) {
       this.calls.push({ method: "rollAbilityCheck", config, dialog, message });
+      if (message.create !== false) chatMessages.push({ roll: "check", actor: this.id });
       return [makeRoll(config, this.system.abilities[config.ability]?.mod ?? 0)];
     }
   };
@@ -157,7 +164,7 @@ function makeRoll(config, mod = 0) {
  * be steered; anything not queued uses the average face, which keeps damage and
  * yields stable across runs. Real dice would make every assertion a coin flip.
  */
-export const queue = { d100: [], d20: [] };
+export const queue = { d100: [], d20: [], randomWhenEmpty: false };
 
 globalThis.Roll = class {
   constructor(formula, data) { this.formula = String(formula); this.data = data ?? {}; }
@@ -166,7 +173,15 @@ globalThis.Roll = class {
     const mod = Number(this.data?.mod ?? 0);
 
     const d100 = this.formula.match(/^\s*1d100\s*$/);
-    if (d100) { this.total = queue.d100.length ? queue.d100.shift() : 50; return this; }
+    if (d100) {
+      if (queue.d100.length) { this.total = queue.d100.shift(); return this; }
+      // Tests queue their d100s so a day is reproducible; the balance probe
+      // sets `randomWhenEmpty` because a fixed 50 would pin the weather to
+      // "rain" forever and make every encounter roll identical - which is
+      // exactly the kind of quiet determinism that makes a simulation lie.
+      this.total = queue.randomWhenEmpty ? 1 + Math.floor(Math.random() * 100) : 50;
+      return this;
+    }
 
     // NdM (+ K) and "@mod" - enough for every formula this module builds.
     let total = 0;
@@ -182,7 +197,13 @@ globalThis.Roll = class {
     this.formula = this.formula.replace("@mod", String(mod));
     return this;
   }
-  async toMessage() { messages.push(this.formula); return {}; }
+  async toMessage() {
+    messages.push(this.formula);
+    // A yield card is a chat message like any other, and Dice So Nice animates
+    // it - so it has to be counted where the tests count them.
+    chatMessages.push({ roll: "yield", formula: this.formula });
+    return {};
+  }
 };
 export const messages = [];
 

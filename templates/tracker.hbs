@@ -94,8 +94,11 @@
             {{localize "toa-adventure-tracker.app.hexes"}}
           </span>
           <span class="toa-pace-mod">
-            {{modLabel}} {{localize "toa-adventure-tracker.app.onNavigation"}}
-            {{#if encounterMod}} &middot; {{encounterMod}}% {{localize "toa-adventure-tracker.app.encounters"}}{{/if}}
+            {{#if modLabel}}{{modLabel}} {{localize "toa-adventure-tracker.app.onNavigation"}}{{/if}}
+            {{#each roleMods}}
+            <span class="{{#if bad}}toa-mod-bad{{else}}toa-mod-good{{/if}}">{{mod}} {{label}}</span>
+            {{/each}}
+            {{#if encounterMod}}<span>{{encounterMod}}% {{localize "toa-adventure-tracker.app.encounters"}}</span>{{/if}}
           </span>
         </button>
         {{/each}}
@@ -399,6 +402,13 @@
           {{#if damage}}<span class="toa-tag bad">&minus;{{damage}} {{localize "toa-adventure-tracker.app.hp"}}</span>{{/if}}
           {{#if exhaustion}}<span class="toa-tag bad">+{{exhaustion}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
           {{#if heals}}<span class="toa-tag good">&minus;{{heals}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
+          {{!-- The saves were rolled without chat cards, so their numbers only
+                exist here. --}}
+          {{#each saves}}
+          <span class="toa-tag {{#if saved}}good{{/if}}">
+            {{ability}} {{total}}/{{dc}}
+          </span>
+          {{/each}}
         </li>
         {{/each}}
       </ul>
