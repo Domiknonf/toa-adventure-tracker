@@ -357,7 +357,7 @@
   "toa-adventure-tracker.role.navigator.effect": "Sets the day's distance. On a failure the party covers no ground at all — unless the cartographer catches it.",
   "toa-adventure-tracker.role.vanguard.effect": "Decides whether an encounter is an ambush or a sighting in time. Failing costs hit points; succeeding costs only time.",
   "toa-adventure-tracker.role.rearguard.effect": "Covers the tracks. Failing raises the encounter chance by 15 points and can trigger a pursuit event.",
-  "toa-adventure-tracker.role.quartermaster.effect": "Makes camp. Failing can produce a night that does not count as a rest — usually exhaustion.",
+  "toa-adventure-tracker.role.quartermaster.effect": "Makes camp. On a success it takes a level of exhaustion off whoever is worst off; on a failure the night may not count as a rest at all.",
   "toa-adventure-tracker.role.medic.effect": "On a success, takes one level of exhaustion off whichever traveller is worst off.",
   "toa-adventure-tracker.role.cartographer.effect": "Catches a failed navigation roll: half the day's distance instead of none, and never less than one hex.",
   "toa-adventure-tracker.unfilled.fail": "Counts as a failed roll.",

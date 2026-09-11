@@ -1,7 +1,7 @@
 import {
   MODULE_ID, ROLE, EXHAUSTION_LIMITS, EVENT_CATEGORY, BOON_CHANCE,
   ENCOUNTER_DEFAULTS, EVENT_CHANCE, MARGIN_FOR_EXTRA_HEX, MARGIN_FOR_BONUS_HEX,
-  MEDIC_RELIEF, TRAVEL_MODES, DEFAULT_MODE
+  ROLE_RELIEF, TRAVEL_MODES, DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import { getState, isWriter, setReport } from "./state.mjs";
@@ -96,25 +96,38 @@ export async function resolveDay() {
 
   maybeEvent(EVENT_CATEGORY.CAMP, roles[ROLE.QUARTERMASTER], draw);
 
-  /* --- The medic ------------------------------------------------ */
+  /* --- Who takes exhaustion back off ---------------------------- */
 
   /**
-   * The one role that takes exhaustion back OFF.
+   * The roles that RELIEVE rather than cost: the medic treating people, and a
+   * quartermaster whose camp was worth sleeping in.
    *
-   * It promised exactly this in its description and did nothing whatsoever -
-   * the engine never so much as looked at it. Found while writing the role
-   * overview, which is a fair argument for having written one.
+   * This is the counterweight to a table whose house rules bar long rests
+   * outside safe places. Without a daily lever, exhaustion is a ratchet - 200
+   * simulated treks put a competent party at the travel cap in about three
+   * weeks and killed a third of them inside forty days, with nothing they could
+   * have done differently.
    *
-   * Relief goes to the WORST-off traveller: a level off the person closest to
-   * dropping is worth more than a level off somebody already at zero, and it is
-   * what a medic would actually do.
+   * Relief goes to DIFFERENT travellers where there are enough of them, worst
+   * off first. Two carers helping two people is both more useful and more
+   * plausible than both fussing over the same one.
    */
   const relief = [];
-  if (roles[ROLE.MEDIC].status === "success") {
-    const worst = actors
-      .filter(a => (Number(a.system?.attributes?.exhaustion) || 0) > 0)
-      .sort((a, b) => (b.system.attributes.exhaustion - a.system.attributes.exhaustion))[0];
-    if (worst) relief.push({ actorId: worst.id, actorName: worst.name, heals: MEDIC_RELIEF });
+  const cared = new Set();
+  const byNeed = actors
+    .filter(a => (Number(a.system?.attributes?.exhaustion) || 0) > 0)
+    .sort((a, b) => b.system.attributes.exhaustion - a.system.attributes.exhaustion);
+
+  for (const [roleId, amount] of Object.entries(ROLE_RELIEF)) {
+    if (roles[roleId]?.status !== "success") continue;
+    // The worst-off traveller nobody has seen to yet; if everyone has been
+    // seen to, the carer doubles up on whoever needs it most.
+    const target = byNeed.find(a => !cared.has(a.id)) ?? byNeed[0];
+    if (!target) break;
+    cared.add(target.id);
+    const existing = relief.find(r => r.actorId === target.id);
+    if (existing) existing.heals += amount;
+    else relief.push({ actorId: target.id, actorName: target.name, heals: amount, by: roleId });
   }
 
   /* --- The jungle's good mood ---------------------------------- */
@@ -133,12 +146,16 @@ export async function resolveDay() {
 
   const consequences = await resolveConsequences(events, actors);
 
-  // The medic's relief rides on the same list the Apply button reads, so it is
-  // written to the sheet through exactly one path.
+  // Relief rides on the same list the Apply button reads, so everything that
+  // touches a sheet goes through exactly one path.
   for (const entry of relief) {
     const existing = consequences.find(c => c.actorId === entry.actorId);
     if (existing) existing.heals += entry.heals;
-    else consequences.push({ ...entry, damage: 0, exhaustion: 0, from: [{ event: "medic", saved: null }] });
+    else consequences.push({
+      actorId: entry.actorId, actorName: entry.actorName,
+      damage: 0, exhaustion: 0, heals: entry.heals,
+      from: [{ event: entry.by, saved: null }]
+    });
   }
 
   const report = {

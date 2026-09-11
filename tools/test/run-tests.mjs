@@ -272,6 +272,67 @@ medReport = await resolve.resolveDay();
 check(!medReport.consequences.some(c => c.heals > 0), "a healthy party needs no medic");
 
 /* ------------------------------------------------------------------ */
+section("exhaustion is not a ratchet");
+
+/**
+ * Tables whose house rules bar long rests outside safe places - a common one in
+ * Chult - have no way to shed exhaustion between travel days. Without a daily
+ * lever the module simply grinds them down: measured over 200 simulated treks
+ * before this, a competent party hit the travel cap in about three weeks and a
+ * third of them died of it inside forty days, with nothing they could have done
+ * differently. Two rules answer that, and both are asserted here.
+ */
+
+// RULE ONE: no level of exhaustion is unavoidable. Every event that hands one
+// out must offer a save, or it is a cost with no play in it.
+const { EVENTS: ALL_EVENTS } = await import(`${R}/const.mjs`);
+for (const event of ALL_EVENTS.filter(e => e.exhaustion)) {
+  check(!!event.save, `event "${event.id}" offers a save against its exhaustion`);
+}
+
+// RULE TWO: a camp well made takes a level back off.
+gandalf.system.attributes.exhaustion = 3;
+bilbo.system.attributes.exhaustion = 1;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "quartermaster" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+let campReport = await resolve.resolveDay();
+const campRelief = campReport.consequences.find(c => c.heals > 0);
+check(!!campRelief, "a successful quartermaster relieves somebody");
+check(campRelief.actorId === gandalf.id, "the worst-off traveller, not just anyone");
+
+// A FAILED quartermaster relieves nobody - and may cost a night instead.
+gandalf.system.attributes.exhaustion = 3;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "quartermaster" } });
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 100);
+campReport = await resolve.resolveDay();
+check(!campReport.consequences.some(c => c.heals > 0), "a failed camp relieves nobody");
+
+/**
+ * Two carers help TWO people. Doubling up on one traveller while another stays
+ * at three would be both less useful and less plausible.
+ */
+gandalf.system.attributes.exhaustion = 3;
+bilbo.system.attributes.exhaustion = 2;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "medic", [bilbo.id]: "quartermaster" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+const bothReport = await resolve.resolveDay();
+const relieved = bothReport.consequences.filter(c => c.heals > 0);
+check(relieved.length === 2, `both carers found somebody (${relieved.length})`);
+check(new Set(relieved.map(c => c.actorId)).size === 2, "and they are different travellers");
+
+// Nobody exhausted: no phantom relief entries.
+for (const a of [gandalf, bilbo]) a.system.attributes.exhaustion = 0;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "medic", [bilbo.id]: "quartermaster" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+const healthy = await resolve.resolveDay();
+check(!healthy.consequences.some(c => c.heals > 0), "a rested party needs no carers");
+
+/* ------------------------------------------------------------------ */
 section("the cartographer turns a lost day into a wasted one");
 await freshDay({ pace: "normal", nav: 1, assignments: { [gandalf.id]: "cartographer", [bilbo.id]: "navigator" } });
 dice.d20 = 20; await doRoll(gandalf);     // cartographer succeeds

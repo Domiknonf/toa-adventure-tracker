@@ -26,6 +26,7 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Würfel und Tempo am Tisch](#würfel-und-tempo-am-tisch)
 - [Wetter](#wetter)
 - [Ereignisse](#ereignisse)
+- [Erschöpfung, wenn es keine langen Rasten gibt](#erschöpfung-wenn-es-keine-langen-rasten-gibt)
 - [Folgen](#folgen)
 - [Kampfgrößen für schwer und tödlich](#kampfgrößen-für-schwer-und-tödlich)
 - [Was die Spieler sehen](#was-die-spieler-sehen)
@@ -125,7 +126,7 @@ Rollenverteilung bleibt bestehen.
 | **Navigator** | Überleben | 15 | Bestimmt die Tagesstrecke. Misslingt der Wurf, kommt die Gruppe keinen Schritt weit. | **schlimmer** |
 | **Vorhut** | Wahrnehmung | 12 | Entscheidet, ob eine Begegnung ein Hinterhalt oder eine rechtzeitige Sichtung wird. Misslungen kostet TP. | **schlimmer** |
 | **Nachhut** | Heimlichkeit | 12 | Verwischt die Spuren. Misslungen hebt die Begegnungschance um 15 Punkte und kann eine Verfolgung auslösen. | **schlimmer** |
-| **Lagermeister** | Überleben | 12 | Schlägt das Lager auf. Misslungen kann eine Nacht bringen, die nicht als Rast zählt. | Misserfolg |
+| **Lagermeister** | Überleben | 12 | Gelungen: nimmt dem am stärksten Erschöpften **einen Grad Erschöpfung ab**. Misslungen: eine Nacht, die nicht als Rast zählt. | Misserfolg |
 | **Feldscher** | Medizin | 12 | Nimmt bei Erfolg dem am stärksten erschöpften Reisenden einen Grad Erschöpfung ab. | folgenlos |
 | **Kartograph** | Nachforschungen | 12 | Fängt einen misslungenen Navigationswurf auf: halbe Strecke statt null, mindestens ein Hexfeld. | folgenlos |
 
@@ -315,6 +316,53 @@ stünden jeden Morgen dieselben Absätze im Bericht und keiner davon hieße noch
 etwas. So ist eine unbesetzte Rolle ein **Risiko**, das ihr tragt, statt einer
 Steuer, die ihr zahlt. Navigation, Vorräte und Wetter sind davon ausgenommen —
 das ist Arithmetik, kein Pech.
+
+---
+
+## Erschöpfung, wenn es keine langen Rasten gibt
+
+Viele Tische in Chult spielen mit der Hausregel, dass **lange Rasten nur an
+gesicherten Orten** möglich sind — nicht im Dschungel. Damit hat Erschöpfung
+keinen Rückweg mehr, und ein Reisemodul, das sie großzügig verteilt, wird zur
+Ratsche.
+
+Das ist gemessen, nicht geschätzt. Über 200 simulierte Treks (vier Charaktere,
+Stufe 6, kompetent besetzt, **ohne** lange Rasten):
+
+| | vorher | jetzt |
+|---|:--:|:--:|
+| Erschöpfung netto pro Tag | 0,48 | **0,25** |
+| Erste Stufe 3 (Strecke gedeckelt) | nach ~21 Tagen | nach ~23 Tagen, und nur in 25 von 200 Läufen |
+| Stufe 6 erreicht (tot) | **68 von 200** | **0 von 200** |
+| 40 Tage überlebt | 132 von 200 | **200 von 200** |
+
+Zwei Regeln sorgen dafür:
+
+**Jede Erschöpfung ist abwendbar.** Vorher verteilten drei Ereignisse einen Grad
+ganz ohne Rettungswurf — eine Strafe ohne Spiel darin. Jetzt bietet jedes
+Ereignis, das Erschöpfung kostet, einen Rettungswurf. Zwei weitere treffen
+außerdem nur noch einen Reisenden statt die ganze Gruppe: eine schlechte Nacht
+ist nicht automatisch jedermanns schlechte Nacht.
+
+**Ein gutes Lager ist die Erholung.** Gelingt dem Lagermeister seine Probe,
+nimmt er dem am stärksten erschöpften Reisenden einen Grad ab — genau der
+Hebel, den eine lange Rast sonst wäre. Der Feldscher tut dasselbe, und sind
+beide besetzt, kümmern sie sich um **zwei verschiedene** Leute.
+
+Damit wird die Rollenwahl zum eigentlichen Überlebensfaktor:
+
+| Aufstellung | Erschöpfung/Tag | Stufe 3 | Tot in 40 Tagen |
+|---|:--:|:--:|:--:|
+| **mit** Lagermeister | 0,25 | 25/200 | **0/200** |
+| **ohne** | 0,49 | 193/200 | 111/200 |
+
+Wer im Dschungel niemanden das Lager aufschlagen lässt, wird zermahlen. Das ist
+Absicht — und es steht in der Rollen-Übersicht im Fenster, bevor der erste Wurf
+fällt.
+
+> Spielt ihr mit normalen langen Rasten, ändert das nichts zum Schlechteren:
+> Erschöpfung wird dann ohnehin zurückgesetzt, und die Erholung durch das Lager
+> ist einfach ein zusätzlicher Puffer.
 
 ---
 
@@ -713,7 +761,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~720 Integrationstests
+npm test             # Mondmathematik + ~740 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```

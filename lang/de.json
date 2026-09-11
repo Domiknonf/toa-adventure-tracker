@@ -357,7 +357,7 @@
   "toa-adventure-tracker.role.navigator.effect": "Bestimmt die Tagesstrecke. Misslingt der Wurf, kommt die Gruppe keinen Schritt weit — außer der Kartograph fängt es auf.",
   "toa-adventure-tracker.role.vanguard.effect": "Entscheidet, ob eine Begegnung ein Hinterhalt oder eine rechtzeitige Sichtung wird. Misslungen kostet Trefferpunkte, gelungen nur Zeit.",
   "toa-adventure-tracker.role.rearguard.effect": "Verwischt die Spuren. Misslungen hebt die Begegnungschance um 15 Punkte und kann ein Verfolgungsereignis auslösen.",
-  "toa-adventure-tracker.role.quartermaster.effect": "Schlägt das Lager auf. Misslungen kann eine Nacht bringen, die nicht als Rast zählt — meist Erschöpfung.",
+  "toa-adventure-tracker.role.quartermaster.effect": "Schlägt das Lager auf. Gelingt es, nimmt es dem am stärksten erschöpften Reisenden einen Grad Erschöpfung ab; misslingt es, kann eine Nacht folgen, die nicht als Rast zählt.",
   "toa-adventure-tracker.role.medic.effect": "Nimmt bei Erfolg dem am stärksten erschöpften Reisenden einen Grad Erschöpfung ab.",
   "toa-adventure-tracker.role.cartographer.effect": "Fängt einen misslungenen Navigationswurf auf: statt null Hexfelder die halbe Tagesstrecke, mindestens eins.",
   "toa-adventure-tracker.unfilled.fail": "Gilt als misslungener Wurf.",

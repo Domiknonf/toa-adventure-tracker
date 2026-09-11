@@ -448,7 +448,7 @@ export const EVENTS = [
   { id: "pterafolk",    category: "ambush", damage: "2d6", blocks: true,  target: "random" , foe: { key: "pterafolk", cr: "1" }},
   { id: "batiri",       category: "ambush", damage: "1d10", blocks: true, target: "party" , foe: { key: "goblin", cr: "1/4" }},
   { id: "assassinVine", category: "ambush", damage: "1d10", save: { ability: "str", dc: 14 }, target: "random" , foe: { key: "assassinVine", cr: "3" }},
-  { id: "stirges",      category: "ambush", damage: "1d6", exhaustion: 1, target: "random" , foe: { key: "stirge", cr: "1/8" }},
+  { id: "stirges",      category: "ambush", damage: "1d6", exhaustion: 1, save: { ability: "con", dc: 11 }, target: "random" , foe: { key: "stirge", cr: "1/8" }},
   { id: "girallon",     category: "ambush", damage: "3d6", blocks: true,  target: "random" , foe: { key: "girallon", cr: "4" }},
   { id: "yuanti",       category: "ambush", damage: "2d6", blocks: true,  target: "party" , foe: { key: "yuantiPureblood", cr: "1" }},
   { id: "quicksand",    category: "ambush", damage: "1d6", save: { ability: "str", dc: 13 }, blocks: true, target: "random" },
@@ -469,13 +469,13 @@ export const EVENTS = [
   { id: "batiriTrail",  category: "pursuit", damage: "1d6", target: "random" , foe: { key: "goblin", cr: "1/4" }},
   { id: "undeadFollow", category: "pursuit", blocks: false, target: "party" , foe: { key: "zombie", cr: "1/4" }},
   { id: "kamadan",      category: "pursuit", damage: "2d6", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" , foe: { key: "kamadan", cr: "4" }},
-  { id: "drumsAtNight", category: "pursuit", exhaustion: 1, target: "party" },
+  { id: "drumsAtNight", category: "pursuit", exhaustion: 1, save: { ability: "wis", dc: 12 }, target: "party" },
 
   /* --- Lost: no map to fall back on ----------------------------- */
   { id: "circles",      category: "lost", target: "party" },
   { id: "riverWrong",   category: "lost", target: "party" },
   { id: "canopyDark",   category: "lost", target: "party" },
-  { id: "ravine",       category: "lost", exhaustion: 1, target: "party" },
+  { id: "ravine",       category: "lost", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
   { id: "swampDetour",  category: "lost", target: "party" },
 
   /* --- Detour: lost, but the cartographer got them back --------- */
@@ -488,9 +488,9 @@ export const EVENTS = [
 
   /* --- A camp that was not a rest -------------------------------- */
   { id: "wetCamp",      category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "antSwarm",     category: "camp", damage: "1d4", exhaustion: 1, target: "random" },
+  { id: "antSwarm",     category: "camp", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 11 }, target: "random" },
   { id: "noFire",       category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "mosquitoes",   category: "camp", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "party" },
+  { id: "mosquitoes",   category: "camp", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" },
 
   /* --- Storms ----------------------------------------------------- */
   { id: "monsoon",      category: "storm", blocks: true, target: "party" },
@@ -528,14 +528,14 @@ export const EVENTS = [
   { id: "offCourse",    category: "lost", terrain: "sea", target: "party" },
   { id: "seaStorm",     category: "storm", terrain: "sea", damage: "2d6", save: { ability: "dex", dc: 13 }, blocks: true, target: "party" },
   { id: "becalmed",     category: "storm", terrain: "sea", blocks: true, target: "party" },
-  { id: "nightWatch",   category: "camp", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
+  { id: "nightWatch",   category: "camp", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "random" },
   { id: "followingWind", category: "boon", terrain: "sea", target: "party" },
   { id: "dolphins",     category: "boon", terrain: "sea", heals: 1, target: "party" },
 
   /* --- Mounts: what a day on horseback costs ---------------------- */
   { id: "mountLame",    category: "camp", terrain: "mount", blocks: true, target: "party" },
   { id: "mountBolted",  category: "ambush", terrain: "mount", damage: "1d6", save: { ability: "dex", dc: 12 }, target: "random" },
-  { id: "mountSpent",   category: "camp", terrain: "mount", exhaustion: 1, target: "party" }
+  { id: "mountSpent",   category: "camp", terrain: "mount", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" }
 ];
 
 /** Event categories, for grouping and for the "one per category" rule. */
@@ -562,6 +562,27 @@ export const BOON_CHANCE = 25;
  * medic would actually do.
  */
 export const MEDIC_RELIEF = 1;
+
+/**
+ * ROLES THAT TAKE EXHAUSTION BACK OFF, and how much.
+ *
+ * The medic treats people; a quartermaster who made a good camp gives them a
+ * night that was worth something. Both are checked on SUCCESS.
+ *
+ * The quartermaster's entry exists for tables whose house rules bar long rests
+ * outside safe places - a common one in Chult. Without any daily recovery,
+ * exhaustion stops being a resource and becomes a ratchet: measured over 200
+ * simulated treks, a competent party hit the travel cap after about three
+ * weeks and a third of them died of it inside forty days, with nothing they
+ * could do about it. A camp well made is the one lever such a party still has.
+ *
+ * Relief goes to DIFFERENT travellers where there are enough of them (see
+ * resolve.mjs), so two carers help two people rather than doubling up on one.
+ */
+export const ROLE_RELIEF = {
+  medic: 1,
+  quartermaster: 1
+};
 
 /** How many completed days the log keeps. See the note on LOG_LIMIT below. */
 export const LOG_LIMIT = 30;

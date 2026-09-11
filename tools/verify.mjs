@@ -366,10 +366,20 @@ const roleConsts = Object.fromEntries(
   [...roleConstBlock.matchAll(/(\w+):\s*"(\w+)"/g)].map(m => [m[2], m[1]])
 );
 
+/* A role reaches the engine one of two ways, and both are real: named directly
+   as ROLE.X, or listed in a table the resolver iterates. ROLE_RELIEF is the
+   only such table today - the relieving roles are keyed by id there and never
+   mentioned by constant - so it counts, but only once the resolver is confirmed
+   to actually read it. Otherwise this check would bless a table nobody uses. */
+const reliefKeys = resolveSrc.includes("ROLE_RELIEF")
+  ? new Set([...(constSrc.match(/export const ROLE_RELIEF = \{([\s\S]*?)\};/)?.[1] ?? "")
+      .matchAll(/^\s*(\w+):/gm)].map(m => m[1]))
+  : new Set();
+
 let inert = 0;
 for (const id of roleIds) {
   const constName = roleConsts[id];
-  const usedByEngine = constName && resolveSrc.includes(`ROLE.${constName}`);
+  const usedByEngine = (constName && resolveSrc.includes(`ROLE.${constName}`)) || reliefKeys.has(id);
   if (!usedByEngine) { fail(`default role "${id}" is never read by resolve.mjs - it does nothing`); inert++; }
   if (!known.has(`${PREFIX}role.${id}.effect`)) {
     fail(`default role "${id}" has no effect description (${PREFIX}role.${id}.effect)`);
