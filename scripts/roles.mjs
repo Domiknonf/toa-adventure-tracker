@@ -208,11 +208,6 @@ export function partyActors() {
 
 const sortByName = (actors) => [...actors].sort((a, b) => a.name.localeCompare(b.name));
 
-/** How many mouths there are to water. 0 in the setting means "count the party". */
-export function travelerCount() {
-  const configured = Math.floor(Number(setting("travelers")) || 0);
-  return configured > 0 ? configured : partyActors().length;
-}
 
 /**
  * Whether this user may act for an actor.
@@ -271,7 +266,7 @@ export function paceModifierFor(role, state = getState()) {
  * Returns null when the roller cancelled the dialog - a real outcome that must
  * not be stored as a result of 0.
  */
-export async function rollRole(actor, role, { event } = {}) {
+export async function rollRole(actor, role, { event, batch = false } = {}) {
   const check = roleCheck(role);
   if (!check) return null;
 
@@ -293,7 +288,21 @@ export async function rollRole(actor, role, { event } = {}) {
   // dnd5e's OWN pace rules, which cover different skills than our modifier does.
   if (setting("usePaceRules")) config.pace = state.pace;
 
-  const dialog = { configure: !setting("skipRollDialog") };
+  /**
+   * A BATCH NEVER PROMPTS.
+   *
+   * "Roll & resolve the day" fires six checks in a row. Asking
+   * normal/advantage/disadvantage six times is not six decisions, it is the
+   * same click six times - and it is the single thing that made running a day
+   * tedious. A single roll from one row still respects the per-user setting,
+   * because that one IS a decision.
+   *
+   * Advantage is not lost by this: Foundry's own keybinds still apply through
+   * `config.event`, and any module that decides advantage from the actor's
+   * state - Midi QoL among them - works through the system's pipeline, which
+   * this roll goes through either way.
+   */
+  const dialog = { configure: !batch && !setting("skipRollDialog") };
   // `create: false` stops dnd5e creating the chat card at all, which is what
   // keeps a batch of eight role checks from becoming eight 3D dice animations.
   const message = setting("rollsToChat") ? {} : { create: false };

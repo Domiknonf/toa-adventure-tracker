@@ -1,4 +1,4 @@
-import { MODULE_ID, WEATHER, CLEAR_DAY_THIRST, RAIN_CATCHER_BONUS } from "./const.mjs";
+import { MODULE_ID, WEATHER } from "./const.mjs";
 import { setting } from "./settings.mjs";
 
 /**
@@ -45,26 +45,6 @@ export async function rollWeather() {
 
 const clampPercent = (value) => Math.clamp(Math.floor(Number(value) || 0), 0, 100);
 
-/**
- * How much water the weather alone puts in the barrels.
- *
- * A rain catcher only helps when something is falling - which is what makes it
- * worth buying in Port Nyanzaru and worthless in a drought.
- */
-export function weatherWater(weather) {
-  let water = weather?.water ?? 0;
-  if (weather?.rain && setting("rainCatcher")) {
-    water += Number(setting("rainCatcherBonus")) || RAIN_CATCHER_BONUS;
-  }
-  return water;
-}
-
-/**
- * The multiplier on the day's water need. A cloudless Chultan day costs more
- * water than a wet one, which is the only reason `clear` is distinct from
- * `humid` at all.
- */
-export const thirstMultiplier = (weather) => weather?.thirsty ? CLEAR_DAY_THIRST : 1;
 
 /** Display label for a weather key. */
 export const weatherLabel = (key) => game.i18n.localize(`${MODULE_ID}.weather.${key}`);

@@ -25,7 +25,6 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Wie die Tagesstrecke entsteht](#wie-die-tagesstrecke-entsteht)
 - [Würfel und Tempo am Tisch](#würfel-und-tempo-am-tisch)
 - [Wetter](#wetter)
-- [Vorräte, Durst und Hunger](#vorräte-durst-und-hunger)
 - [Ereignisse](#ereignisse)
 - [Folgen](#folgen)
 - [Kampfgrößen für schwer und tödlich](#kampfgrößen-für-schwer-und-tödlich)
@@ -121,16 +120,24 @@ Rollenverteilung bleibt bestehen.
 
 ## Die Rollen
 
-| Rolle | Probe | SG | Wozu | Unbesetzt |
-|---|---|---|---|---|
-| **Navigator** | Überleben | 15 | Entscheidet, ob die Gruppe überhaupt vorankommt | **schlimmer** |
-| **Vorhut** | Wahrnehmung | 12 | Entscheidet, ob ihr den Hinterhalt seht oder hineinlauft | **schlimmer** |
-| **Nachhut** | Heimlichkeit | 12 | Verwischt die Spuren; sonst heftet sich etwas an eure Fersen | **schlimmer** |
-| **Wasserträger** | Überleben | 12 | Findet Wasser — bei Erfolg 1W6 + WEI Gallonen | Misserfolg |
-| **Sammler** | Überleben | 12 | Findet Nahrung — bei Erfolg 1W6 + WEI Pfund | Misserfolg |
-| **Lagermeister** | Überleben | 12 | Ein schlechtes Lager ist eine Nacht, die nicht als Rast zählt | Misserfolg |
-| **Feldscher** | Medizin | 12 | Die einzige Rolle, die Erschöpfung wieder **nimmt** | folgenlos |
-| **Kartograph** | Nachforschungen | 12 | Findet nach einem Fehler zurück auf die Karte | folgenlos |
+| Rolle | Probe | SG | Was sie mechanisch tut | Unbesetzt |
+|---|---|:--:|---|---|
+| **Navigator** | Überleben | 15 | Bestimmt die Tagesstrecke. Misslingt der Wurf, kommt die Gruppe keinen Schritt weit. | **schlimmer** |
+| **Vorhut** | Wahrnehmung | 12 | Entscheidet, ob eine Begegnung ein Hinterhalt oder eine rechtzeitige Sichtung wird. Misslungen kostet TP. | **schlimmer** |
+| **Nachhut** | Heimlichkeit | 12 | Verwischt die Spuren. Misslungen hebt die Begegnungschance um 15 Punkte und kann eine Verfolgung auslösen. | **schlimmer** |
+| **Lagermeister** | Überleben | 12 | Schlägt das Lager auf. Misslungen kann eine Nacht bringen, die nicht als Rast zählt. | Misserfolg |
+| **Feldscher** | Medizin | 12 | Nimmt bei Erfolg dem am stärksten erschöpften Reisenden einen Grad Erschöpfung ab. | folgenlos |
+| **Kartograph** | Nachforschungen | 12 | Fängt einen misslungenen Navigationswurf auf: halbe Strecke statt null, mindestens ein Hexfeld. | folgenlos |
+
+Dieselbe Tabelle steht **im Fenster selbst**, aufklappbar unter der Rollenliste
+(„Rollen-Übersicht") — samt der Modifikatoren, die das gewählte Tempo gerade auf
+die einzelnen Proben legt.
+
+> **Der Feldscher tat lange nichts.** Seine Beschreibung versprach, er nehme
+> Erschöpfung wieder ab — die Engine hatte nie von ihm gehört. Aufgefallen ist
+> das erst beim Schreiben dieser Übersicht, weil die Spalte „Was sie mechanisch
+> tut" leer blieb. Jetzt prüft `verify`, dass **jede** Standardrolle vom
+> Resolver gelesen wird *und* eine Wirkungsbeschreibung hat.
 
 **„Unbesetzt“** sagt, was passiert, wenn niemand die Rolle übernimmt:
 
@@ -165,8 +172,8 @@ Gemessen über je 300 simulierte Tage bei normalem Tempo: zu Fuß 0,70 Hexfelder
 pro Tag, beritten 1,20, im Kanu 1,30, unter Segeln 2,01.
 
 **Die Ereignispools sind getrennt.** Velociraptoren tauchen nie auf offener See
-auf, Sahuagin nie im Dschungel. Was überall passiert — Durst, Hunger, ein
-verpeilter Kurs — ist als solches markiert und immer im Spiel. Von 81
+auf, Sahuagin nie im Dschungel. Was überall passiert — ein verpeilter Kurs,
+ein Blitzschlag — ist als solches markiert und immer im Spiel. Von 81
 Ereignissen sind 44 Land, 10 überall, 10 Fluss, 14 See und 3 nur beritten.
 
 **Die Rollen folgen der Reiseart.** Auf einem Schiff gibt es keine Nachhut, weil
@@ -265,44 +272,17 @@ Die ganze Vorratsrechnung ergibt nur dann etwas, wenn Trockenperioden der Gruppe
 sich — völlig zu Recht — für die Geschichte entscheiden, die sie ohnehin im Kopf
 hat, und die Fässer laufen nie aus Versehen leer.
 
-| Wetter | Vorgabe | Wasser | Wirkung |
-|---|---|---|---|
-| **Sturm** | 10 % | 6 Gallonen | Kostet den Tag |
-| **Regen** | 55 % | 3 Gallonen | — |
-| **Schwül** | ~17,5 % | — | — |
-| **Klar und sengend** | ~17,5 % | — | Wasserbedarf **×1,5** |
+| Wetter | Vorgabe | Wirkung |
+|---|---|---|
+| **Sturm** | 10 % | Kostet den Tag |
+| **Regen** | 55 % | — |
+| **Schwül** | ~17,5 % | — |
+| **Klar und sengend** | ~17,5 % | — |
 
 Chult in der Regenzeit: zwei von drei Tagen sind nass. Beide Prozentwerte sind
 Weltoptionen; was übrig bleibt, teilt sich auf schwül und klar auf.
 
-Ein **Regensammler** bringt an Regentagen zusätzliches Wasser — und an trockenen
-gar nichts. Genau das macht ihn in Port Nyanzaru kaufenswert und in einer
-Dürre wertlos.
-
 ---
-
-## Vorräte, Durst und Hunger
-
-**Vorräte laufen über Tage weiter.** Das ist der Punkt: „ein paar Tage ohne
-Regen und kein Wasser mehr“ ist nur dann ein Satz, der etwas bedeutet, wenn die
-Fässer von gestern heute noch in den Büchern stehen.
-
-Jeden Tag:
-
-```
-Wasser  +  Wetter  +  Fund des Wasserträgers  −  (Reisende × Bedarf × Hitze)
-Nahrung +  Fund des Sammlers                  −  (Reisende × Bedarf)
-```
-
-- **Durst** kennt keine Karenz. Reicht das Wasser nicht, ist noch am selben Tag
-  ein KON-Rettungswurf fällig; wer ihn nicht schafft, bekommt Erschöpfung.
-- **Hunger** ist langsamer: erst nach einigen Karenztagen (Vorgabe 2) kostet er
-  etwas.
-- **Schlechtes Wasser** ist etwas anderes als gar keins. Wer suchen ging und
-  misslang, hat etwas Fragwürdiges getrunken — mit eigenem Rettungswurf.
-
-Die Vorräte lassen sich jederzeit von Hand setzen („Bearbeiten“), für den Fall,
-dass die Gruppe in der Stadt Fässer gekauft hat.
 
 ---
 
@@ -319,8 +299,6 @@ es gekostet hat.
 | **Verfolgung** | Nachhut misslungen | Augen im Rücken, Kamadan auf der Fährte, Trommeln in der Nacht |
 | **Verlaufen** | Navigation misslungen | Im Kreis gelaufen, Der falsche Fluss, Schlucht ohne Übergang |
 | **Umweg** | Navigation misslungen, Kartograph rettet | Zurück auf die Karte, Ein Felsen, der auf der Karte steht |
-| **Schlechtes Wasser** | Wasserträger misslungen | Blutegel im Tümpel, Etwas liegt flussaufwärts |
-| **Durst / Hunger** | Vorräte leer | Die Schläuche sind leer, Verdorbene Vorräte |
 | **Lager** | Lagermeister misslungen | Ein Lager im Nassen, Ameisenstraße durchs Lager, Kein Feuer |
 | **Sturm** | Wetter | Monsunregen, Hangrutsch, Blitzschlag, Sturm auf See, Flaute, Stromschnellen |
 | **Glück** | Ein makelloser Tag, 25 % | Ein Chwinga folgt euch, Trockene Ruine, Klare Quelle |
@@ -554,8 +532,6 @@ Unabhängig vom Zahlenmodifikator.
 |---|---|
 | Sturmwahrscheinlichkeit | 10 % |
 | Regenwahrscheinlichkeit | 55 % |
-| Regensammler vorhanden | aus |
-| Ertrag des Regensammlers | 4 |
 | Begegnungswahrscheinlichkeit | 20 % |
 
 ### Reisende
@@ -563,17 +539,7 @@ Unabhängig vom Zahlenmodifikator.
 |---|---|
 | Quelle der Reisenden | Alle Charaktere mit Spielerbesitz |
 | Gruppen-Aktor | — |
-| Anzahl der Reisenden | 0 = Gruppengröße |
 
-„Anzahl der Reisenden“ zählt die Mäuler, nicht die Würfelnden — setz eine Zahl,
-wenn Träger, Lasttiere oder NSCs mittrinken.
-
-### Vorräte
-| Option | Vorgabe |
-|---|---|
-| Wasserbedarf pro Kopf und Tag | 2 Gallonen |
-| Nahrungsbedarf pro Kopf und Tag | 1 Pfund |
-| Karenztage bei Hunger | 2 |
 
 ### Kämpfe und Sichtbarkeit
 | Option | Vorgabe |
@@ -731,7 +697,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~720 Integrationstests
+npm test             # Mondmathematik + ~705 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```

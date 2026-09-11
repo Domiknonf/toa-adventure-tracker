@@ -39,16 +39,6 @@ export function blankState() {
     /** actorId -> roll record. Cleared when the day is completed. */
     rolls: {},
     /**
-     * SUPPLIES CARRY OVER. This is the difference between "today nobody found
-     * water" and "the third day with empty barrels" - the second one is only a
-     * sentence that can mean anything if yesterday's stock is still here.
-     */
-    supplies: { water: 0, food: 0 },
-    /** Consecutive days with no rain. Drives the thirst flavour text. */
-    dryDays: 0,
-    /** Consecutive days the party has gone short on food (see hungerGrace). */
-    hungryDays: 0,
-    /**
      * actorId -> true for travellers who have taken a long rest that starts a
      * new day. Cleared whenever the day changes, so it only ever describes the
      * night the party is currently in (see rest.mjs).
@@ -96,9 +86,6 @@ function migrate(state) {
     state.rested = {};
     state.rolls = {};
     state.report = null;
-    state.supplies = { water: 0, food: 0 };
-    state.dryDays = 0;
-    state.hungryDays = 0;
     // Old entries carry `miles` where new ones carry `hexes`. Left as they are:
     // the logbook renders whichever it finds, and rewriting history into a unit
     // it was never measured in would be a lie in the name of tidiness.
@@ -245,17 +232,6 @@ export const markApplied = () => update(s => {
   if (s.report) s.report.applied = true;
 });
 
-/* ------------------------------------------------------------------ */
-/*  Supplies                                                           */
-/* ------------------------------------------------------------------ */
-
-/** Set the stocks directly - the GM's "we bought barrels in Port Nyanzaru" path. */
-export const setSupplies = ({ water, food }) => update(s => {
-  if (Number.isFinite(water)) s.supplies.water = Math.max(0, water);
-  if (Number.isFinite(food)) s.supplies.food = Math.max(0, food);
-  // The report was worked out from the old stocks; it no longer follows.
-  s.report = null;
-});
 
 /* ------------------------------------------------------------------ */
 /*  Completing the day                                                 */
@@ -284,18 +260,11 @@ export const completeDay = () => update(s => {
     hexes: report.hexes,
     weather: report.weather?.key ?? null,
     events: (report.events ?? []).map(e => e.id),
-    water: report.supplies?.waterAfter ?? 0,
-    food: report.supplies?.foodAfter ?? 0,
     damage: report.consequences?.reduce((n, c) => n + (c.damage ?? 0), 0) ?? 0,
     exhaustion: report.consequences?.reduce((n, c) => n + (c.exhaustion ?? 0), 0) ?? 0,
     at: Date.now()
   });
   if (s.log.length > LOG_LIMIT) s.log.splice(0, s.log.length - LOG_LIMIT);
-
-  s.supplies.water = report.supplies?.waterAfter ?? s.supplies.water;
-  s.supplies.food = report.supplies?.foodAfter ?? s.supplies.food;
-  s.dryDays = report.dryDays ?? s.dryDays;
-  s.hungryDays = report.hungryDays ?? s.hungryDays;
 
   s.rolls = {};
   s.report = null;

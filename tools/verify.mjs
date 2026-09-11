@@ -256,8 +256,7 @@ const eventRows = eventBlock.split("\n").filter(l => l.includes("{ id:")).map(li
   terrain: line.match(/terrain:\s*"(\w+)"/)?.[1] ?? "land"
 }));
 
-const USED_CATEGORIES = ["ambush", "encounter", "lost", "detour", "foul",
-  "thirst", "hunger", "camp", "storm", "boon"];
+const USED_CATEGORIES = ["ambush", "encounter", "lost", "detour", "camp", "storm", "boon"];
 let deadPools = 0;
 for (const [name, mode] of Object.entries(modes)) {
   const needed = [...USED_CATEGORIES];
@@ -346,6 +345,38 @@ for (const file of scripts) {
   }
 }
 if (!dangling) ok(`every named import resolves to a real export (${importCount} imports)`);
+
+/* 18. EVERY DEFAULT ROLE ACTUALLY DOES SOMETHING.
+       A role the engine never looks at is rolled, reported and completely
+       inert: the player picks it, rolls it, watches the result land in the
+       window - and nothing whatsoever follows from it. Nothing fails, so
+       nothing complains.
+
+       This check exists because the medic was exactly that for several
+       versions. Its own description promised it was "the only role that takes
+       exhaustion back off" and the resolver had never heard of it. It came to
+       light only when a role overview was written and the column came out
+       blank. A role that cannot be described does not deserve to be listed.
+
+       Checked two ways, because both are needed: the resolver has to read the
+       role, and the overview has to be able to describe it. */
+const resolveSrc = fs.readFileSync("scripts/resolve.mjs", "utf8");
+const roleConstBlock = constSrc.match(/export const ROLE = \{([\s\S]*?)\};/)?.[1] ?? "";
+const roleConsts = Object.fromEntries(
+  [...roleConstBlock.matchAll(/(\w+):\s*"(\w+)"/g)].map(m => [m[2], m[1]])
+);
+
+let inert = 0;
+for (const id of roleIds) {
+  const constName = roleConsts[id];
+  const usedByEngine = constName && resolveSrc.includes(`ROLE.${constName}`);
+  if (!usedByEngine) { fail(`default role "${id}" is never read by resolve.mjs - it does nothing`); inert++; }
+  if (!known.has(`${PREFIX}role.${id}.effect`)) {
+    fail(`default role "${id}" has no effect description (${PREFIX}role.${id}.effect)`);
+    inert++;
+  }
+}
+if (!inert) ok(`every default role affects the engine and is described (${roleIds.length} roles)`);
 
 let orphans = 0;
 for (const key of Object.keys(tables[reference])) {

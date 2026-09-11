@@ -5,7 +5,7 @@ import {
   getApp, openApp, refresh, registerRefresh, registerActorHooks, AdventureTracker
 } from "./app.mjs";
 import {
-  getState, setDay, adjustDay, completeDay, setPace, setMode, setSupplies, clearReport
+  getState, setDay, adjustDay, completeDay, setPace, setMode, clearReport
 } from "./state.mjs";
 import { getRoles, partyActors, modifierFor, worstExhaustion } from "./roles.mjs";
 import { resolveDay } from "./resolve.mjs";
@@ -75,8 +75,6 @@ Hooks.once("ready", () => {
      * different mode. GM only.
      */
     setMode,
-    /** Set the water and food stocks, e.g. `{ water: 40, food: 20 }`. GM only. */
-    setSupplies,
 
     /**
      * Roll the day: weather, encounters, events, supplies and saving throws.

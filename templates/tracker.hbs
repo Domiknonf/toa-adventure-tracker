@@ -121,11 +121,6 @@
         {{sky.label}}
       </p>
       {{/if}}
-      {{#if sky.dryDays}}
-      <p class="toa-hint toa-compact">
-        {{sky.dryDays}} {{localize "toa-adventure-tracker.app.dryDays"}}
-      </p>
-      {{/if}}
     </section>
     {{/if}}
 
@@ -217,6 +212,39 @@
       {{!-- An empty role is a guaranteed failure, and which ones to leave empty
             is the actual choice this window asks for - so it is said up front,
             not discovered afterwards in the report. --}}
+      {{!-- What each role rolls and what it actually does. Folded away by
+            default: it is a reference, not something to read every morning. --}}
+      {{#if roleGuide.length}}
+      <details class="toa-guide">
+        <summary>{{localize "toa-adventure-tracker.app.roleGuide"}}</summary>
+        <table class="toa-guide-table">
+          <thead>
+            <tr>
+              <th>{{localize "toa-adventure-tracker.app.role"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.check"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.effect"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.ifUnfilled"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each roleGuide}}
+            <tr>
+              <td class="toa-guide-role">
+                {{#if icon}}<i class="{{icon}}"></i>{{/if}} {{label}}
+              </td>
+              <td class="toa-guide-check">
+                {{check}}{{#if dc}} <span class="toa-dc">{{localize "toa-adventure-tracker.app.dc"}} {{dc}}</span>{{/if}}
+                {{#if paceMod}}<span class="toa-pacemod">{{paceMod}}</span>{{/if}}
+              </td>
+              <td>{{effect}}</td>
+              <td class="{{#if critical}}toa-mod-bad{{/if}}">{{unfilled}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </details>
+      {{/if}}
+
       {{#if unfilled.length}}
       <div class="toa-unfilled">
         <span class="toa-unfilled-label">{{localize "toa-adventure-tracker.app.unfilled"}}:</span>
@@ -269,48 +297,6 @@
     {{/if}}
 
     {{!-- ---------------------------------------------------------------
-          SUPPLIES
-          Stocks carry over between days, which is what makes a dry spell
-          mean anything.
-    ---------------------------------------------------------------- --}}
-    <section class="toa-panel">
-      <h2 class="toa-panel-title">
-        {{localize "toa-adventure-tracker.app.supplies"}}
-        {{#if gm}}
-        <button type="button" class="toa-link" data-action="editSupplies">
-          <i class="fa-solid fa-pen"></i> {{localize "toa-adventure-tracker.app.edit"}}
-        </button>
-        {{/if}}
-      </h2>
-
-      <dl class="toa-supply">
-        <div class="{{#if supplies.waterShort}}short{{/if}}">
-          <dt>{{localize "toa-adventure-tracker.app.water"}}</dt>
-          <dd>{{supplies.water}} <span class="toa-unit">{{supplies.waterUnit}}</span></dd>
-          <dd class="toa-sub">
-            {{localize "toa-adventure-tracker.app.perDay"}} {{supplies.waterNeed}}
-            {{#if supplies.waterDays}} &middot; {{supplies.waterDays}} {{localize "toa-adventure-tracker.app.daysLeft"}}{{/if}}
-          </dd>
-        </div>
-        <div class="{{#if supplies.foodShort}}short{{/if}}">
-          <dt>{{localize "toa-adventure-tracker.app.food"}}</dt>
-          <dd>{{supplies.food}} <span class="toa-unit">{{supplies.foodUnit}}</span></dd>
-          <dd class="toa-sub">
-            {{localize "toa-adventure-tracker.app.perDay"}} {{supplies.foodNeed}}
-            {{#if supplies.foodDays}} &middot; {{supplies.foodDays}} {{localize "toa-adventure-tracker.app.daysLeft"}}{{/if}}
-          </dd>
-        </div>
-        <div>
-          <dt>{{localize "toa-adventure-tracker.app.travelers"}}</dt>
-          <dd>{{supplies.travelers}}</dd>
-          {{#if supplies.dryDays}}
-          <dd class="toa-sub">{{supplies.dryDays}} {{localize "toa-adventure-tracker.app.dryDays"}}</dd>
-          {{/if}}
-        </div>
-      </dl>
-    </section>
-
-    {{!-- ---------------------------------------------------------------
           THE DAY'S REPORT
           Every number comes with its reason attached.
     ---------------------------------------------------------------- --}}
@@ -318,12 +304,7 @@
     <section class="toa-panel toa-report">
       <h2 class="toa-panel-title">
         {{localize "toa-adventure-tracker.app.report"}}
-        <span class="toa-weather">
-          <i class="{{report.modeIcon}}"></i> {{report.mode}}
-          &middot;
-          <i class="fa-solid {{#if report.rain}}fa-cloud-showers-heavy{{else}}fa-sun{{/if}}"></i>
-          {{report.weather}}
-        </span>
+        <span class="toa-weather"><i class="{{report.modeIcon}}"></i> {{report.mode}}</span>
       </h2>
 
       {{!-- The level the encounter suggestions are budgeted against. Editable
@@ -358,6 +339,14 @@
         {{/each}}
       </ul>
 
+      {{!-- Second: what the sky did. Between the distance and the events,
+            because that is the order it gets read aloud in. --}}
+      <p class="toa-weather-line">
+        <i class="fa-solid {{#if report.rain}}fa-cloud-showers-heavy{{else}}fa-sun{{/if}}"></i>
+        {{report.weather}}
+      </p>
+
+      {{!-- Third: everything that happened. --}}
       {{#if report.events.length}}
       <ul class="toa-events">
         {{#each report.events}}

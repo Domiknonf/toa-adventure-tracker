@@ -1,14 +1,14 @@
 import {
   MODULE_ID, ROLE, EXHAUSTION_LIMITS, EVENT_CATEGORY, BOON_CHANCE,
-  SUPPLY_DEFAULTS, ENCOUNTER_DEFAULTS, EVENT_CHANCE, MARGIN_FOR_EXTRA_HEX,
-  MARGIN_FOR_BONUS_HEX, TRAVEL_MODES, DEFAULT_MODE
+  ENCOUNTER_DEFAULTS, EVENT_CHANCE, MARGIN_FOR_EXTRA_HEX, MARGIN_FOR_BONUS_HEX,
+  MEDIC_RELIEF, TRAVEL_MODES, DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import { getState, isWriter, setReport } from "./state.mjs";
 import {
-  partyActors, travelerCount, roleStatus, roleFailed, roleCritical, worstExhaustion
+  partyActors, roleStatus, roleFailed, roleCritical, worstExhaustion
 } from "./roles.mjs";
-import { rollWeather, weatherWater, thirstMultiplier } from "./weather.mjs";
+import { rollWeather } from "./weather.mjs";
 import { pick, targetsOf, hasEffect } from "./events.mjs";
 
 /**
@@ -96,10 +96,26 @@ export async function resolveDay() {
 
   maybeEvent(EVENT_CATEGORY.CAMP, roles[ROLE.QUARTERMASTER], draw);
 
-  /* --- Supplies ------------------------------------------------ */
+  /* --- The medic ------------------------------------------------ */
 
-  const supplies = resolveSupplies(state, roles, weather, mode);
-  for (const category of supplies.categories) draw(category);
+  /**
+   * The one role that takes exhaustion back OFF.
+   *
+   * It promised exactly this in its description and did nothing whatsoever -
+   * the engine never so much as looked at it. Found while writing the role
+   * overview, which is a fair argument for having written one.
+   *
+   * Relief goes to the WORST-off traveller: a level off the person closest to
+   * dropping is worth more than a level off somebody already at zero, and it is
+   * what a medic would actually do.
+   */
+  const relief = [];
+  if (roles[ROLE.MEDIC].status === "success") {
+    const worst = actors
+      .filter(a => (Number(a.system?.attributes?.exhaustion) || 0) > 0)
+      .sort((a, b) => (b.system.attributes.exhaustion - a.system.attributes.exhaustion))[0];
+    if (worst) relief.push({ actorId: worst.id, actorName: worst.name, heals: MEDIC_RELIEF });
+  }
 
   /* --- The jungle's good mood ---------------------------------- */
 
@@ -117,6 +133,14 @@ export async function resolveDay() {
 
   const consequences = await resolveConsequences(events, actors);
 
+  // The medic's relief rides on the same list the Apply button reads, so it is
+  // written to the sheet through exactly one path.
+  for (const entry of relief) {
+    const existing = consequences.find(c => c.actorId === entry.actorId);
+    if (existing) existing.heals += entry.heals;
+    else consequences.push({ ...entry, damage: 0, exhaustion: 0, from: [{ event: "medic", saved: null }] });
+  }
+
   const report = {
     day: state.day,
     pace: state.pace,
@@ -126,9 +150,6 @@ export async function resolveDay() {
     reasons: movement.reasons,
     encounter,
     events: events.map(e => ({ ...e })),
-    supplies: supplies.result,
-    dryDays: supplies.dryDays,
-    hungryDays: supplies.hungryDays,
     consequences,
     roles: Object.fromEntries(Object.entries(roles).map(([id, s]) => [id, {
       status: s.status, actorId: s.actorId ?? null, critical: roleCritical(s)
@@ -268,84 +289,6 @@ function resolveMovement({ state, roles, pace, events, rescued, actors, mode }) 
   }
 
   return { hexes: Math.clamp(hexes, 0, ceiling), reasons, target, ceiling, mode };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Supplies                                                           */
-/* ------------------------------------------------------------------ */
-
-/**
- * Water and food, carried over from yesterday.
- *
- * This is where "a few days without rain" becomes a mechanic: the barrels are
- * state, the weather fills them, the party empties them, and when they are empty
- * the jungle starts charging exhaustion.
- *
- * Returns the arithmetic AND the event categories it earned, so the caller can
- * pull the matching prose. It rolls nothing itself - the saving throws that
- * decide who actually suffers happen once, in resolveConsequences.
- */
-function resolveSupplies(state, roles, weather, mode = DEFAULT_MODE) {
-  const travelers = travelerCount();
-  const categories = [];
-
-  /* --- Water --------------------------------------------------- */
-
-  const waterPerHead = Number(setting("waterPerHead")) || 0;
-  const waterNeed = Math.ceil(travelers * waterPerHead * thirstMultiplier(weather));
-
-  const waterRole = roles[ROLE.WATER];
-  const table = TRAVEL_MODES[mode] ?? TRAVEL_MODES[DEFAULT_MODE];
-  const fromWeather = Math.floor(weatherWater(weather) * (table.water ?? 1));
-  const foraged = waterRole.status === "success" ? (waterRole.record?.yield?.total ?? 0) : 0;
-
-  const waterBefore = Number(state.supplies?.water) || 0;
-  let waterAfter = waterBefore + fromWeather + foraged;
-
-  const waterShort = Math.max(0, waterNeed - waterAfter);
-  waterAfter = Math.max(0, waterAfter - waterNeed);
-
-  // Somebody went looking and came back with something questionable. Distinct
-  // from having no water at all: this is water they DID drink.
-  // Somebody went looking and came back with something questionable. At sea
-  // that is the crew giving in and drinking salt water, which the sea pool has
-  // its own event for - same trigger, different consequence.
-  const fouled = waterRole.status === "failure" && fromWeather === 0;
-  if (fouled) categories.push(EVENT_CATEGORY.FOUL);
-  if (waterShort > 0) categories.push(EVENT_CATEGORY.THIRST);
-
-  /* --- Food ---------------------------------------------------- */
-
-  const foodPerHead = Number(setting("foodPerHead")) || 0;
-  const foodNeed = Math.ceil(travelers * foodPerHead);
-
-  const forager = roles[ROLE.FORAGER];
-  const gathered = forager.status === "success" ? (forager.record?.yield?.total ?? 0) : 0;
-
-  const foodBefore = Number(state.supplies?.food) || 0;
-  let foodAfter = foodBefore + gathered;
-  const foodShort = Math.max(0, foodNeed - foodAfter);
-  foodAfter = Math.max(0, foodAfter - foodNeed);
-
-  // Hunger is slower than thirst: a grace of a few short days before it costs
-  // anything, which is roughly how 5e treats going without food.
-  const hungryDays = foodShort > 0 ? (Number(state.hungryDays) || 0) + 1 : 0;
-  const grace = Number(setting("hungerGrace"));
-  if (foodShort > 0 && hungryDays > (Number.isFinite(grace) ? grace : SUPPLY_DEFAULTS.hungerGrace)) {
-    categories.push(EVENT_CATEGORY.HUNGER);
-  }
-
-  return {
-    categories,
-    dryDays: weather.rain ? 0 : (Number(state.dryDays) || 0) + 1,
-    hungryDays,
-    result: {
-      travelers,
-      waterBefore, waterFromWeather: fromWeather, waterForaged: foraged,
-      waterNeed, waterShort, waterAfter, fouled,
-      foodBefore, foodGathered: gathered, foodNeed, foodShort, foodAfter
-    }
-  };
 }
 
 /* ------------------------------------------------------------------ */

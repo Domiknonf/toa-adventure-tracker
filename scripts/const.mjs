@@ -164,9 +164,7 @@ export const TRAVEL_MODES = {
   foot: {
     hexes: { slow: 1, normal: 1, fast: 2 },
     terrains: ["land"],
-    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
-            "quartermaster", "medic", "cartographer"],
-    water: 1,
+    roles: ["navigator", "vanguard", "rearguard", "quartermaster", "medic", "cartographer"],
     icon: "fa-solid fa-person-hiking",
     order: 10
   },
@@ -175,9 +173,7 @@ export const TRAVEL_MODES = {
   mount: {
     hexes: { slow: 1, normal: 2, fast: 3 },
     terrains: ["land", "mount"],
-    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
-            "quartermaster", "medic", "cartographer"],
-    water: 1,
+    roles: ["navigator", "vanguard", "rearguard", "quartermaster", "medic", "cartographer"],
     icon: "fa-solid fa-horse",
     order: 20
   },
@@ -186,9 +182,7 @@ export const TRAVEL_MODES = {
   canoe: {
     hexes: { slow: 1, normal: 2, fast: 3 },
     terrains: ["land", "river"],
-    roles: ["navigator", "vanguard", "rearguard", "waterbearer", "forager",
-            "quartermaster", "medic", "cartographer"],
-    water: 1,
+    roles: ["navigator", "vanguard", "rearguard", "quartermaster", "medic", "cartographer"],
     icon: "fa-solid fa-sailboat",
     order: 30
   },
@@ -197,9 +191,7 @@ export const TRAVEL_MODES = {
   ship: {
     hexes: { slow: 2, normal: 3, fast: 5 },
     terrains: ["sea"],
-    roles: ["navigator", "vanguard", "waterbearer", "forager",
-            "quartermaster", "medic", "cartographer"],
-    water: 1,
+    roles: ["navigator", "vanguard", "quartermaster", "medic", "cartographer"],
     icon: "fa-solid fa-ship",
     order: 40
   }
@@ -307,24 +299,6 @@ export const DEFAULT_ROLES = [
     icon: "fa-solid fa-shoe-prints"
   },
   {
-    // Water. In Chult the question is never "is there water" but "is it safe".
-    id: "waterbearer",
-    skill: "sur",
-    dc: 12,
-    unfilled: "fail",
-    yield: { formula: "1d6 + @mod", unit: "gallons" },
-    icon: "fa-solid fa-droplet"
-  },
-  {
-    // Food. Less urgent than water and slower to hurt.
-    id: "forager",
-    skill: "sur",
-    dc: 12,
-    unfilled: "fail",
-    yield: { formula: "1d6 + @mod", unit: "pounds" },
-    icon: "fa-solid fa-drumstick-bite"
-  },
-  {
     // Makes camp. A bad camp is a night that does not count as a rest.
     id: "quartermaster",
     skill: "sur",
@@ -356,8 +330,6 @@ export const ROLE = {
   NAVIGATOR: "navigator",
   VANGUARD: "vanguard",
   REARGUARD: "rearguard",
-  WATER: "waterbearer",
-  FORAGER: "forager",
   QUARTERMASTER: "quartermaster",
   MEDIC: "medic",
   CARTOGRAPHER: "cartographer"
@@ -379,48 +351,21 @@ export const ROLE = {
  * costs the most time - which is exactly the trade the jungle makes.
  */
 export const WEATHER = {
-  storm: { rain: true,  water: 6, blocks: true,  order: 10 },
-  rain:  { rain: true,  water: 3, blocks: false, order: 20 },
-  humid: { rain: false, water: 0, blocks: false, order: 30 },
-  clear: { rain: false, water: 0, blocks: false, order: 40, thirsty: true }
+  storm: { rain: true,  blocks: true,  order: 10 },
+  rain:  { rain: true,  blocks: false, order: 20 },
+  humid: { rain: false, blocks: false, order: 30 },
+  clear: { rain: false, blocks: false, order: 40 }
 };
 
 /** Default percentage chances. The remainder is split between humid and clear. */
 export const WEATHER_DEFAULTS = { stormChance: 10, rainChance: 55 };
 
-/**
- * Extra water each traveller needs on a clear, baking day.
- *
- * A multiplier rather than a flat number so it scales with the party, and the
- * reason the `clear` entry above is not simply "nothing happens": a cloudless
- * day in Chult is a cost, not a rest.
- */
-export const CLEAR_DAY_THIRST = 1.5;
 
 /* ------------------------------------------------------------------ */
 /*  Supplies                                                           */
 /* ------------------------------------------------------------------ */
 
-/**
- * Supplies CARRY OVER between days. That is the whole point: "a few days with
- * no rain and no water left" is only a sentence that can mean anything if
- * yesterday's barrels are still on the books this morning.
- */
-export const SUPPLY_DEFAULTS = {
-  waterPerHead: 2,        // gallons per traveller per day
-  foodPerHead: 1,         // pounds per traveller per day
-  startWater: 0,
-  startFood: 0,
-  thirstSaveDC: 15,       // CON save to avoid exhaustion from thirst
-  hungerSaveDC: 10,       // CON save to avoid exhaustion from hunger
-  foulWaterSaveDC: 12,    // CON save after drinking what the jungle offered
-  // Days the party can go short on food before it starts costing exhaustion.
-  // Water has no such grace: thirst in Chult is same-day.
-  hungerGrace: 2
-};
 
-/** How much water a rain catcher adds on a rainy day, on top of the weather. */
-export const RAIN_CATCHER_BONUS = 4;
 
 /* ------------------------------------------------------------------ */
 /*  Encounters                                                         */
@@ -538,20 +483,8 @@ export const EVENTS = [
   { id: "mapRedrawn",   category: "detour", target: "party" , terrain: "any"},
   { id: "landmark",     category: "detour", target: "party" , terrain: "any"},
 
-  /* --- Foul water ----------------------------------------------- */
-  { id: "stagnant",     category: "foul", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "leeches",      category: "foul", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "random" },
-  { id: "carcass",      category: "foul", exhaustion: 1, save: { ability: "con", dc: 14 }, target: "party" },
-  { id: "brackish",     category: "foul", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" },
 
-  /* --- Thirst ---------------------------------------------------- */
-  { id: "throatsDry",   category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
-  { id: "rationedSips", category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
-  { id: "heatHaze",     category: "thirst", exhaustion: 1, save: { ability: "con", dc: 15 }, target: "party" , terrain: "any"},
 
-  /* --- Hunger ---------------------------------------------------- */
-  { id: "bellyEmpty",   category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" , terrain: "any"},
-  { id: "rotten",       category: "hunger", exhaustion: 1, save: { ability: "con", dc: 10 }, target: "party" , terrain: "any"},
 
   /* --- A camp that was not a rest -------------------------------- */
   { id: "wetCamp",      category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
@@ -596,7 +529,6 @@ export const EVENTS = [
   { id: "seaStorm",     category: "storm", terrain: "sea", damage: "2d6", save: { ability: "dex", dc: 13 }, blocks: true, target: "party" },
   { id: "becalmed",     category: "storm", terrain: "sea", blocks: true, target: "party" },
   { id: "nightWatch",   category: "camp", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "saltwater",    category: "foul", terrain: "sea", exhaustion: 1, save: { ability: "con", dc: 14 }, target: "party" },
   { id: "followingWind", category: "boon", terrain: "sea", target: "party" },
   { id: "dolphins",     category: "boon", terrain: "sea", heals: 1, target: "party" },
 
@@ -609,8 +541,7 @@ export const EVENTS = [
 /** Event categories, for grouping and for the "one per category" rule. */
 export const EVENT_CATEGORY = {
   AMBUSH: "ambush", ENCOUNTER: "encounter", PURSUIT: "pursuit", LOST: "lost",
-  DETOUR: "detour", FOUL: "foul", THIRST: "thirst", HUNGER: "hunger",
-  CAMP: "camp", STORM: "storm", BOON: "boon"
+  DETOUR: "detour", CAMP: "camp", STORM: "storm", BOON: "boon"
 };
 
 /**
@@ -618,6 +549,19 @@ export const EVENT_CATEGORY = {
  * good days are worth something because they are rare.
  */
 export const BOON_CHANCE = 25;
+
+/**
+ * Levels of exhaustion a successful medic takes back off the party.
+ *
+ * The medic's whole description promised this and nothing implemented it - the
+ * role was rolled, reported and completely inert. It came to light writing the
+ * role overview, which is the argument for having one.
+ *
+ * Applied to the WORST-off traveller: one level off the person closest to
+ * dropping is worth more than one level off somebody at zero, and it is what a
+ * medic would actually do.
+ */
+export const MEDIC_RELIEF = 1;
 
 /** How many completed days the log keeps. See the note on LOG_LIMIT below. */
 export const LOG_LIMIT = 30;

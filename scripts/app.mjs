@@ -5,11 +5,11 @@ import {
 import { setting, paceTable } from "./settings.mjs";
 import {
   getState, setDay, adjustDay, completeDay, setPace, setMode, clearRolls, clearLog,
-  setSupplies, clearReport, markApplied
+  clearReport, markApplied
 } from "./state.mjs";
 import {
   getRoles, getRole, roleLabel, roleHint, roleCheck, modifierFor, partyActors,
-  travelerCount, canControl, rollRole, unitLabel, paceModifierFor, worstExhaustion
+  canControl, rollRole, unitLabel, paceModifierFor, worstExhaustion
 } from "./roles.mjs";
 import { moonFor, disc } from "./moon.mjs";
 import { requestAssign, requestRecord } from "./socket.mjs";
@@ -57,7 +57,6 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       runDay: AdventureTracker.#onRunDay,
       applyNow: AdventureTracker.#onApplyNow,
       roll: AdventureTracker.#onRoll,
-      editSupplies: AdventureTracker.#onEditSupplies,
       exportLog: AdventureTracker.#onExportLog,
       clearLog: AdventureTracker.#onClearLog
     }
@@ -106,8 +105,8 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       // weather once it is known. Both are observable in the world, so neither
       // is a spoiler - unlike what came out of the trees.
       travel: this.#prepareTravel(state),
+      roleGuide: this.#prepareRoleGuide(state),
       sky: this.#prepareSky(state, gm, shared),
-      supplies: this.#prepareSupplies(state),
       /**
        * THE REPORT IS GM-ONLY UNLESS SHARED, AND IT IS WITHHELD HERE RATHER THAN
        * HIDDEN IN THE TEMPLATE.
@@ -164,13 +163,41 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
    */
   #prepareSky(state, gm, shared) {
     const report = state.report;
-    if (!report?.weather) return { known: false, dryDays: Number(state.dryDays) || 0 };
-    return {
-      known: true,
-      label: weatherLabel(report.weather.key),
-      rain: !!report.weather.rain,
-      dryDays: Number(state.dryDays) || 0
-    };
+    if (!report?.weather) return { known: false };
+    return { known: true, label: weatherLabel(report.weather.key), rain: !!report.weather.rain };
+  }
+
+  /**
+   * WHAT EACH ROLE ROLLS AND WHAT IT ACTUALLY DOES.
+   *
+   * A reference panel, not decoration. Which roles to leave empty is the real
+   * decision this window asks for, and it cannot be made from a dropdown of
+   * names - "Nachhut" says nothing about whether skipping it costs hit points.
+   *
+   * Writing this is also what exposed that the medic had no mechanical effect
+   * at all: the column was simply empty. If a role cannot be described here, it
+   * does not deserve to be in the list.
+   */
+  #prepareRoleGuide(state) {
+    const table = paceTable()[state.pace] ?? {};
+    return getRoles(state.mode).map(role => {
+      const check = roleCheck(role);
+      const paceMod = role.id === ROLE.NAVIGATOR ? (table.navMod ?? 0) : (table.mods?.[role.id] ?? 0);
+      return {
+        id: role.id,
+        icon: role.icon ?? "",
+        label: roleLabel(role),
+        check: check?.label ?? "",
+        dc: role.dc ?? null,
+        // What it does mechanically, in one line, from lang/*.json.
+        effect: game.i18n.localize(`${MODULE_ID}.role.${role.id}.effect`),
+        // What it costs to leave empty - the other half of the decision.
+        unfilled: game.i18n.localize(`${MODULE_ID}.unfilled.${role.unfilled ?? "fail"}`),
+        critical: role.unfilled === "worse",
+        // The current pace's effect on this particular roll, if any.
+        paceMod: signedOrEmpty(paceMod)
+      };
+    });
   }
 
   /** Moon of the current day, plus the drawing geometry. */
@@ -312,28 +339,6 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       }));
   }
 
-  /** Current stocks against what today will cost. */
-  #prepareSupplies(state) {
-    const travelers = travelerCount();
-    const waterNeed = Math.ceil(travelers * (Number(setting("waterPerHead")) || 0));
-    const foodNeed = Math.ceil(travelers * (Number(setting("foodPerHead")) || 0));
-    const water = Number(state.supplies?.water) || 0;
-    const food = Number(state.supplies?.food) || 0;
-    return {
-      travelers, water, food, waterNeed, foodNeed,
-      // Days of margin at today's burn rate - the number that actually answers
-      // "are we in trouble", which a bare stock level does not.
-      waterDays: waterNeed > 0 ? Math.floor(water / waterNeed) : null,
-      foodDays: foodNeed > 0 ? Math.floor(food / foodNeed) : null,
-      waterShort: water < waterNeed,
-      foodShort: food < foodNeed,
-      dryDays: Number(state.dryDays) || 0,
-      hungryDays: Number(state.hungryDays) || 0,
-      waterUnit: unitLabel("gallons"),
-      foodUnit: unitLabel("pounds")
-    };
-  }
-
   /**
    * The resolved day, ready to read aloud.
    *
@@ -374,7 +379,6 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         // rather than narrate it. Null for hazards and friendly meetings.
         foe: suggestionFor(event)
       })),
-      supplies: report.supplies,
       consequences: (report.consequences ?? []).map(c => ({
         ...c,
         /**
@@ -529,7 +533,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         if (state.rolls?.[actor.id]) continue;
         const role = getRole(state.assignments?.[actor.id]);
         if (!role) continue;
-        const record = await rollRole(actor, role, {});
+        const record = await rollRole(actor, role, { batch: true });
         if (record) await requestRecord(actor.id, record);
       }
     } finally {
@@ -583,7 +587,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       if (state.rolls?.[actor.id]) continue;
       const role = getRole(state.assignments?.[actor.id]);
       if (!role) continue;
-      const record = await rollRole(actor, role, {});
+      const record = await rollRole(actor, role, { batch: true });
       if (record) await requestRecord(actor.id, record);
     }
   }
@@ -683,33 +687,6 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
   /* ---------------------------------------------------------------- */
   /*  Supplies                                                         */
   /* ---------------------------------------------------------------- */
-
-  /** Set the stocks by hand - the "we bought barrels in Port Nyanzaru" path. */
-  static async #onEditSupplies() {
-    const state = getState();
-    const content = `
-      <div class="toa-dialog">
-        <label>${game.i18n.localize(`${MODULE_ID}.app.water`)}
-          <input type="number" name="water" value="${Number(state.supplies?.water) || 0}" min="0" step="1"></label>
-        <label>${game.i18n.localize(`${MODULE_ID}.app.food`)}
-          <input type="number" name="food" value="${Number(state.supplies?.food) || 0}" min="0" step="1"></label>
-      </div>`;
-
-    const result = await DialogV2.prompt({
-      window: { title: game.i18n.localize(`${MODULE_ID}.app.editSupplies`) },
-      content,
-      ok: {
-        label: game.i18n.localize(`${MODULE_ID}.app.save`),
-        callback: (event, button) => ({
-          water: Number(button.form.elements.water.value),
-          food: Number(button.form.elements.food.value)
-        })
-      },
-      rejectClose: false
-    });
-
-    if (result) await setSupplies(result);
-  }
 
   /* ---------------------------------------------------------------- */
   /*  Logbook                                                          */

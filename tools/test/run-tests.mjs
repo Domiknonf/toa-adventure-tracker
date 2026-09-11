@@ -52,7 +52,7 @@ async function doRoll(actor) {
 /* ------------------------------------------------------------------ */
 section("roles");
 const list = roles.getRoles();
-check(list.length === 8, `8 default roles (got ${list.length})`);
+check(list.length === 6, `6 default roles (got ${list.length})`);
 check(list[0].id === "navigator", "navigator is first");
 check(roles.roleLabel(list[0]) === "Navigator", "label resolves from lang");
 check(roles.roleHint(roles.getRole("vanguard")).length > 10, "vanguard has a description");
@@ -61,7 +61,6 @@ check(roles.resolveSkill("Überleben") === "sur", "skill resolves by localized l
 check(roles.modifierFor(gandalf, roles.getRole("navigator")) === 9, "modifier read from the sheet");
 
 check(roles.partyActors().length === 2, "player-owned characters only");
-check(roles.travelerCount() === 2, "traveler count derives from party");
 check(roles.worstExhaustion([gandalf, bilbo]) === 0, "nobody exhausted yet");
 
 /* ------------------------------------------------------------------ */
@@ -78,13 +77,11 @@ check(["humid", "clear"].includes((await weather.rollWeather()).key), "a 99 is d
 
 queue.d100.push(40);
 const wet = await weather.rollWeather();
-check(weather.weatherWater(wet) === 3, "rain alone yields 3 gallons");
-settingValues.rainCatcher = true;
-check(weather.weatherWater(wet) === 3 + settingValues.rainCatcherBonus, "a catcher adds on a wet day");
+check(wet.rain === true, "rain is flagged as wet");
+queue.d100.push(5);
+check((await weather.rollWeather()).blocks === true, "a storm costs the day");
 queue.d100.push(99);
-const dry = await weather.rollWeather();
-check(weather.weatherWater(dry) === 0, "a catcher is worthless on a dry day");
-settingValues.rainCatcher = false;
+check((await weather.rollWeather()).rain === false, "a dry day is not");
 
 /* ------------------------------------------------------------------ */
 section("events compilation");
@@ -228,6 +225,53 @@ for (const [pace, expected] of [["slow", 1], ["normal", 1], ["fast", 2]]) {
 }
 
 /* ------------------------------------------------------------------ */
+section("the medic actually does something");
+
+/**
+ * The medic was inert for several versions: its own description promised it was
+ * the only role that takes exhaustion back off, and the resolver had never
+ * heard of it. This asserts the promise, not just the wiring.
+ */
+gandalf.system.attributes.exhaustion = 2;
+bilbo.system.attributes.exhaustion = 1;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+let medReport = await resolve.resolveDay();
+const relief = medReport.consequences.find(c => c.heals > 0);
+check(!!relief, "a successful medic produces relief");
+check(relief.actorId === gandalf.id, "given to the WORST-off traveller, not just anyone");
+
+// And it reaches the sheet through the same Apply path as the damage.
+// The net change is what the report says, not a flat -1: the same day can also
+// hand out exhaustion (an unfilled quartermaster can draw a camp event), and
+// asserting -1 made this fail about four runs in ten.
+const exhBefore = gandalf.system.attributes.exhaustion;
+const medEntry = medReport.consequences.find(c => c.actorId === gandalf.id);
+const exhExpected = Math.clamp(exhBefore + (medEntry.exhaustion ?? 0) - (medEntry.heals ?? 0), 0, 6);
+await conseq.applyConsequences(medReport);
+check(gandalf.system.attributes.exhaustion === exhExpected,
+  `the net change reached the sheet: ${exhBefore} -> ${exhExpected} (got ${gandalf.system.attributes.exhaustion})`);
+check(medEntry.heals >= 1, "and the relief itself is in the report");
+
+// A failed medic does nothing.
+gandalf.system.attributes.exhaustion = 2;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 100);
+medReport = await resolve.resolveDay();
+check(!medReport.consequences.some(c => c.heals > 0), "a failed medic heals nothing");
+
+// Nobody exhausted: nothing to do, and no phantom entry either.
+for (const a of [gandalf, bilbo]) a.system.attributes.exhaustion = 0;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+medReport = await resolve.resolveDay();
+check(!medReport.consequences.some(c => c.heals > 0), "a healthy party needs no medic");
+
+/* ------------------------------------------------------------------ */
 section("the cartographer turns a lost day into a wasted one");
 await freshDay({ pace: "normal", nav: 1, assignments: { [gandalf.id]: "cartographer", [bilbo.id]: "navigator" } });
 dice.d20 = 20; await doRoll(gandalf);     // cartographer succeeds
@@ -289,71 +333,6 @@ dice.d20 = 20; await doRoll(bilbo);
 queue.d100.push(99, 99);
 report = await resolve.resolveDay();
 check(report.hexes === 0, "nobody navigating means nobody moves");
-
-/* ------------------------------------------------------------------ */
-section("supplies carry over between days");
-await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
-await state.setSupplies({ water: 20, food: 20 });
-check(state.getState().supplies.water === 20, "stocks can be set");
-dice.d20 = 20; await doRoll(gandalf);
-queue.d100.push(99, 99);   // dry day, no encounter
-report = await resolve.resolveDay();
-// 2 travellers x 2 gallons = 4, on a dry day possibly x1.5 for a clear one.
-check(report.supplies.waterBefore === 20, "the report starts from yesterday's stock");
-check(report.supplies.waterAfter < 20, "the day drank from it");
-check(report.supplies.waterAfter > 0, "and did not empty it");
-
-await state.completeDay();
-check(state.getState().supplies.water === report.supplies.waterAfter,
-  "completing the day carries the new stock forward");
-check(state.getState().day === 2, "and advances the day");
-
-/* ------------------------------------------------------------------ */
-section("a dry spell empties the barrels and costs exhaustion");
-await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
-await state.setSupplies({ water: 0, food: 50 });
-dice.d20 = 20; await doRoll(gandalf);
-saveResult.value = false;
-queue.d100.push(99, 99);   // dry, no encounter
-report = await resolve.resolveDay();
-check(report.supplies.waterShort > 0, "with no water and no rain the party runs short");
-check(report.events.some(e => e.category === "thirst"), "a thirst event fires");
-check(report.consequences.some(c => c.exhaustion > 0), "and it costs exhaustion");
-check(report.dryDays === 1, "the dry streak starts counting");
-
-// The same day, but they make their saves.
-saveResult.value = true;
-queue.d100.push(99, 99);
-report = await resolve.resolveDay();
-const thirstEvent = report.events.find(e => e.category === "thirst");
-check(!!thirstEvent?.save, "the thirst event offers a save");
-const savedAll = report.consequences.every(c =>
-  c.from.filter(f => f.saved !== null).every(f => f.saved === true));
-check(savedAll, "every offered save was made");
-// Anything that still cost exhaustion must be an event with no save at all.
-const unsaveable = report.consequences.filter(c => c.exhaustion > 0);
-check(unsaveable.every(c => c.from.some(f => f.saved === null)),
-  "only events that offer no save still bite through a good save");
-saveResult.value = false;
-
-// Rain resets the streak.
-await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
-dice.d20 = 20; await doRoll(gandalf);
-queue.d100.push(40, 99);   // rain
-report = await resolve.resolveDay();
-check(report.dryDays === 0, "rain resets the dry streak");
-check(report.supplies.waterFromWeather > 0, "and fills the barrels");
-
-/* ------------------------------------------------------------------ */
-section("hunger has a grace period, thirst does not");
-await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
-await state.setSupplies({ water: 99, food: 0 });
-dice.d20 = 20; await doRoll(gandalf);
-queue.d100.push(99, 99);
-report = await resolve.resolveDay();
-check(report.supplies.foodShort > 0, "the party is short on food");
-check(!report.events.some(e => e.category === "hunger"), "day 1 hungry costs nothing (grace)");
-check(report.hungryDays === 1, "but the streak is counted");
 
 /* ------------------------------------------------------------------ */
 section("exhaustion caps the day's travel");
@@ -448,7 +427,6 @@ check(state.getState().report === null, "moving the day clears the report");
 /* ------------------------------------------------------------------ */
 section("completing the day logs and advances");
 await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
-await state.setSupplies({ water: 50, food: 50 });
 dice.d20 = 20; await doRoll(gandalf);
 queue.d100.push(99, 99);
 report = await resolve.resolveDay();
@@ -480,7 +458,8 @@ check(migrated.day === 14, "the day counter survives");
 check(migrated.log.length === 1, "the logbook survives");
 check(migrated.log[0].miles === 9, "old entries keep their miles rather than being faked into hexes");
 check(Object.keys(migrated.assignments).length === 0, "task assignments are dropped");
-check(migrated.report === null && migrated.supplies.water === 0, "new fields are present and empty");
+check(migrated.report === null, "the report field is present and empty");
+check(migrated.rested && Object.keys(migrated.rested).length === 0, "and the rest record too");
 
 /* ------------------------------------------------------------------ */
 section("permissions");
@@ -528,7 +507,7 @@ check(roles.roleLabel(roles.getRole("hunter")) === "Jäger", "an inline label is
 notes.length = 0;
 const realWarn = console.warn; console.warn = () => {};
 settingValues.customRoles = "{ not json";
-check(roles.getRoles().length === 8, "broken JSON falls back to the defaults");
+check(roles.getRoles().length === 6, "broken JSON falls back to the defaults");
 check(notes.filter(n => n[0] === "warn").length === 1, "and warns exactly once");
 roles.getRoles(); roles.getRoles();
 check(notes.filter(n => n[0] === "warn").length === 1, "...not once per render");
@@ -549,7 +528,6 @@ settingValues.state = {};
 await state.setDay(5);
 await state.assign(gandalf.id, "navigator");
 await state.assign(bilbo.id, "vanguard");
-await state.setSupplies({ water: 12, food: 8 });
 dice.d20 = 18; await doRoll(gandalf);
 dice.d20 = 1;  await doRoll(bilbo);
 queue.d100.push(99, 1);
@@ -702,7 +680,7 @@ check(!events.byCategory("camp", "foot").some(e => e.id === "mountLame"),
 
 // Thirst happens wherever you are.
 for (const mode of MODE_ORDER) {
-  check(events.byCategory("thirst", mode).length > 0, `${mode} can still run out of water`);
+  check(events.byCategory("camp", mode).length > 0, `${mode} has a way for the night to go wrong`);
   check(events.byCategory("lost", mode).length > 0, `${mode} has a way to get lost`);
   check(events.byCategory("boon", mode).length > 0, `${mode} has at least one good day`);
 }
@@ -893,7 +871,6 @@ let pc = await new app.AdventureTracker()._prepareContext({});
 check(pc.day === 9, "a player sees the travel day");
 check(!!pc.moon?.label, "and the moon phase");
 check(pc.travel.mode.length > 0 && pc.travel.pace.length > 0, "and how the party is travelling");
-check(!!pc.supplies, "and what is in the barrels");
 check(pc.sky.known === true && pc.sky.label.length > 0, "and today's weather, which they are standing in");
 
 // What a player does NOT get.
@@ -924,13 +901,13 @@ check(!/undefined|\[object Object\]/.test(pcHtml), "and has no undefined in it")
 check(roles.canControl(gandalf) === false, "a player cannot act for their own character either");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: false, gmOnline: true });
 emitted.length = 0;
-socket.requestAssign(gandalf.id, "forager");
+socket.requestAssign(gandalf.id, "medic");
 check(emitted.length === 1, "a determined player can still emit a socket message");
 // ...and the GM-side handler is what actually refuses it.
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 const beforeAssign = JSON.stringify(state.getState().assignments);
 const realWarn2 = console.warn; console.warn = () => {};
-await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "forager" }, userId: "user1" });
+await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "medic" }, userId: "user1" });
 console.warn = realWarn2;
 check(JSON.stringify(state.getState().assignments) === beforeAssign,
   "the GM side refuses it, because hiding a control is not a permission");
@@ -952,7 +929,7 @@ check(!rollingHtml.includes("toa-hexbox"), "and so does the day's result");
 
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 const beforeAssign2 = JSON.stringify(state.getState().assignments);
-await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "forager" }, userId: "user1" });
+await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "medic" }, userId: "user1" });
 check(JSON.stringify(state.getState().assignments) !== beforeAssign2,
   "and the GM side now accepts the same message");
 settingValues.playerRolls = false;
@@ -1141,17 +1118,17 @@ check(quietRecord.success === true, "and a verdict");
 // Yields follow the same switch.
 chatMessages.length = 0;
 await state.setDay(3);
-await state.assign(gandalf.id, "waterbearer");
+await state.assign(gandalf.id, "quartermaster");
 dice.d20 = 20; const quietYield = await doRoll(gandalf);
-check(quietYield.yield?.total > 0, "a silent yield still produces its amount");
+check(!!quietYield, "a silent role roll still produces a record");
 check(chatMessages.length === 0, "and posts nothing");
 
 settingValues.rollsToChat = true;
 chatMessages.length = 0;
 await state.setDay(4);
-await state.assign(gandalf.id, "waterbearer");
+await state.assign(gandalf.id, "quartermaster");
 await doRoll(gandalf);
-check(chatMessages.length >= 1, "with the switch on the yield is announced again");
+check(chatMessages.length >= 1, "with the switch on the roll is announced again");
 
 /* ------------------------------------------------------------------ */
 section("one click runs the day, another applies it");
@@ -1269,6 +1246,58 @@ for (const a of [gandalf, bilbo, notMine]) {
   a.system.attributes.hp.value = a.system.attributes.hp.max;
 }
 settingValues.rollsToChat = true;
+
+/* ------------------------------------------------------------------ */
+section("role overview, and batches that do not prompt");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+settingValues.state = {};
+await state.setDay(1);
+let gctx = await new app.AdventureTracker()._prepareContext({});
+
+check(gctx.roleGuide.length === 6, `the overview lists every role (${gctx.roleGuide.length})`);
+for (const row of gctx.roleGuide) {
+  check(!!row.label && !row.label.includes("adventure-tracker"), `${row.id}: has a name`);
+  check(!!row.check, `${row.id}: names the skill it rolls`);
+  check(Number.isFinite(row.dc), `${row.id}: names its DC`);
+  // The column that exposed the inert medic. An empty one means the role does
+  // nothing, or nobody could say what.
+  check(row.effect.length > 25 && !row.effect.includes("adventure-tracker"),
+    `${row.id}: says what it mechanically does`);
+  check(!!row.unfilled && !row.unfilled.includes("adventure-tracker"),
+    `${row.id}: says what leaving it empty costs`);
+}
+const guideHtml = compileTemplate()(gctx);
+check(guideHtml.includes("toa-guide-table"), "the overview renders");
+check(guideHtml.includes(gctx.roleGuide[0].effect), "with the effect text in it");
+
+// Players do not get it - it is part of the working surface.
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+const viewerHtml = compileTemplate()(await new app.AdventureTracker()._prepareContext({}));
+check(!viewerHtml.includes("toa-guide-table"), "a viewer does not get the overview");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+
+/* --- a batch must never ask about advantage ----------------------- */
+settingValues.skipRollDialog = false;   // a single roll SHOULD still ask
+await state.assign(gandalf.id, "navigator");
+gandalf.calls.length = 0;
+await roles.rollRole(gandalf, roles.getRole("navigator"), {});
+check(gandalf.calls[0].dialog.configure === true, "a single roll still offers the dialog");
+
+gandalf.calls.length = 0;
+await roles.rollRole(gandalf, roles.getRole("navigator"), { batch: true });
+check(gandalf.calls[0].dialog.configure === false, "a batch roll never does");
+
+// And the one-click path uses the batch flag throughout.
+settingValues.state = {};
+await state.setDay(2);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+gandalf.calls.length = 0; bilbo.calls.length = 0;
+queue.d100.push(99, 100);
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+check([...gandalf.calls, ...bilbo.calls].filter(c => c.method !== "rollSavingThrow")
+  .every(c => c.dialog?.configure === false),
+  "running the whole day prompts for nothing");
 
 /* ------------------------------------------------------------------ */
 section("journal export");

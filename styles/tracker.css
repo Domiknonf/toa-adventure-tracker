@@ -581,6 +581,49 @@
   .toa-level input { width: 4rem; text-align: center; }
   .toa-level .toa-hint { margin: 0; }
 
+  /* The weather, between the distance and the events - the order it is read
+     aloud in. */
+  .toa-weather-line {
+    margin: 0.55rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--font-size-14, 0.875rem);
+  }
+
+  .toa-weather-line i { color: var(--toa-accent); }
+
+  /* The role reference. Folded away by default - it answers "what does the
+     rearguard actually do", which is a question you ask once. */
+  .toa-guide { margin-top: 0.6rem; font-size: var(--font-size-11, 0.6875rem); }
+
+  .toa-guide > summary {
+    cursor: pointer;
+    color: var(--toa-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .toa-guide-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.4rem;
+  }
+
+  .toa-guide-table th,
+  .toa-guide-table td {
+    text-align: left;
+    padding: 0.25rem 0.4rem;
+    vertical-align: top;
+    border-bottom: 1px solid var(--toa-line);
+    line-height: 1.35;
+  }
+
+  .toa-guide-table thead th { color: var(--toa-dim); }
+  .toa-guide-role { font-weight: 700; white-space: nowrap; }
+  .toa-guide-role i { color: var(--toa-accent); margin-right: 0.2rem; }
+  .toa-guide-check { white-space: nowrap; }
+
   .toa-sub-title {
     margin: 0.85rem 0 0.35rem;
     font-size: var(--font-size-12, 0.75rem);

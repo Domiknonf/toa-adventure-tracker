@@ -1,6 +1,6 @@
 import {
-  MODULE_ID, MOON_DEFAULTS, PACES, PACE_ORDER, SUPPLY_DEFAULTS, PARTY_SOURCE,
-  REFRESH_HOOK, WEATHER_DEFAULTS, ENCOUNTER_DEFAULTS, RAIN_CATCHER_BONUS
+  MODULE_ID, MOON_DEFAULTS, PACES, PACE_ORDER, PARTY_SOURCE,
+  REFRESH_HOOK, WEATHER_DEFAULTS, ENCOUNTER_DEFAULTS
 } from "./const.mjs";
 
 /** Tell every open window that something it shows has changed. See REFRESH_HOOK. */
@@ -70,11 +70,6 @@ export function registerSettings() {
     ...WORLD, type: Number, default: WEATHER_DEFAULTS.rainChance,
     range: { min: 0, max: 100, step: 1 }
   });
-  reg("rainCatcher", { ...WORLD, type: Boolean, default: false });
-  reg("rainCatcherBonus", {
-    ...WORLD, type: Number, default: RAIN_CATCHER_BONUS,
-    range: { min: 0, max: 40, step: 1 }
-  });
 
   /* --- Encounters -------------------------------------------- */
 
@@ -94,30 +89,9 @@ export function registerSettings() {
   });
   reg("groupActor", { ...WORLD, type: String, default: "" });
 
-  /** 0 = derive from the party size. Anything else is taken literally. */
-  reg("travelers", {
-    ...WORLD, type: Number, default: 0,
-    range: { min: 0, max: 200, step: 1 }
-  });
-
   /* --- Roles ------------------------------------------------- */
 
   reg("customRoles", { ...WORLD, type: String, default: "" });
-
-  /* --- Supplies ---------------------------------------------- */
-
-  reg("waterPerHead", {
-    ...WORLD, type: Number, default: SUPPLY_DEFAULTS.waterPerHead,
-    range: { min: 0, max: 20, step: 0.5 }
-  });
-  reg("foodPerHead", {
-    ...WORLD, type: Number, default: SUPPLY_DEFAULTS.foodPerHead,
-    range: { min: 0, max: 20, step: 0.5 }
-  });
-  reg("hungerGrace", {
-    ...WORLD, type: Number, default: SUPPLY_DEFAULTS.hungerGrace,
-    range: { min: 0, max: 10, step: 1 }
-  });
 
   /* --- Encounter sizing --------------------------------------- */
 

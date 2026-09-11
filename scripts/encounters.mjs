@@ -2,7 +2,7 @@ import {
   MODULE_ID, XP_THRESHOLDS, CR_XP, ENCOUNTER_MULTIPLIERS, MAX_FOES, MAX_LEVEL
 } from "./const.mjs";
 import { setting } from "./settings.mjs";
-import { partyActors, travelerCount } from "./roles.mjs";
+import { partyActors } from "./roles.mjs";
 
 /**
  * HOW MANY OF THEM.

@@ -103,8 +103,8 @@ export async function postDayToChat(report, texts) {
   const content = `
     <div class="toa-chat">
       <h3>${game.i18n.format(`${MODULE_ID}.chat.dayTitle`, { day: report.day })}</h3>
-      <p><strong>${texts.weather}</strong> &middot;
-         ${game.i18n.format(`${MODULE_ID}.chat.hexes`, { n: report.hexes })}</p>
+      <p class="toa-chat-hexes"><strong>${game.i18n.format(`${MODULE_ID}.chat.hexes`, { n: report.hexes })}</strong></p>
+      <p class="toa-chat-weather">${foundry.utils.escapeHTML(texts.weather ?? "")}</p>
       ${rows ? `<ul>${rows}</ul>` : `<p>${game.i18n.localize(`${MODULE_ID}.chat.quietDay`)}</p>`}
       ${harm ? `<hr><ul>${harm}</ul>` : ""}
     </div>`;
