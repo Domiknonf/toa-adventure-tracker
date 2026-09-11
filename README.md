@@ -2,10 +2,13 @@
 
 Ein Foundry-VTT-Modul für Reisen durch die Wildnis in **D&D 5e**.
 
-Ein Fenster, das SL und Spieler offen halten können. Es zeigt den aktuellen
-Reisetag, die Mondphase und die Aufgabenverteilung für diesen Tag. Zu Tagesbeginn
-übernimmt jeder Charakter eine Aufgabe, es wird gewürfelt, und daraus ergibt sich,
-wie weit die Gruppe kommt.
+Jeder Spieler trägt sich in eine Rolle ein. Wie gut die Gruppe ihre Rollen
+besetzt und würfelt, entscheidet, wie weit sie kommt und was ihr dabei zustößt.
+Am Ende des Tages steht kein Zahlensalat, sondern ein **Bericht**: das Wetter,
+was aus dem Dickicht kam, wie weit es die Gruppe getragen hat und was es sie
+gekostet hat.
+
+Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 
 - **Foundry VTT** v13
 - **System** dnd5e 5.3
@@ -16,10 +19,15 @@ wie weit die Gruppe kommt.
 ## Inhalt
 
 - [Installation](#installation)
-- [Erste Schritte](#erste-schritte)
-- [Was das Modul tut](#was-das-modul-tut)
+- [Der Ablauf eines Reisetags](#der-ablauf-eines-reisetags)
+- [Die Rollen](#die-rollen)
+- [Wie 0, 1 oder 2 Hexfelder entstehen](#wie-0-1-oder-2-hexfelder-entstehen)
+- [Wetter](#wetter)
+- [Vorräte, Durst und Hunger](#vorräte-durst-und-hunger)
+- [Ereignisse](#ereignisse)
+- [Folgen](#folgen)
 - [Weltoptionen](#weltoptionen)
-- [Eigene Aufgaben (JSON)](#eigene-aufgaben-json)
+- [Eigene Rollen (JSON)](#eigene-rollen-json)
 - [API](#api)
 - [Rechte und Synchronisierung](#rechte-und-synchronisierung)
 - [Was das Modul *nicht* tut](#was-das-modul-nicht-tut)
@@ -31,298 +39,366 @@ wie weit die Gruppe kommt.
 
 ### Über die Manifest-URL
 
-1. In Foundry **Add-on Modules → Install Module** öffnen.
-2. Als *Manifest URL* eintragen:
+```
+https://github.com/Domiknonf/toa-adventure-tracker/releases/latest/download/module.json
+```
 
-   ```
-   https://github.com/Domiknonf/toa-adventure-tracker/releases/latest/download/module.json
-   ```
+In Foundry unter **Add-on Modules → Install Module** eintragen, installieren,
+in der Welt aktivieren.
 
-3. **Install** klicken, danach das Modul in der Welt unter
-   **Game Settings → Manage Modules** aktivieren.
+> Das Repository muss dafür **öffentlich** sein — Foundry ruft die URL ohne
+> Anmeldung ab und bekommt bei einem privaten Repo nur einen 404.
 
 ### Manuell
 
-1. Das `module.zip` der gewünschten Version herunterladen.
-2. Nach `Data/modules/toa-adventure-tracker/` entpacken — der Ordnername muss
-   exakt `toa-adventure-tracker` lauten.
-3. Foundry neu starten und das Modul in der Welt aktivieren.
+`module.zip` herunterladen, nach `Data/modules/toa-adventure-tracker/`
+entpacken (der Ordnername muss exakt so lauten, `module.json` liegt direkt
+darin), Foundry neu starten.
+
+### Fenster öffnen
+
+- **Scene Controls** → Journal-Notes-Gruppe → Wanderer-Symbol
+- Kompendium **Wildnisreise: Makros** → „Wildnisreise öffnen“
+- `game.modules.get("toa-adventure-tracker").api.open()`
 
 ---
 
-## Erste Schritte
+## Der Ablauf eines Reisetags
 
-1. Modul aktivieren.
-2. Das Fenster öffnen — auf drei Wegen:
-   - über den Knopf **Wildnisreise** in den Scene Controls, unter den
-     *Journal Notes* (Symbol: Wanderer);
-   - über das Beispielmakro im mitgelieferten Kompendium
-     **Wildnisreise: Makros**;
-   - über die API: `game.modules.get("toa-adventure-tracker").api.open()`.
-3. Unter **Game Settings → Configure Settings → Wildnisreise** prüfen, woher die
-   Reisenden kommen sollen (Vorgabe: alle Charaktere mit Spielerbesitz).
-4. Reisetempo wählen, jeder Charakter übernimmt eine Aufgabe, würfeln,
-   **Tag abschließen**.
+**1. Rollen besetzen.** Jeder Charakter wählt im Fenster eine Rolle. Pro
+Charakter genau eine — das erzwingt die Datenstruktur. Dieselbe Rolle darf
+mehrfach besetzt werden, aber dann fehlt sie woanders.
 
-Das Fenster darf jeder offen haben. Spieler sehen dieselben Zahlen wie die SL,
-können aber nur ihre eigenen Charaktere bedienen.
+Eine Gruppe von vier kann nicht acht Rollen füllen. **Welche Rollen ihr leer
+lasst, ist die eigentliche Entscheidung dieses Fensters** — deshalb steht
+unbesetzt direkt unter der Liste und nicht erst im Bericht.
+
+**2. Würfeln.** Jeder würfelt seine Rolle selbst (oder die SL für alle, Knopf
+„Alles würfeln“). Läuft über die dnd5e-Würfelmechanik, also greifen
+Übungsbonus, Expertise, Vorteil, Segnen, Erschöpfung und andere Module.
+
+**3. Tag auswerten** (SL). Jetzt würfelt das Modul: Wetter, ob euch etwas
+findet, welches Ereignis, die Vorräte, die fälligen Rettungswürfe. Heraus
+kommt der Tagesbericht.
+
+**Auf die Charakterbögen wird dabei nichts geschrieben.** Deshalb ist
+„Neu auswerten“ gefahrlos, wenn dir der Tag nicht gefällt.
+
+**4. Vorlesen.** Der Bericht ist so geschrieben, dass man ihn vorlesen kann.
+
+**5. Tag abschließen** (SL). *Jetzt* werden Schaden und Erschöpfung
+eingetragen, der Tag geht in den Chat und ins Logbuch, der Zähler springt
+weiter. Die Rollenverteilung bleibt bestehen.
 
 ---
 
-## Was das Modul tut
+## Die Rollen
 
-### Tageszähler
+| Rolle | Probe | SG | Wozu | Unbesetzt |
+|---|---|---|---|---|
+| **Navigator** | Überleben | 15 | Entscheidet, ob die Gruppe überhaupt vorankommt | **schlimmer** |
+| **Vorhut** | Wahrnehmung | 12 | Entscheidet, ob ihr den Hinterhalt seht oder hineinlauft | **schlimmer** |
+| **Nachhut** | Heimlichkeit | 12 | Verwischt die Spuren; sonst heftet sich etwas an eure Fersen | **schlimmer** |
+| **Wasserträger** | Überleben | 12 | Findet Wasser — bei Erfolg 1W6 + WEI Gallonen | Misserfolg |
+| **Sammler** | Überleben | 12 | Findet Nahrung — bei Erfolg 1W6 + WEI Pfund | Misserfolg |
+| **Lagermeister** | Überleben | 12 | Ein schlechtes Lager ist eine Nacht, die nicht als Rast zählt | Misserfolg |
+| **Feldscher** | Medizin | 12 | Die einzige Rolle, die Erschöpfung wieder **nimmt** | folgenlos |
+| **Kartograph** | Nachforschungen | 12 | Findet nach einem Fehler zurück auf die Karte | folgenlos |
 
-Ganzzahliger Zähler ab 1. Die SL kann hoch- und runterzählen oder den Wert direkt
-eintragen (Eingabe wird mit *Enter* oder beim Verlassen des Feldes übernommen).
+**„Unbesetzt“** sagt, was passiert, wenn niemand die Rolle übernimmt:
 
-**Tag abschließen** schreibt einen Logbucheintrag, löscht die Würfe des Tages und
-den Regen-Schalter und zählt den Tag hoch. Die Aufgabenverteilung bleibt bestehen —
-wer gestern navigiert hat, navigiert in aller Regel auch heute.
+- *Misserfolg* — wie ein misslungener Wurf.
+- *schlimmer* — wie ein misslungener Wurf, und die Strafe fällt härter aus.
+  Niemand, der nach vorn sieht, ist eben nicht dasselbe wie ein unaufmerksamer
+  Späher.
+- *folgenlos* — die Rolle ist ein Bonus, ihr Fehlen kostet nichts.
 
-### Mondphase
+Modifikatoren werden **nicht gepflegt, sondern gelesen**, aus
+`actor.system.skills.<key>.total` bzw. `actor.system.abilities.<key>.mod`.
+Fertigkeitsschlüssel löst das Modul über `CONFIG.DND5E.skills` auf — nichts ist
+fest verdrahtet.
 
-Wird **allein aus dem Tageszähler** abgeleitet, ohne Weltzeit und ohne
-Kalendermodul. Wer den Tag auf 47 setzt, sieht den Mond von Tag 47 — eine
-Synchronisation kann es damit gar nicht erst geben.
+---
 
-Die Beleuchtung folgt der Kosinusformel `(1 + cos θ) / 2`, nicht einer linearen
-Rampe: Der echte Mond steht länger nahe voll und nahe neu als nahe den Vierteln.
-Dieselbe Formel treibt auch die Zeichnung, Zahl und Bild können also nicht
-auseinanderlaufen.
+## Wie 0, 1 oder 2 Hexfelder entstehen
 
-Dargestellt als SVG-Scheibe. Der Terminator ist eine **Ellipse** mit der
-horizontalen Halbachse `|cos θ| · r` — an den Vierteln wird daraus automatisch
-eine Gerade. Es ist keine Bilderserie, weil die Zykluslänge einstellbar ist und es
-daher gar keinen festen Satz Bilder geben kann.
+Grundwert ist **1 Hexfeld**. Darauf wirken, in dieser Reihenfolge:
 
-> **Hinweis zur Zykluslänge.** Bei der Vorgabe (Zyklus 30 Tage, Vollmond an Tag 1)
-> liegt der exakte Neumond auf **Tag 16**, nicht auf Tag 15 — ein halber Zyklus
-> von 30 Tagen sind nun einmal 15 Tage *nach* Tag 1. Tag 15 ist mit 1 %
-> Beleuchtung optisch bereits Neumond. Wer den Neumond exakt auf Tag 15 haben
-> will, stellt die Zykluslänge auf **28**.
+| Was | Wirkung |
+|---|---|
+| Navigation misslungen, **kein** Kartograph | **0** — verlaufen, der Tag ist weg |
+| Navigation misslungen, Kartograph erfolgreich | **1** — ein vertaner Tag statt eines verlorenen |
+| Schnelles Tempo **und** Navigation um ≥ 3 übertroffen | **+1** → 2 Hexfelder |
+| Ein blockierendes Ereignis (Sturm, Kampf, Flut) | **−1** |
+| Erschöpfung Grad ≥ 3 in der Gruppe | höchstens **1** |
+| Erschöpfung Grad ≥ 5 | **0** |
 
-### Aufgaben
+Das Ergebnis wird auf 0…2 begrenzt und auf die Obergrenze des Tempos.
 
-Jeder Aktor kann pro Tag genau **eine** Aufgabe übernehmen — das erzwingt die
-Datenstruktur selbst, zwei Aufgaben sind gar nicht darstellbar. Umgekehrt darf
-dieselbe Aufgabe von mehreren Charakteren übernommen werden; die Erträge addieren
-sich dann.
+Im Bericht steht **jeder dieser Schritte einzeln**. Eine Zahl ohne Begründung
+ist eine Zahl, über die am Tisch gestritten wird.
 
-Standardliste:
+### Die drei Tempi
 
-| Aufgabe        | Probe          | SG | Ertrag bei Erfolg   |
-|----------------|----------------|----|---------------------|
-| Navigation     | Überleben      | 15 | bestimmt die Strecke |
-| Wassersuche    | Überleben      | 10 | 1W6 + WEI Gallonen  |
-| Nahrungssuche  | Überleben      | 10 | 1W6 + WEI Pfund     |
-| Vorhut         | Wahrnehmung    | 12 | —                   |
-| Nachhut        | Heimlichkeit   | 12 | —                   |
+| Tempo | Max. Hex | Navigation | Begegnungen |
+|---|---|---|---|
+| Langsam | 1 | **+5** | −10 % |
+| Normal | 1 | 0 | — |
+| Schnell | **2** | **−3** | +10 % |
 
-**Modifikatoren werden nicht gepflegt, sondern gelesen** — aus
-`actor.system.skills.<key>.total` bzw. `actor.system.abilities.<key>.mod`. Darin
-stecken Übungsbonus, Expertise, Alleskönner und jeder aktive Effekt bereits drin.
-Fertigkeitsschlüssel werden über `CONFIG.DND5E.skills` aufgelöst, nichts ist fest
-verdrahtet.
+Nur schnelles Tempo kann überhaupt 2 Hexfelder erreichen — und verliert dafür
+deutlich mehr Tage ganz.
 
-### Würfe
+> **Warum −3 und nicht −5?** Die ursprüngliche Vorgabe war −5, aber die galt
+> einem Meilen-Modell, in dem ein misslungener Navigationswurf die Strecke
+> *halbierte*. Im Hex-Modell kostet er den **ganzen** Tag. Über 300 simulierte
+> Tage kam schnelles Tempo mit −5 auf 0,40 Hexfelder gegenüber 0,69 bei
+> normalem — das ist kein Risiko, das ist eine Falle. Mit −3 liegen beide bei
+> etwa 0,65, aber schnell streut viel weiter: rund 20 % Zwei-Hex-Tage gegen
+> 55 % verlorene. Beide Werte sind Weltoptionen.
 
-Gewürfelt wird über die **dnd5e-API** (`actor.rollSkill()` bzw.
-`actor.rollAbilityCheck()` in der 5.3-Signatur), damit Boni, Vorteil,
-Glückswerte, Zuverlässiges Talent, Erschöpfung und andere Module greifen. Das
-Modul baut keine eigene W20-Formel. Das Ergebnis geht als normale Chatnachricht
-raus und wird zusätzlich im Fenster angezeigt.
+Zum Vergleich, gleiche Gruppe, normales Tempo, **mit** Kartograph statt Vorhut:
+0,83 Hexfelder pro Tag und nur 17 % verlorene Tage. Die Rollenwahl ist der
+größte Hebel im ganzen System.
 
-Der Wurf passiert immer auf dem Client der Person, die klickt — dort liegen ihre
-Würfel, ihre Module und ihre Vorteils-Tastenkürzel. Nur das fertige Ergebnis
-reist zur SL.
+---
 
-**Neu würfeln** überschreibt das Ergebnis des Tages. Wer die Aufgabe wechselt,
-verliert seinen Wurf — er gehörte zur anderen Aufgabe.
+## Wetter
 
-### Reisetempo und Strecke
+Wetter wird **gewürfelt, nie eingestellt.** Es gibt bewusst keinen Regenschalter:
+Die ganze Vorratsrechnung ergibt nur dann etwas, wenn Trockenperioden der Gruppe
+*zustoßen*. Eine SL, die jeden Morgen entscheiden müsste, ob es regnet, wird
+sich — völlig zu Recht — für die Geschichte entscheiden, die sie ohnehin im Kopf
+hat, und die Fässer laufen nie aus Versehen leer.
 
-Drei Tempi mit je Meilen pro Tag und Modifikator auf den **Navigationswurf**:
+| Wetter | Vorgabe | Wasser | Wirkung |
+|---|---|---|---|
+| **Sturm** | 10 % | 6 Gallonen | Kostet den Tag |
+| **Regen** | 55 % | 3 Gallonen | — |
+| **Schwül** | ~17,5 % | — | — |
+| **Klar und sengend** | ~17,5 % | — | Wasserbedarf **×1,5** |
 
-| Tempo   | Meilen/Tag | Modifikator |
-|---------|-----------|-------------|
-| Langsam | 9         | +5          |
-| Normal  | 10        | 0           |
-| Schnell | 15        | −5          |
+Chult in der Regenzeit: zwei von drei Tagen sind nass. Beide Prozentwerte sind
+Weltoptionen; was übrig bleibt, teilt sich auf schwül und klar auf.
 
-- Navigationswurf **bestanden** → volle Strecke.
-- Navigationswurf **misslungen** → halbe Strecke, abgerundet, plus Hinweis
-  „verlaufen“.
-- **Kein** Navigationswurf → volle Strecke, mit dem Hinweis, dass noch nicht
-  gewürfelt wurde. Nicht gewürfelt ist kein Misserfolg.
+Ein **Regensammler** bringt an Regentagen zusätzliches Wasser — und an trockenen
+gar nichts. Genau das macht ihn in Port Nyanzaru kaufenswert und in einer
+Dürre wertlos.
 
-Angezeigt wird in Meilen, darunter umgerechnet in Hexfelder.
+---
 
-Zusätzlich und unabhängig davon kann das Tempo an dnd5e weitergereicht werden
-(Option *Tempo-Regeln des Systems anwenden*), sodass dessen eigene Regeln greifen
-— Vorteil auf Heimlichkeit bei langsamem, Nachteil auf Wahrnehmung bei schnellem
-Tempo. Der Zahlenmodifikator oben ist die Hausregel auf Navigation, die
-System-Regel gilt für alle Aufgaben.
+## Vorräte, Durst und Hunger
 
-### Vorräte
+**Vorräte laufen über Tage weiter.** Das ist der Punkt: „ein paar Tage ohne
+Regen und kein Wasser mehr“ ist nur dann ein Satz, der etwas bedeutet, wenn die
+Fässer von gestern heute noch in den Büchern stehen.
 
-Wasserbedarf = *Reisende* × *Bedarf pro Kopf*. Sind **Regen heute** und
-**Regensammler vorhanden** beide an, ist der Bedarf automatisch gedeckt und
-gefundenes Wasser ist ein Zusatz.
+Jeden Tag:
 
-Ist der Bedarf nicht gedeckt, blendet das Fenster einen Hinweis auf den fälligen
-KON-Rettungswurf ein — **der Wurf wird nicht automatisch ausgelöst**. Das ist
-Absicht: Wer aussetzt, wer Vorräte dabei hat und wer einfach Pech hat, entscheidet
-die SL.
+```
+Wasser  +  Wetter  +  Fund des Wasserträgers  −  (Reisende × Bedarf × Hitze)
+Nahrung +  Fund des Sammlers                  −  (Reisende × Bedarf)
+```
 
-### Logbuch
+- **Durst** kennt keine Karenz. Reicht das Wasser nicht, ist noch am selben Tag
+  ein KON-Rettungswurf fällig; wer ihn nicht schafft, bekommt Erschöpfung.
+- **Hunger** ist langsamer: erst nach einigen Karenztagen (Vorgabe 2) kostet er
+  etwas.
+- **Schlechtes Wasser** ist etwas anderes als gar keins. Wer suchen ging und
+  misslang, hat etwas Fragwürdiges getrunken — mit eigenem Rettungswurf.
 
-Pro abgeschlossenem Tag ein Eintrag mit Tag, Tempo, Meilen, verlaufen ja/nein,
-Wasser und Nahrung. Es werden die **letzten 30 Einträge** behalten, dazu die Summe
-der zurückgelegten Meilen.
+Die Vorräte lassen sich jederzeit von Hand setzen („Bearbeiten“), für den Fall,
+dass die Gruppe in der Stadt Fässer gekauft hat.
 
-Ein Eintrag ist ein **eingefrorenes Protokoll**: Wer nächste Woche die Meilen pro
-Tempo umstellt, ändert damit nicht rückwirkend die Strecken der letzten Woche.
+---
 
-**Als Journal exportieren** schreibt das Logbuch als Journal-Eintrag. Jeder Export
-legt einen neuen Eintrag an — genau so behält eine lange Kampagne ihre älteren
-Tage trotz der 30er-Grenze.
+## Ereignisse
+
+**54 Ereignisse in 11 Kategorien.** Der Tagesbericht liefert Gründe, nicht nur
+Zahlen: Der Tag, der ein Hexfeld gekostet hat, sagt *welches* Rudel Velociraptoren
+es gekostet hat.
+
+| Kategorie | Wodurch | Beispiele |
+|---|---|---|
+| **Hinterhalt** | Vorhut misslungen + Begegnung | Rudel Velociraptoren, Von Zombies überrannt, Pterafolk aus der Luft, Batiri-Hinterhalt, Girallon, Treibsand |
+| **Rechtzeitig gesehen** | Vorhut erfolgreich + Begegnung | Frische T-Rex-Spuren, Prozession Untoter, Grung-Patrouille, Hadrosaurier-Herde, Tabaxi-Jägerin |
+| **Verfolgung** | Nachhut misslungen | Augen im Rücken, Kamadan auf der Fährte, Trommeln in der Nacht |
+| **Verlaufen** | Navigation misslungen | Im Kreis gelaufen, Der falsche Fluss, Schlucht ohne Übergang |
+| **Umweg** | Navigation misslungen, Kartograph rettet | Zurück auf die Karte, Ein Felsen, der auf der Karte steht |
+| **Schlechtes Wasser** | Wasserträger misslungen | Blutegel im Tümpel, Etwas liegt flussaufwärts |
+| **Durst / Hunger** | Vorräte leer | Die Schläuche sind leer, Verdorbene Vorräte |
+| **Lager** | Lagermeister misslungen | Ein Lager im Nassen, Ameisenstraße durchs Lager, Kein Feuer |
+| **Sturm** | Wetter | Monsunregen, Hangrutsch, Blitzschlag, Der Fluss tritt über |
+| **Glück** | Ein makelloser Tag, 25 % | Ein Chwinga folgt euch, Trockene Ruine, Klare Quelle |
+
+Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
+(Schaden, Erschöpfung, Rettungswurf, kostet den Tag). Alle Texte liegen in
+`lang/de.json` und `lang/en.json` — du kannst jede Zeile umschreiben, ohne
+Code anzufassen.
+
+**Ein misslungener Nebenrolle löst ihr Ereignis nicht garantiert aus**, sondern
+mit einer Wahrscheinlichkeit (Verfolgung 35 / 45 %, Lager 30 / 35 %). Eine
+Vierergruppe lässt zwangsläufig Rollen leer; würde jede davon jeden Tag feuern,
+stünden jeden Morgen dieselben Absätze im Bericht und keiner davon hieße noch
+etwas. So ist eine unbesetzte Rolle ein **Risiko**, das ihr tragt, statt einer
+Steuer, die ihr zahlt. Navigation, Vorräte und Wetter sind davon ausgenommen —
+das ist Arithmetik, kein Pech.
+
+---
+
+## Folgen
+
+Beim Abschließen des Tages trägt das Modul ein:
+
+- **Schaden** über `actor.applyDamage()` — also mit temporären TP, Resistenzen
+  und Schadensreduktion, wie das System es vorsieht.
+- **Erschöpfung** auf `system.attributes.exhaustion`, begrenzt auf die
+  Obergrenze, die das System selbst kennt
+  (`CONFIG.DND5E.conditionTypes.exhaustion.levels`).
+- **Der Feldscher** nimmt Erschöpfung wieder weg.
+
+Schaden wird **einmal pro Ereignis** gewürfelt und auf alle Betroffenen
+angewandt. **Rettungswürfe** dagegen gehen pro Person durch das System — das ist
+genau die Frage, die ein Charakter besteht und der nächste nicht, und darin
+besteht die Textur einer schlechten Nacht. Ein bestandener Rettungswurf hebt das
+Ereignis für diese Person ganz auf.
+
+Beides lässt sich abschalten:
+**„Folgen auf die Charakterbögen schreiben“** und
+**„Rettungswürfe automatisch würfeln“**. Ausgeschaltet zeigt der Bericht
+weiterhin genau an, was passiert *wäre*.
 
 ---
 
 ## Weltoptionen
 
-Alle unter **Game Settings → Configure Settings → Wildnisreise**. Bis auf die
-letzte sind alle weltweit (`scope: "world"`), damit alle am Tisch dieselben Zahlen
-sehen.
+Alle unter **Game Settings → Configure Settings → Wildnisreise**, weltweit
+(`scope: "world"`), damit alle am Tisch dieselben Zahlen sehen. Ausnahme ist die
+letzte.
 
 ### Mond
-
-| Option | Vorgabe | Bedeutung |
-|---|---|---|
-| **Länge des Mondzyklus** | 30 | Wie viele Tage ein voller Zyklus dauert. |
-| **Tag des ersten Vollmonds** | 1 | Der Reisetag, an dem Vollmond ist. Alle anderen Phasen ergeben sich daraus. Darf größer als der aktuelle Tag sein. |
-
-### Reisetempo
-
 | Option | Vorgabe |
 |---|---|
-| **Langsam: Meilen pro Tag** / **Modifikator** | 9 / +5 |
-| **Normal: Meilen pro Tag** / **Modifikator** | 10 / 0 |
-| **Schnell: Meilen pro Tag** / **Modifikator** | 15 / −5 |
-| **Tempo-Regeln des Systems anwenden** | an |
-| **Hexfeldgröße in Meilen** | 10 |
+| Länge des Mondzyklus | 30 |
+| Tag des ersten Vollmonds | 1 |
 
-Der Modifikator wirkt **nur** auf den Navigationswurf.
+Der Mond ergibt sich **allein aus dem Tageszähler** — kein Kalendermodul nötig,
+und er kann gar nicht erst aus dem Tritt geraten. Die Beleuchtung folgt
+`(1 + cos θ)/2`, dieselbe Formel treibt auch die gezeichnete Scheibe, Zahl und
+Bild können also nicht auseinanderlaufen.
+
+> Bei Zyklus 30 mit Vollmond an Tag 1 liegt der exakte Neumond auf **Tag 16** —
+> ein halber 30-Tage-Zyklus sind nun einmal 15 Tage *nach* Tag 1. Tag 15 ist mit
+> 1 % optisch bereits Neumond. Wer ihn rechnerisch exakt auf Tag 15 will, stellt
+> die Zykluslänge auf **28**.
+
+### Tempo
+| Option | Vorgabe |
+|---|---|
+| Langsam / Normal / Schnell: Modifikator | +5 / 0 / −3 |
+| Tempo-Regeln des Systems anwenden | an |
+
+Letzteres reicht das Tempo zusätzlich an dnd5e weiter, sodass dessen eigene
+Regeln greifen (Vorteil auf Heimlichkeit bei langsamem Tempo und so weiter).
+Unabhängig vom Zahlenmodifikator.
+
+### Wetter und Begegnungen
+| Option | Vorgabe |
+|---|---|
+| Sturmwahrscheinlichkeit | 10 % |
+| Regenwahrscheinlichkeit | 55 % |
+| Regensammler vorhanden | aus |
+| Ertrag des Regensammlers | 4 |
+| Begegnungswahrscheinlichkeit | 20 % |
 
 ### Reisende
+| Option | Vorgabe |
+|---|---|
+| Quelle der Reisenden | Alle Charaktere mit Spielerbesitz |
+| Gruppen-Aktor | — |
+| Anzahl der Reisenden | 0 = Gruppengröße |
 
-| Option | Vorgabe | Bedeutung |
-|---|---|---|
-| **Quelle der Reisenden** | Alle Charaktere mit Spielerbesitz | Alternativ: ein Gruppen-Aktor (dnd5e `group`). |
-| **Gruppen-Aktor** | — | Name, ID oder UUID. Nur relevant, wenn oben „Ein Gruppen-Aktor“ gewählt ist. Wird er nicht gefunden, greift automatisch die Spielercharakter-Liste. |
-| **Anzahl der Reisenden** | 0 | `0` heißt: so viele, wie in der Quelle stehen. Jeder andere Wert gilt wörtlich — nützlich für NSC-Begleiter, Träger und Lasttiere. |
+„Anzahl der Reisenden“ zählt die Mäuler, nicht die Würfelnden — setz eine Zahl,
+wenn Träger, Lasttiere oder NSCs mittrinken.
 
 ### Vorräte
-
 | Option | Vorgabe |
 |---|---|
-| **Wasserbedarf pro Kopf und Tag** (Gallonen) | 2 |
-| **Regensammler vorhanden** | aus |
-| **SG des KON-Rettungswurfs** | 15 |
+| Wasserbedarf pro Kopf und Tag | 2 Gallonen |
+| Nahrungsbedarf pro Kopf und Tag | 1 Pfund |
+| Karenztage bei Hunger | 2 |
 
-### Aufgaben
-
+### Folgen
 | Option | Vorgabe |
 |---|---|
-| **Eigene Aufgaben (JSON)** | leer |
+| Folgen auf die Charakterbögen schreiben | an |
+| Rettungswürfe automatisch würfeln | an |
+
+### Eigene Rollen
+| Option | Vorgabe |
+|---|---|
+| Eigene Rollen (JSON) | leer |
 
 ### Pro Person
-
-| Option | Vorgabe | Bedeutung |
-|---|---|---|
-| **Würfeldialog überspringen** | aus | Würfelt sofort, ohne den Konfigurationsdialog von dnd5e. Gilt nur für dich und ändert nichts am gespeicherten Ergebnis. |
+| Option | Vorgabe |
+|---|---|
+| Würfeldialog überspringen | aus |
 
 ---
 
-## Eigene Aufgaben (JSON)
+## Eigene Rollen (JSON)
 
-Die Option **Eigene Aufgaben (JSON)** nimmt ein JSON-Array, das über die `id`
-**auf die Standardliste aufgerechnet** wird:
+Ein JSON-Array, das über die `id` **auf die Standardrollen aufgerechnet** wird:
 
-- Eine `id`, die einer Standardaufgabe entspricht, **überschreibt** diese —
-  Feld für Feld, nicht als Ganzes. „Mach Navigation einfach SG 13“ ist also ein
-  Objekt mit zwei Schlüsseln.
-- Eine unbekannte `id` wird **angehängt**.
-- `"hidden": true` **entfernt** eine Standardaufgabe.
-
-Die Reihenfolge folgt der Standardliste, neue Einträge kommen dahinter — das
-Fenster sortiert sich also nicht um, wenn jemand einen SG anpasst.
+- gleiche `id` **überschreibt** feldweise,
+- neue `id` wird **angehängt**,
+- `"hidden": true` **entfernt** eine Standardrolle.
 
 Ungültiges JSON kostet eine Warnung (genau eine, nicht eine pro Render) und die
-Standardliste, nie das Fenster.
+Standardliste — nie das Fenster.
 
 ### Felder
 
 | Feld | Pflicht | Bedeutung |
 |---|---|---|
-| `id` | ja | Stabiler Schlüssel. Wird gespeichert und zum Überschreiben benutzt, nie angezeigt. |
-| `skill` | eins von beiden | Fertigkeit: Systemschlüssel (`"sur"`), `fullKey` (`"survival"`) oder englisches Label. |
-| `ability` | eins von beiden | Attribut: `"wis"`, `"wisdom"` … Wird nur benutzt, wenn kein `skill` gesetzt ist. |
-| `dc` | nein | Schwierigkeitsgrad. Ohne `dc` gibt es kein Erfolg/Misserfolg-Urteil, nur das Ergebnis. |
-| `yield` | nein | `{ "formula": "...", "unit": "..." }`. Wird **nur bei Erfolg** gewürfelt. |
-| `label` | nein | Anzeigename. Wörtlicher Text oder ein i18n-Schlüssel — beides funktioniert. Ohne Angabe wird `toa-adventure-tracker.task.<id>.label` benutzt. |
-| `hint` | nein | Beschreibung, gleiche Regel wie `label`. |
-| `icon` | nein | Font-Awesome-Klasse, z. B. `"fa-solid fa-fish"`. Foundry liefert FA mit, es wird nichts nachgeladen. |
-| `hidden` | nein | `true` entfernt die Aufgabe. |
+| `id` | ja | Stabiler Schlüssel. Wird gespeichert, nie angezeigt. |
+| `skill` | eins von beiden | `"sur"`, `"survival"` oder das Label. |
+| `ability` | eins von beiden | `"wis"`, `"wisdom"` … Nur ohne `skill`. |
+| `dc` | nein | Schwierigkeitsgrad. Ohne `dc` gibt es kein Urteil. |
+| `yield` | nein | `{ "formula": "...", "unit": "..." }`, nur bei Erfolg gewürfelt. |
+| `unfilled` | nein | `"fail"`, `"worse"` oder `"none"` (siehe [Die Rollen](#die-rollen)). |
+| `label` / `hint` | nein | Text oder i18n-Schlüssel. Ohne Angabe aus `lang/*.json`. |
+| `icon` | nein | Font-Awesome-Klasse. Foundry liefert FA mit. |
+| `hidden` | nein | `true` entfernt die Rolle. |
 
 In `yield.formula` steht `@mod` für **denselben Modifikator, den auch die Probe
-benutzt hat** — das ist die Bedeutung von „1W6 + WEI“. Zusätzlich stehen die
-kompletten Würfeldaten des Aktors zur Verfügung, also etwa `@abilities.wis.mod`
-oder `@prof`.
-
-`yield.unit` wird über `toa-adventure-tracker.unit.<unit>` übersetzt; `gallons`
-und `pounds` sind mitgeliefert. Unbekannte Einheiten werden wörtlich angezeigt —
-`"unit": "Bündel"` funktioniert also einfach.
-
-> **Achtung:** Nur die Aufgaben-`id`s `navigation`, `water` und `food` haben eine
-> Sonderbedeutung. `navigation` bestimmt die Tagesstrecke und bekommt als einzige
-> den Tempo-Modifikator; `water` und `food` speisen die Vorratsanzeige. Wer sie
-> entfernt, verliert die zugehörige Auswertung — die Aufgabe selbst funktioniert
-> weiter.
+benutzt hat**. Die kompletten Würfeldaten des Aktors stehen darunter zur
+Verfügung, also etwa `@abilities.wis.mod` oder `@prof`.
 
 ### Beispiel
 
 ```json
 [
-  { "id": "navigation", "dc": 13 },
-  { "id": "rearguard", "hidden": true },
+  { "id": "navigator", "dc": 13 },
+  { "id": "cartographer", "hidden": true },
   {
-    "id": "hunt",
-    "label": "Jagen",
+    "id": "hunter",
+    "label": "Jäger",
     "hint": "Bei Erfolg 2W6 Pfund Fleisch.",
     "skill": "sur",
     "dc": 14,
+    "unfilled": "none",
     "yield": { "formula": "2d6", "unit": "pounds" },
     "icon": "fa-solid fa-bow-arrow"
   },
-  {
-    "id": "medic",
-    "label": "Feldscher",
-    "skill": "med",
-    "dc": 12
-  },
-  {
-    "id": "carry",
-    "label": "Lasten schleppen",
-    "ability": "str",
-    "dc": 10
-  }
+  { "id": "interpreter", "label": "Dolmetscher", "ability": "cha", "dc": 12, "unfilled": "none" }
 ]
 ```
 
-Das ergibt: Navigation auf SG 13, keine Nachhut mehr, und drei neue Aufgaben —
-eine mit Ertrag, eine auf eine andere Fertigkeit, eine auf ein reines Attribut.
+> **Achtung:** Die Rollen-`id`s `navigator`, `vanguard`, `rearguard`,
+> `waterbearer`, `forager`, `quartermaster`, `medic` und `cartographer` haben
+> Sonderbedeutung in der Auswertung. Eigene Rollen mit anderen `id`s werden
+> gewürfelt und angezeigt, greifen aber nicht in die Tagesrechnung ein.
 
 ---
 
@@ -334,45 +410,43 @@ const api = game.modules.get("toa-adventure-tracker").api;
 
 | Aufruf | Rechte | Bedeutung |
 |---|---|---|
-| `api.open()` | alle | Fenster öffnen bzw. in den Vordergrund holen. |
-| `api.app` | alle | Die Instanz der Anwendung. |
-| `api.setDay(n)` | SL | Reisetag setzen. |
-| `api.adjustDay(delta)` | SL | Reisetag verschieben. |
-| `api.completeDay()` | SL | Tag protokollieren, Würfe löschen, hochzählen. |
-| `api.setPace("slow" \| "normal" \| "fast")` | SL | Reisetempo. |
-| `api.setRain(true \| false)` | SL | Regen-Schalter. |
+| `api.open()` | alle | Fenster öffnen. |
+| `api.setDay(n)` / `api.adjustDay(d)` | SL | Reisetag. Verwirft die Auswertung. |
+| `api.setPace("slow"\|"normal"\|"fast")` | SL | Reisetempo. |
+| `api.setSupplies({ water, food })` | SL | Vorräte setzen. |
+| `await api.resolveDay()` | SL | Tag auswerten. Schreibt **nichts** auf Bögen. |
+| `api.clearReport()` | SL | Auswertung verwerfen. |
+| `api.completeDay()` | SL | Protokollieren und weiterzählen. Wendet **keine** Folgen an — das tut der Knopf im Fenster. |
 | `api.getState()` | alle | Der komplette Zustand. |
-| `api.summarise()` | alle | Strecke, Wasser, Nahrung — dieselbe Rechnung wie das Fenster. |
-| `api.getTasks()` | alle | Die effektive Aufgabenliste. |
-| `api.partyActors()` | alle | Die Aktoren, die als reisend gelten. |
-| `api.modifierFor(actor, task)` | alle | Der Modifikator eines Aktors für eine Aufgabe. |
-| `api.moonFor(day)` | alle | Die Mondphase eines beliebigen Tages, ohne etwas zu ändern. |
-| `api.refresh()` | alle | Offene Fenster neu zeichnen. Selten nötig — Zustandsänderungen tun das selbst. |
-| `api.AdventureTracker` | alle | Die Klasse, zum Ableiten oder für `instanceof`. |
+| `api.getRoles()` | alle | Die effektive Rollenliste. |
+| `api.partyActors()` | alle | Wer als reisend gilt. |
+| `api.modifierFor(actor, role)` | alle | Modifikator vom Bogen. |
+| `api.worstExhaustion()` | alle | Höchster Erschöpfungsgrad in der Gruppe. |
+| `api.moonFor(day)` | alle | Mondphase eines beliebigen Tages. |
 
-Die schreibenden Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
-`api.setDay()` aufruft, ändert nichts — dieselbe Antwort, die ihm auch die Knöpfe
-geben.
-
-Ein Beispielmakro liegt im Kompendium **Wildnisreise: Makros**.
+Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
+`api.setDay()` aufruft, ändert nichts.
 
 ---
 
 ## Rechte und Synchronisierung
 
-- Der **gesamte Zustand** liegt in einer Weltoption (`game.settings`, scope
-  `world`) — niemals im Client-Storage.
-- **Nur die SL schreibt.** Spielerseitige Aktionen (Aufgabe wählen, eigenen Wurf
-  auslösen) gehen über `game.socket` an die SL, die schreibt.
-- Das Schreiben einer Weltoption wird von Foundry selbst an alle Clients
-  verteilt — deshalb gibt es **keine** eigene „jetzt alle neu zeichnen“-Nachricht.
+- Der **gesamte Zustand** liegt in einer Weltoption (`scope: "world"`) — niemals
+  im Client-Storage.
+- **Nur die SL schreibt.** Spieleraktionen (Rolle wählen, eigenen Wurf auslösen)
+  gehen über `game.socket` an die SL.
+- Das Schreiben einer Weltoption verteilt Foundry selbst an alle Clients —
+  deshalb gibt es **keine** eigene „jetzt alle neu zeichnen“-Nachricht.
 - Sind mehrere SL angemeldet, führt genau eine die Anfrage aus
   (`game.user.isActiveGM`).
 - Die Rechteprüfung findet **auf der SL-Seite** noch einmal statt. Der sendende
   Client blendet aus, was er nicht darf, aber eine Socket-Nachricht sind nur
-  Daten — maßgeblich ist die Prüfung beim Empfänger.
-- Ist **keine SL verbunden**, sagt das Fenster das oben in einem Banner, statt
-  Klicks ins Leere laufen zu lassen.
+  Daten.
+- Der **Würfelwurf passiert auf dem Client dessen, der klickt** — dort liegen
+  seine Würfel, seine Module und seine Vorteils-Tastenkürzel. Nur das Ergebnis
+  reist.
+- Ist **keine SL verbunden**, sagt das Fenster das in einem Banner, statt Klicks
+  ins Leere laufen zu lassen.
 - **Kein socketlib** als Abhängigkeit.
 
 ---
@@ -380,9 +454,10 @@ Ein Beispielmakro liegt im Kompendium **Wildnisreise: Makros**.
 ## Was das Modul *nicht* tut
 
 - Keine Hexcrawl-Karte, keine Bewegung von Tokens
-- Keine Zufallsbegegnungstabellen
-- Keine Erschöpfungsautomatik — nur Hinweise
-- Kein automatischer KON-Rettungswurf
+- Keine Zufallsbegegnungstabellen im Sinne von Statblocks — die Ereignisse
+  beschreiben, was passiert; **wer** dabei am Tisch steht, entscheidest du
+- Kein Kampf. Ein Hinterhalt kostet TP und Zeit; ob daraus eine Kampfszene wird,
+  ist deine Sache
 - Keine Abhängigkeit von Bezahlmodulen
 
 ---
@@ -392,36 +467,43 @@ Ein Beispielmakro liegt im Kompendium **Wildnisreise: Makros**.
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + Integrationstests
+npm test             # Mondmathematik + 270 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```
 
 `npm run verify` prüft, was `node --check` nicht sehen kann und was jeweils schon
-einmal etwas kaputtgemacht hat: Import-Zyklen, Templates mit mehr oder weniger als
-genau einem Wurzelelement, `data-action`s ohne Handler, i18n-Schlüssel, die
+einmal etwas kaputtgemacht hat: Import-Zyklen, Templates mit mehr oder weniger
+als genau einem Wurzelelement, `data-action`s ohne Handler, i18n-Schlüssel, die
 gleichzeitig Blatt und Zweig sind, Sprachdateien mit unterschiedlichen
-Schlüsselmengen, fehlende Übersetzungen und Manifest-Pfade ins Leere.
+Schlüsselmengen, Manifest-Pfade ins Leere — und, weil die Ereignistabelle der
+eigentliche Inhalt dieses Moduls ist, **dass jedes Ereignis in jeder Sprache
+einen Namen und einen Text hat** und keine verwaisten Texte herumliegen.
 
-`npm test` fährt einen minimalen Foundry-Ersatz hoch (`tools/test/foundry-shim.mjs`)
-und prüft damit Zustandsübergänge, Würfelweitergabe an die dnd5e-API,
-Rechtetrennung und das gerenderte Template.
-
-Die Kompendien liegen als JSON unter `packs/_source/` und werden daraus gebaut;
-das LevelDB-Verzeichnis ist binär und darf nicht von Hand bearbeitet werden.
+`npm test` fährt einen minimalen Foundry-Ersatz hoch
+(`tools/test/foundry-shim.mjs`) und prüft damit Zustandsübergänge, die
+Hex-Regeln, Wetter, Vorratsübertrag, Rechtetrennung und das gerenderte Template.
 
 ### Aufbau
 
 | Datei | Inhalt |
 |---|---|
-| `scripts/const.mjs` | Konstanten und Standardtabellen |
+| `scripts/const.mjs` | Rollen, Ereignisse, Wetter, Regeln — alle Tabellen |
 | `scripts/settings.mjs` | Registrierung und Lesen aller Weltoptionen |
 | `scripts/state.mjs` | Der Weltzustand — einziger Schreibpfad |
 | `scripts/moon.mjs` | Mondphase und SVG-Geometrie |
-| `scripts/tasks.mjs` | Aufgabenliste, Reisende, Modifikatoren, Würfe |
+| `scripts/weather.mjs` | Gewürfeltes Wetter |
+| `scripts/roles.mjs` | Rollenliste, Reisende, Modifikatoren, Würfe |
+| `scripts/events.mjs` | Auswahl aus der Ereignistabelle |
+| `scripts/resolve.mjs` | **Die Tagesmaschine** — Wetter + Würfe → Hex, Ereignisse, Folgen |
+| `scripts/consequences.mjs` | Schreibt Schaden und Erschöpfung auf die Bögen |
 | `scripts/socket.mjs` | Spieleraktionen → SL |
 | `scripts/app.mjs` | Das Fenster (ApplicationV2) |
 | `scripts/module.mjs` | Hooks, Scene Controls, API |
+
+`resolve.mjs` und `consequences.mjs` sind bewusst getrennt: Das eine würfelt und
+baut einen Bericht, das andere ist der unumkehrbare Teil. Genau deshalb ist
+„Neu auswerten“ gefahrlos.
 
 ---
 

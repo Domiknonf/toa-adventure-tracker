@@ -39,7 +39,7 @@ async function onMessage({ action, data, userId } = {}) {
   switch (action) {
     case "assign":
       if (!mayActFor(user, data?.actorId)) return refuse(user, data?.actorId);
-      return assign(data.actorId, data.taskId);
+      return assign(data.actorId, data.roleId);
 
     case "record":
       if (!mayActFor(user, data?.actorId)) return refuse(user, data?.actorId);
@@ -100,8 +100,8 @@ export function requestFromGM(action, data) {
  * app.mjs means the window never has to know which side of it it is on.
  */
 
-export const requestAssign = (actorId, taskId) =>
-  isWriter() ? assign(actorId, taskId) : requestFromGM("assign", { actorId, taskId });
+export const requestAssign = (actorId, roleId) =>
+  isWriter() ? assign(actorId, roleId) : requestFromGM("assign", { actorId, roleId });
 
 export const requestRecord = (actorId, record) =>
   isWriter() ? recordRoll(actorId, record) : requestFromGM("record", { actorId, record });

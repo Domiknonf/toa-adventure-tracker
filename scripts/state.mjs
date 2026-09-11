@@ -1,23 +1,21 @@
-import {
-  MODULE_ID, STATE_SCHEMA, DEFAULT_PACE, LOG_LIMIT, NAVIGATION_TASK, WATER_TASK, FOOD_TASK
-} from "./const.mjs";
-import { setting, paceTable } from "./settings.mjs";
+import { MODULE_ID, STATE_SCHEMA, DEFAULT_PACE, LOG_LIMIT } from "./const.mjs";
+import { setting } from "./settings.mjs";
 
 /**
  * THE WORLD STATE.
  *
  * One object in one world setting. Never in client storage, never on a document
- * flag - a travel day is a fact about the table, and every client has to agree on
- * it without a sync step of its own. Writing a world setting already broadcasts to
- * every client, so `settings.mjs`'s onChange is the whole notification layer.
+ * flag - a travel day is a fact about the table, and every client has to agree
+ * on it. Writing a world setting already broadcasts to every client, so
+ * settings.mjs's onChange is the whole notification layer.
  *
- * ONLY THE GM WRITES. Every mutator below refuses on a non-GM client rather than
- * failing deep inside Foundry's permission check, and every player-side action
- * goes through socket.mjs to reach a GM that calls the very same function.
+ * ONLY THE GM WRITES. Every mutator refuses on a non-GM client, and every
+ * player-side action goes through socket.mjs to reach a GM that calls the very
+ * same function.
  *
- * KEYS ARE ACTOR IDS, NOT UUIDS. A uuid ("Actor.xKm2...") contains a dot, and a
- * dotted key in an object handed to Foundry is liable to be expanded into nested
- * objects somewhere along the way. Ids are flat, so they stay keys.
+ * KEYS ARE ACTOR IDS, NOT UUIDS. A uuid contains a dot, and a dotted key in an
+ * object handed to Foundry is liable to be expanded into nested objects. Ids are
+ * flat, so they stay keys.
  */
 
 /** A state with nothing in it yet. Also the shape reference for everything below. */
@@ -28,12 +26,29 @@ export function blankState() {
     day: 1,
     /** A key of the pace table (slow / normal / fast). */
     pace: DEFAULT_PACE,
-    /** "Es regnet heute" - a per-day switch, cleared when the day is completed. */
-    rain: false,
-    /** actorId -> taskId. At most one task per actor, enforced on write. */
+    /** actorId -> roleId. At most one role per traveller. */
     assignments: {},
-    /** actorId -> roll record (see recordRoll). Cleared when the day is completed. */
+    /** actorId -> roll record. Cleared when the day is completed. */
     rolls: {},
+    /**
+     * SUPPLIES CARRY OVER. This is the difference between "today nobody found
+     * water" and "the third day with empty barrels" - the second one is only a
+     * sentence that can mean anything if yesterday's stock is still here.
+     */
+    supplies: { water: 0, food: 0 },
+    /** Consecutive days with no rain. Drives the thirst flavour text. */
+    dryDays: 0,
+    /** Consecutive days the party has gone short on food (see hungerGrace). */
+    hungryDays: 0,
+    /**
+     * The resolved day: weather, events, hexes, consequences. Null until the GM
+     * resolves the day, and cleared again when the day is completed.
+     *
+     * Kept in state rather than recomputed on render because it contains ROLLED
+     * results - weather, which event, the saving throws. Recomputing it per
+     * render would reroll the day every time somebody opened the window.
+     */
+    report: null,
     /** Completed days, oldest first, capped at LOG_LIMIT. */
     log: []
   };
@@ -43,13 +58,7 @@ export function blankState() {
 /*  Read                                                               */
 /* ------------------------------------------------------------------ */
 
-/**
- * The current state, always complete.
- *
- * Stored partial states are normal - a world that has never completed a day has
- * no `log` key at all - so every read merges onto a blank rather than trusting
- * what is there. That is also what makes adding an optional field a no-op.
- */
+/** The current state, always complete. */
 export function getState() {
   const stored = setting("state") ?? {};
   const state = foundry.utils.mergeObject(blankState(), stored, { inplace: false });
@@ -59,12 +68,28 @@ export function getState() {
 /**
  * Bring an older stored shape forward.
  *
- * Empty at schema 1 and deliberately kept as a named step anyway: the moment a
- * second version exists, the place it goes is already here and already called.
+ * Schema 1 was the miles-and-tasks model: it stored `rain`, per-day water and
+ * food totals, and task ids that no longer exist. None of it maps onto the hex
+ * model, and a half-translated state would be worse than a clean one - so the
+ * day counter and the logbook survive (both still mean exactly what they meant)
+ * and the rest is dropped.
  */
 function migrate(state) {
   if (state.schema === STATE_SCHEMA) return state;
-  // ... future steps, each guarded by the version it upgrades FROM ...
+
+  if (!state.schema || state.schema < 2) {
+    state.assignments = {};
+    state.rolls = {};
+    state.report = null;
+    state.supplies = { water: 0, food: 0 };
+    state.dryDays = 0;
+    state.hungryDays = 0;
+    // Old entries carry `miles` where new ones carry `hexes`. Left as they are:
+    // the logbook renders whichever it finds, and rewriting history into a unit
+    // it was never measured in would be a lie in the name of tidiness.
+    state.log = Array.isArray(state.log) ? state.log : [];
+  }
+
   state.schema = STATE_SCHEMA;
   return state;
 }
@@ -76,13 +101,7 @@ function migrate(state) {
 /** True when this client is the one GM that performs writes. */
 export const isWriter = () => game.user.isActiveGM;
 
-/**
- * Replace the stored state. The single write path - nothing else calls
- * `game.settings.set` for "state".
- *
- * Returns the state that was written, or null when this client may not write.
- * Callers on the player side never reach here: they go through socket.mjs.
- */
+/** Replace the stored state. The single write path. */
 async function write(state) {
   if (!isWriter()) return null;
   await game.settings.set(MODULE_ID, "state", state);
@@ -90,7 +109,7 @@ async function write(state) {
 }
 
 /** Read, hand to `fn` to mutate in place, write back. */
-async function update(fn) {
+export async function update(fn) {
   if (!isWriter()) return null;
   const state = getState();
   fn(state);
@@ -101,166 +120,134 @@ async function update(fn) {
 /*  Day                                                                */
 /* ------------------------------------------------------------------ */
 
-/** Clamp to a sane integer day. Day 0 and fractional days have no meaning. */
 const cleanDay = (value) => Math.max(1, Math.floor(Number(value) || 1));
 
-export const setDay = (day) => update(s => { s.day = cleanDay(day); });
-
-export const adjustDay = (delta) => update(s => { s.day = cleanDay(s.day + Number(delta || 0)); });
-
 /**
- * Finish the travel day: write the logbook entry, then clear everything that was
- * about THAT day and step the counter.
+ * Moving the day by hand throws away the resolved report.
  *
- * Assignments survive on purpose. A party that navigated yesterday is navigating
- * today; making everyone re-pick the same five tasks every morning is busywork,
- * and changing one is a single click. What does not survive is the ROLLS (a new
- * day is a new check) and the rain switch (weather is per day by definition).
+ * It has to: the report belongs to the day it was rolled for, and leaving it
+ * attached to a different number would show yesterday's raptors under today's
+ * date. Rolls go too, for the same reason.
  */
-export const completeDay = () => update(s => {
-  s.log.push(dayEntry(s));
-  // Cap from the front: the oldest entry is the one nobody is reading.
-  if (s.log.length > LOG_LIMIT) s.log.splice(0, s.log.length - LOG_LIMIT);
+export const setDay = (day) => update(s => {
+  s.day = cleanDay(day);
+  s.report = null;
   s.rolls = {};
-  s.rain = false;
-  s.day = cleanDay(s.day + 1);
 });
 
-/**
- * The logbook entry for the day as it currently stands.
- *
- * Computed from the state at completion time and then FROZEN into the log - it is
- * a record of what happened, not a live view. That matters: retuning the pace
- * table next week must not rewrite last week's distances.
- */
-function dayEntry(state) {
-  const summary = summarise(state);
-  return {
-    day: state.day,
-    pace: state.pace,
-    miles: summary.miles,
-    lost: summary.lost,
-    water: summary.water,
-    food: summary.food,
-    rain: state.rain,
-    at: Date.now()
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Pace, weather                                                      */
-/* ------------------------------------------------------------------ */
-
-export const setPace = (pace) => update(s => {
-  if (paceTable()[pace]) s.pace = pace;
+export const adjustDay = (delta) => update(s => {
+  s.day = cleanDay(s.day + Number(delta || 0));
+  s.report = null;
+  s.rolls = {};
 });
 
-export const setRain = (rain) => update(s => { s.rain = !!rain; });
+export const setPace = (pace) => update(s => { s.pace = pace; });
 
 /* ------------------------------------------------------------------ */
-/*  Assignments                                                        */
+/*  Assignments and rolls                                              */
 /* ------------------------------------------------------------------ */
 
 /**
- * Give one actor one task, or clear it with a falsy taskId.
+ * Give one traveller one role, or clear it with a falsy roleId.
  *
- * "Jeder Aktor kann pro Tag nur eine Aufgabe übernehmen" is enforced by the data
- * shape itself - one actorId, one value - so re-assigning simply overwrites, and
- * there is no way to end up holding two. Changing task also drops the day's roll
- * for that actor: the stored result belonged to the OTHER task, and leaving it
- * would show a Stealth result under Navigation.
+ * "One role per traveller" is enforced by the data shape itself - one actorId,
+ * one value - so re-assigning overwrites and there is no way to hold two.
+ * Changing role also drops that traveller's roll: the stored result belonged to
+ * the other role.
  */
-export const assign = (actorId, taskId) => update(s => {
+export const assign = (actorId, roleId) => update(s => {
   const previous = s.assignments[actorId];
-  if (!taskId) {
+  if (!roleId) {
     delete s.assignments[actorId];
     delete s.rolls[actorId];
     return;
   }
-  s.assignments[actorId] = taskId;
-  if (previous !== taskId) delete s.rolls[actorId];
+  s.assignments[actorId] = roleId;
+  if (previous !== roleId) delete s.rolls[actorId];
 });
 
-/* ------------------------------------------------------------------ */
-/*  Rolls                                                              */
-/* ------------------------------------------------------------------ */
-
 /**
- * Store one finished roll. Re-rolling simply overwrites, which is exactly the
- * "Neu würfeln überschreibt das Ergebnis des Tages" rule.
+ * Store one finished roll. Re-rolling overwrites.
  *
- * The record holds NUMBERS, not a Roll object: the chat message is the roll's
- * home and already went out through the normal pipeline (see tasks.rollTask).
- * What the window needs is a total, a DC and a verdict, and those survive a JSON
- * round trip through a world setting - a Roll instance would not.
+ * The record holds NUMBERS, not a Roll: the chat message is the roll's home and
+ * already went out through the system. What the engine needs is a total, a DC
+ * and a verdict, and those survive a JSON round trip through a world setting.
+ *
+ * A new roll invalidates the resolved report - the day was worked out from the
+ * OLD numbers, and leaving it up would show an outcome that no longer follows
+ * from what is on screen.
  */
 export const recordRoll = (actorId, record) => update(s => {
-  if (!s.assignments[actorId]) return;   // no task, nothing this result belongs to
+  if (!s.assignments[actorId]) return;
   s.rolls[actorId] = record;
+  s.report = null;
 });
 
-export const clearRolls = () => update(s => { s.rolls = {}; });
+export const clearRolls = () => update(s => { s.rolls = {}; s.report = null; });
 
 /* ------------------------------------------------------------------ */
-/*  Logbook                                                            */
+/*  Report                                                             */
 /* ------------------------------------------------------------------ */
+
+/** Store the resolved day. Built by resolve.mjs, which owns its shape. */
+export const setReport = (report) => update(s => { s.report = report; });
+
+export const clearReport = () => update(s => { s.report = null; });
+
+/* ------------------------------------------------------------------ */
+/*  Supplies                                                           */
+/* ------------------------------------------------------------------ */
+
+/** Set the stocks directly - the GM's "we bought barrels in Port Nyanzaru" path. */
+export const setSupplies = ({ water, food }) => update(s => {
+  if (Number.isFinite(water)) s.supplies.water = Math.max(0, water);
+  if (Number.isFinite(food)) s.supplies.food = Math.max(0, food);
+  // The report was worked out from the old stocks; it no longer follows.
+  s.report = null;
+});
+
+/* ------------------------------------------------------------------ */
+/*  Completing the day                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Commit the resolved day: write the stocks and streaks the report worked out,
+ * log it, clear the day and step the counter.
+ *
+ * Applying the report's CONSEQUENCES to the sheets is not done here - that is
+ * consequences.mjs, because it writes to Actor documents rather than to this
+ * state, and the two must not be able to half-succeed together.
+ *
+ * Role assignments survive on purpose: whoever navigated yesterday is navigating
+ * today, and re-picking eight roles every morning is busywork. What does not
+ * survive is the rolls and the report, both of which were about THAT day.
+ */
+export const completeDay = () => update(s => {
+  const report = s.report;
+  if (!report) return;
+
+  s.log.push({
+    day: s.day,
+    pace: s.pace,
+    hexes: report.hexes,
+    weather: report.weather?.key ?? null,
+    events: (report.events ?? []).map(e => e.id),
+    water: report.supplies?.waterAfter ?? 0,
+    food: report.supplies?.foodAfter ?? 0,
+    damage: report.consequences?.reduce((n, c) => n + (c.damage ?? 0), 0) ?? 0,
+    exhaustion: report.consequences?.reduce((n, c) => n + (c.exhaustion ?? 0), 0) ?? 0,
+    at: Date.now()
+  });
+  if (s.log.length > LOG_LIMIT) s.log.splice(0, s.log.length - LOG_LIMIT);
+
+  s.supplies.water = report.supplies?.waterAfter ?? s.supplies.water;
+  s.supplies.food = report.supplies?.foodAfter ?? s.supplies.food;
+  s.dryDays = report.dryDays ?? s.dryDays;
+  s.hungryDays = report.hungryDays ?? s.hungryDays;
+
+  s.rolls = {};
+  s.report = null;
+  s.day = cleanDay(s.day + 1);
+});
 
 export const clearLog = () => update(s => { s.log = []; });
-
-/* ------------------------------------------------------------------ */
-/*  Derived                                                            */
-/* ------------------------------------------------------------------ */
-
-/**
- * Everything the window computes from the day's rolls: distance, and the water
- * and food that were gathered.
- *
- * Lives here rather than in app.mjs because completeDay() needs the same numbers
- * to freeze into the log, and two implementations of "how far did we get" would
- * drift the moment one of them was fixed.
- *
- * `navigation` is looked up by task id, so a custom list that has no navigation
- * task yields `lost: false` and the pace's full miles - "nobody navigated" reads
- * as "no penalty", which beats inventing one.
- */
-export function summarise(state = getState()) {
-  const paces = paceTable();
-  const pace = paces[state.pace] ?? paces[DEFAULT_PACE] ?? { miles: 0, mod: 0 };
-
-  const navRoll = Object.values(state.rolls ?? {})
-    .find(r => r?.taskId === NAVIGATION_TASK && Number.isFinite(r?.total));
-
-  // Failing the navigation check halves the distance, rounded down. No roll at
-  // all is NOT a failure - the party simply travelled without a navigator.
-  const lost = !!navRoll && navRoll.success === false;
-  const miles = lost ? Math.floor(pace.miles / 2) : pace.miles;
-
-  return {
-    miles,
-    lost,
-    paceMiles: pace.miles,
-    paceMod: pace.mod,
-    water: sumYield(state, WATER_TASK),
-    food: sumYield(state, FOOD_TASK)
-  };
-}
-
-/**
- * Total yield of every successful roll on one task id.
- *
- * Sums across actors on purpose: two characters foraging is two yields, and the
- * party eats both. A failed roll contributes nothing rather than a zero entry,
- * so "0 gallons" and "nobody looked" stay distinguishable in the window.
- */
-function sumYield(state, taskId) {
-  let total = 0;
-  let any = false;
-  for (const record of Object.values(state.rolls ?? {})) {
-    if (record?.taskId !== taskId) continue;
-    if (!record.success) continue;
-    if (!Number.isFinite(record.yield?.total)) continue;
-    total += record.yield.total;
-    any = true;
-  }
-  return any ? total : null;
-}

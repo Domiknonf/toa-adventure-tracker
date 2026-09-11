@@ -242,7 +242,7 @@
   .toa-member-main { min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
   .toa-member-name { font-weight: 700; }
 
-  .toa-task-select { width: 100%; }
+  .toa-role-select { width: 100%; }
 
   .toa-member-check {
     font-size: var(--font-size-11, 0.6875rem);
@@ -310,18 +310,6 @@
   /* ---------------------------------------------------------------- */
   /*  Distance + supplies                                              */
   /* ---------------------------------------------------------------- */
-
-  .toa-distance {
-    display: flex;
-    align-items: baseline;
-    gap: var(--toa-gap);
-    flex-wrap: wrap;
-  }
-
-  .toa-miles { display: flex; align-items: baseline; gap: 0.3rem; }
-  .toa-miles-value { font-size: 2rem; font-weight: 700; color: var(--toa-accent); line-height: 1; }
-  .toa-miles-unit { color: var(--toa-dim); }
-  .toa-distance.lost .toa-miles-value { color: var(--toa-bad); }
 
   .toa-supply {
     display: grid;
@@ -415,6 +403,184 @@
   }
 
   .toa-tracker button[disabled] { opacity: 0.55; cursor: default; }
+
+  /* ---------------------------------------------------------------- */
+  /*  The day report                                                   */
+  /* ---------------------------------------------------------------- */
+
+  .toa-report { border-color: var(--toa-accent); }
+
+  .toa-weather {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--toa-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* The day's whole answer, in one glyph. Colour carries the verdict so it
+     reads from across the table: nothing, a day, a good day. */
+  .toa-hexbox {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    border-radius: var(--toa-radius);
+    border: 1px solid var(--toa-line);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .toa-hexbox.hex-0 { border-color: var(--toa-bad); background: rgba(192, 80, 63, 0.14); }
+  .toa-hexbox.hex-1 { border-color: var(--toa-line); }
+  .toa-hexbox.hex-2 { border-color: var(--toa-ok); background: rgba(90, 166, 79, 0.14); }
+
+  .toa-hexnum { font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--toa-accent); }
+  .toa-hexbox.hex-0 .toa-hexnum { color: var(--toa-bad); }
+  .toa-hexbox.hex-2 .toa-hexnum { color: var(--toa-ok); }
+  .toa-hexlabel { color: var(--toa-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Why the number is what it is. Never decoration: a number with no reason is
+     a number the table argues about. */
+  .toa-reasons {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    font-size: var(--font-size-12, 0.75rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .toa-reasons li { display: flex; gap: 0.4rem; color: var(--toa-dim); }
+  .toa-reasons li.bad { color: var(--toa-bad); }
+  .toa-reasons li.good { color: var(--toa-ok); }
+  .toa-delta { width: 0.8rem; text-align: center; flex: 0 0 auto; }
+
+  .toa-events {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .toa-event {
+    border: 1px solid var(--toa-line);
+    border-left: 3px solid var(--toa-bad);
+    border-radius: var(--toa-radius);
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  /* The categories that are not the jungle trying to kill you. */
+  .toa-event.cat-encounter { border-left-color: var(--toa-accent); }
+  .toa-event.cat-detour,
+  .toa-event.cat-lost { border-left-color: var(--toa-neutral); }
+  .toa-event.good { border-left-color: var(--toa-ok); }
+
+  .toa-event-title { font-weight: 700; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .toa-event-text { margin: 0.25rem 0 0; line-height: 1.45; }
+  .toa-event-effects { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+  .toa-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--font-size-11, 0.6875rem);
+    border: 1px solid var(--toa-line);
+    border-radius: 3px;
+    padding: 0.05rem 0.35rem;
+    color: var(--toa-dim);
+    white-space: nowrap;
+  }
+
+  .toa-tag.bad { border-color: var(--toa-bad); color: var(--toa-bad); }
+  .toa-tag.good { border-color: var(--toa-ok); color: var(--toa-ok); }
+
+  .toa-sub-title {
+    margin: 0.85rem 0 0.35rem;
+    font-size: var(--font-size-12, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--toa-dim);
+  }
+
+  .toa-consequences {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .toa-consequences li { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+  /* ---------------------------------------------------------------- */
+  /*  Roles: unfilled warning                                          */
+  /* ---------------------------------------------------------------- */
+
+  .toa-unfilled {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--font-size-11, 0.6875rem);
+  }
+
+  .toa-unfilled-label { color: var(--toa-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .toa-pending, .toa-total-miles {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--toa-accent);
+  }
+
+  .toa-exh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-bad);
+    border: 1px solid var(--toa-bad);
+    border-radius: 3px;
+    padding: 0 0.25rem;
+    margin-left: 0.35rem;
+  }
+
+  .toa-compact { margin-top: 0.35rem; font-size: var(--font-size-11, 0.6875rem); }
+
+  /* ---------------------------------------------------------------- */
+  /*  Supplies                                                         */
+  /* ---------------------------------------------------------------- */
+
+  .toa-supply > div.short { border-color: var(--toa-bad); background: rgba(192, 80, 63, 0.12); }
+  .toa-unit { font-size: var(--font-size-11, 0.6875rem); font-weight: 400; color: var(--toa-dim); }
+  .toa-sub { font-size: var(--font-size-11, 0.6875rem); font-weight: 400; color: var(--toa-dim); margin: 0; }
+
+  .toa-tracker .toa-link {
+    background: none;
+    border: none;
+    width: auto;
+    padding: 0;
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-accent);
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .toa-pace-max { color: var(--toa-accent); }
+
+  /* The supply dialog's two fields. */
+  .toa-dialog { display: flex; flex-direction: column; gap: 0.5rem; }
+  .toa-dialog label { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 
   /* ---------------------------------------------------------------- */
   /*  Narrow: one column                                               */

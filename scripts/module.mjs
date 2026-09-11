@@ -5,9 +5,10 @@ import {
   getApp, openApp, refresh, registerRefresh, registerActorHooks, AdventureTracker
 } from "./app.mjs";
 import {
-  getState, setDay, adjustDay, completeDay, setPace, setRain, summarise
+  getState, setDay, adjustDay, completeDay, setPace, setSupplies, clearReport
 } from "./state.mjs";
-import { getTasks, partyActors, modifierFor } from "./tasks.mjs";
+import { getRoles, partyActors, modifierFor, worstExhaustion } from "./roles.mjs";
+import { resolveDay } from "./resolve.mjs";
 import { moonFor } from "./moon.mjs";
 
 /* ------------------------------------------------------------------ */
@@ -49,23 +50,37 @@ Hooks.once("ready", () => {
     setDay,
     /** Step the travel day by a delta. GM only. */
     adjustDay,
-    /** Log the day, clear its rolls and advance. GM only. */
+    /**
+     * Commit the resolved day: log it, clear it and advance the counter. Does
+     * NOT apply consequences to sheets - the window does that around this call,
+     * so a macro that wants the full step should use the window's button.
+     * GM only.
+     */
     completeDay,
     /** Set the travel pace ("slow" | "normal" | "fast"). GM only. */
     setPace,
-    /** Set the "it is raining today" switch. GM only. */
-    setRain,
+    /** Set the water and food stocks, e.g. `{ water: 40, food: 20 }`. GM only. */
+    setSupplies,
+
+    /**
+     * Roll the day: weather, encounters, events, supplies and saving throws.
+     * Stores the report and returns it. Writes NOTHING to any sheet, so calling
+     * it again simply rolls a different day. GM only.
+     */
+    resolveDay,
+    /** Throw away the resolved day without completing it. GM only. */
+    clearReport,
 
     /** The whole stored state, already merged onto a complete shape. */
     getState,
-    /** Distance, water and food as the window computes them. */
-    summarise,
-    /** The effective task list (defaults + the customTasks setting). */
-    getTasks,
+    /** The effective role list (defaults + the customRoles setting). */
+    getRoles,
     /** The actors the tracker considers to be travelling. */
     partyActors,
-    /** The modifier one actor brings to one task, read from the sheet. */
+    /** The modifier one actor brings to one role, read from the sheet. */
     modifierFor,
+    /** The highest exhaustion level anyone in the party carries. */
+    worstExhaustion,
     /** The moon for any day, without changing anything. */
     moonFor,
 

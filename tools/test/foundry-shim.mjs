@@ -10,6 +10,11 @@ import Handlebars from "handlebars";
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const lang = JSON.parse(fs.readFileSync(`${ROOT}/lang/de.json`, "utf8"));
 
+/* --- Foundry's Math extension ------------------------------------- */
+// Foundry adds this to the global Math; the engine clamps hexes and percentages
+// with it, so the shim has to supply it too.
+Math.clamp ??= (value, min, max) => Math.min(Math.max(value, min), max);
+
 /* --- foundry.utils ------------------------------------------------ */
 const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
 function mergeObject(original, other = {}, { inplace = true } = {}) {
@@ -25,6 +30,8 @@ globalThis.foundry = {
   utils: {
     mergeObject,
     deepClone: (v) => structuredClone(v),
+    escapeHTML: (v) => String(v).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])),
     debounce: (fn) => fn
   },
   applications: {
@@ -58,7 +65,8 @@ globalThis.CONFIG = {
       prc: { label: "Wahrnehmung", ability: "wis", fullKey: "perception" },
       ste: { label: "Heimlichkeit", ability: "dex", fullKey: "stealth" },
       ath: { label: "Athletik", ability: "str", fullKey: "athletics" },
-      med: { label: "Medizin", ability: "wis", fullKey: "medicine" }
+      med: { label: "Medizin", ability: "wis", fullKey: "medicine" },
+      inv: { label: "Nachforschungen", ability: "int", fullKey: "investigation" }
     },
     abilities: {
       str: { label: "Stärke", fullKey: "strength" },
@@ -68,12 +76,13 @@ globalThis.CONFIG = {
       wis: { label: "Weisheit", fullKey: "wisdom" },
       cha: { label: "Charisma", fullKey: "charisma" }
     },
-    travelPace: { slow: {}, normal: {}, fast: {} }
+    travelPace: { slow: {}, normal: {}, fast: {} },
+    conditionTypes: { exhaustion: { levels: 6 } }
   }
 };
 
 /* --- Actors ------------------------------------------------------- */
-export function makeActor({ id, name, skills = {}, abilities = {}, owner = true }) {
+export function makeActor({ id, name, skills = {}, abilities = {}, owner = true, hp = 30, exhaustion = 0 }) {
   return {
     id, name, uuid: `Actor.${id}`, type: "character",
     img: `icons/${id}.webp`,
@@ -82,8 +91,29 @@ export function makeActor({ id, name, skills = {}, abilities = {}, owner = true 
     testUserPermission: () => owner,
     system: {
       isCreature: true,
+      attributes: { hp: { value: hp, max: hp }, exhaustion },
       skills: Object.fromEntries(Object.entries(skills).map(([k, v]) => [k, { total: v }])),
       abilities: Object.fromEntries(Object.entries(abilities).map(([k, v]) => [k, { mod: v }]))
+    },
+    // What the engine writes. Recorded so a test can assert it went through the
+    // system's own path rather than a raw hp update.
+    damageTaken: [],
+    async applyDamage(amount) {
+      this.damageTaken.push(amount);
+      this.system.attributes.hp.value = Math.max(0, this.system.attributes.hp.value - amount);
+      return this;
+    },
+    async update(data) {
+      if ("system.attributes.exhaustion" in data) {
+        this.system.attributes.exhaustion = data["system.attributes.exhaustion"];
+      }
+      return this;
+    },
+    /** Saves obey `saveResult`: true = everyone passes, false = everyone fails. */
+    async rollSavingThrow(config) {
+      this.calls.push({ method: "rollSavingThrow", config });
+      const pass = saveResult.value;
+      return [{ total: pass ? 99 : 1, options: { target: config.target } }];
     },
     getRollData: () => ({ prof: 2 }),
     // Records how it was called, so a test can assert the roll went through the
@@ -100,8 +130,11 @@ export function makeActor({ id, name, skills = {}, abilities = {}, owner = true 
   };
 }
 
-/** The next d20 face the fake roller will produce. Set by a test. */
+/** The next d20 face the fake role roller will produce. Set by a test. */
 export const dice = { d20: 12 };
+
+/** Whether saving throws pass. Set by a test. */
+export const saveResult = { value: false };
 
 function makeRoll(config, mod = 0) {
   const pace = config.rolls?.[0]?.data?.pace ?? 0;
@@ -116,23 +149,47 @@ function makeRoll(config, mod = 0) {
 }
 
 /* --- Roll (for yields) -------------------------------------------- */
+/**
+ * A deterministic Roll.
+ *
+ * `queue` lets a test dictate the next d100 (weather, encounters) so a day can
+ * be steered; anything not queued uses the average face, which keeps damage and
+ * yields stable across runs. Real dice would make every assertion a coin flip.
+ */
+export const queue = { d100: [], d20: [] };
+
 globalThis.Roll = class {
-  constructor(formula, data) { this.formula = formula; this.data = data; }
+  constructor(formula, data) { this.formula = String(formula); this.data = data ?? {}; }
   async evaluate() {
-    // "1d6 + @mod" -> 4 + mod, deterministically.
+    if (/@nonsense/.test(this.formula)) throw new Error("bad formula");
     const mod = Number(this.data?.mod ?? 0);
-    if (!/^\s*1d6\s*\+\s*@mod\s*$/.test(this.formula)) {
-      if (/@nonsense/.test(this.formula)) throw new Error("bad formula");
+
+    const d100 = this.formula.match(/^\s*1d100\s*$/);
+    if (d100) { this.total = queue.d100.length ? queue.d100.shift() : 50; return this; }
+
+    // NdM (+ K) and "@mod" - enough for every formula this module builds.
+    let total = 0;
+    for (const m of this.formula.matchAll(/(\d+)d(\d+)/g)) {
+      const [, n, faces] = m;
+      // The average face, rounded up: 1d6 -> 4, 2d6 -> 8. Stable and non-trivial.
+      total += Number(n) * Math.ceil((Number(faces) + 1) / 2);
     }
-    this.total = 4 + mod;
-    this.formula = `1d6 + ${mod}`;
+    for (const m of this.formula.matchAll(/(?:^|[+\s])(\d+)(?![d\d])/g)) total += Number(m[1]);
+    if (/@mod/.test(this.formula)) total += mod;
+
+    this.total = total;
+    this.formula = this.formula.replace("@mod", String(mod));
     return this;
   }
   async toMessage() { messages.push(this.formula); return {}; }
 };
 export const messages = [];
 
-globalThis.ChatMessage = { getSpeaker: () => ({}) };
+globalThis.ChatMessage = {
+  getSpeaker: () => ({}),
+  create: async (data) => { chatMessages.push(data); return data; }
+};
+export const chatMessages = [];
 globalThis.JournalEntry = {
   create: async (data) => { journals.push(data); return { sheet: { render() {} } }; }
 };

@@ -165,19 +165,49 @@ for (const t of templates) {
 }
 if (referenced.size === templates.length) ok(`templates all referenced (${templates.length})`);
 
-/* 9. THE DEFAULT TASK LIST HAS A LABEL FOR EVERY ENTRY. A task whose label key is
-      missing renders its own key path into the dropdown - legible enough to ship
-      by accident and wrong enough to notice at the table. */
+/* 9. EVERY DEFAULT ROLE HAS A LABEL. A role whose label key is missing renders
+      its own key path into the dropdown - legible enough to ship by accident and
+      wrong enough to notice at the table. */
 const constSrc = fs.readFileSync("scripts/const.mjs", "utf8");
-const taskIds = [...constSrc.matchAll(/^\s{4}id:\s*"([\w-]+)"/gm)].map(m => m[1]);
+const roleIds = [...constSrc.matchAll(/^\s{4}id:\s*"([\w-]+)",\n\s{4}skill:/gm)].map(m => m[1]);
 let missingLabels = 0;
-for (const id of taskIds) {
-  if (!known.has(`${PREFIX}task.${id}.label`)) {
-    fail(`default task "${id}" has no label key (${PREFIX}task.${id}.label)`);
+for (const id of roleIds) {
+  if (!known.has(`${PREFIX}role.${id}.label`)) {
+    fail(`default role "${id}" has no label key (${PREFIX}role.${id}.label)`);
     missingLabels++;
   }
 }
-if (!missingLabels) ok(`every default task has a label (${taskIds.length} tasks)`);
+if (!missingLabels) ok(`every default role has a label (${roleIds.length} roles)`);
+
+/* 10. EVERY EVENT HAS A NAME AND A TEXT, IN EVERY LANGUAGE. The compilation is
+       the module's actual content: an event that fires with no prose prints its
+       own key into the day report, in front of the table. Checked against every
+       language file rather than the reference one, because a German-only event
+       is exactly the mistake this module is shaped to make. */
+const eventIds = [...constSrc.matchAll(/\{ id: "(\w+)",\s+category:/g)].map(m => m[1]);
+let missingEvents = 0;
+for (const file of langs) {
+  const table = tables[file];
+  for (const id of eventIds) {
+    for (const suffix of ["eventName", "event"]) {
+      const key = `${PREFIX}${suffix}.${id}`;
+      if (!(key in table)) { fail(`${file}: event "${id}" has no ${suffix} ("${key}")`); missingEvents++; }
+    }
+  }
+}
+if (!missingEvents) ok(`every event has a name and text in all languages (${eventIds.length} events)`);
+
+/* 11. NO ORPHAN EVENT PROSE. A text whose event was renamed or dropped is dead
+       weight that reads as coverage - it makes check 10 look satisfied while the
+       real entry goes unwritten. */
+const knownEventIds = new Set(eventIds);
+
+let orphans = 0;
+for (const key of Object.keys(tables[reference])) {
+  const match = key.match(/^toa-adventure-tracker\.event\.(\w+)$/);
+  if (match && !knownEventIds.has(match[1])) { fail(`orphan event text: "${key}"`); orphans++; }
+}
+if (!orphans) ok("no orphan event prose");
 
 console.log(bad ? `\n${bad} problem(s)` : "\nall checks passed");
 process.exit(bad ? 1 : 0);

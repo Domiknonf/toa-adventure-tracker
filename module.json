@@ -1,8 +1,8 @@
 {
   "id": "toa-adventure-tracker",
   "title": "Wildnisreise (Adventure Tracker)",
-  "description": "Reisetag, Mondphase, Aufgabenverteilung, Tagesstrecke und Vorräte für Wildnisreisen in D&D 5e. Ein Fenster für GM und Spieler, der gesamte Zustand liegt in der Welt.",
-  "version": "1.0.0",
+  "description": "Wildnisreise für D&D 5e: Rollen besetzen, würfeln, und der Tag erzählt sich selbst — 0, 1 oder 2 Hexfelder, mit Wetter, Begegnungen, Vorräten und Folgen. Ein Fenster für SL und Spieler.",
+  "version": "2.0.0",
   "authors": [
     {
       "name": "Dominik Königseder"
@@ -58,7 +58,7 @@
   "socket": true,
   "url": "https://github.com/Domiknonf/toa-adventure-tracker",
   "manifest": "https://github.com/Domiknonf/toa-adventure-tracker/releases/latest/download/module.json",
-  "download": "https://github.com/Domiknonf/toa-adventure-tracker/releases/download/v1.0.0/module.zip",
+  "download": "https://github.com/Domiknonf/toa-adventure-tracker/releases/download/v2.0.0/module.zip",
   "license": "LICENSE",
   "readme": "README.md",
   "bugs": "https://github.com/Domiknonf/toa-adventure-tracker/issues"
