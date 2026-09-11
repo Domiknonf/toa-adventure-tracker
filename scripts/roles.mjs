@@ -214,8 +214,18 @@ export function travelerCount() {
   return configured > 0 ? configured : partyActors().length;
 }
 
-/** Whether this user may act for an actor. The GM may act for everyone. */
-export const canControl = (actor) => !!actor && (game.user.isGM || actor.isOwner);
+/**
+ * Whether this user may act for an actor.
+ *
+ * The GM may act for everyone, always. A player may act for their own character
+ * only when the world has handed the rolling back to players (`playerRolls`) -
+ * by default this is a GM's tool and a player's window has nothing to press.
+ */
+export const canControl = (actor) => {
+  if (!actor) return false;
+  if (game.user.isGM) return true;
+  return !!setting("playerRolls") && actor.isOwner;
+};
 
 /**
  * The highest exhaustion level anyone in the party carries.

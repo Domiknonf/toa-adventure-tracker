@@ -306,7 +306,7 @@
   "toa-adventure-tracker.settings.partyLevel.name": "Gruppenstufe",
   "toa-adventure-tracker.settings.partyLevel.hint": "Für die Kampfvorschläge im Tagesbericht (schwer/tödlich). 0 bedeutet: aus den Charakterbögen errechnen. Trag eine Stufe ein, wenn die Bögen nicht den Tisch abbilden.",
   "toa-adventure-tracker.settings.shareReport.name": "Tagesbericht mit Spielern teilen",
-  "toa-adventure-tracker.settings.shareReport.hint": "Aus bleibt der Bericht bei der Spielleitung — die Spieler bekommen ihn gar nicht erst übermittelt, nicht nur ausgeblendet. Die Ereignistexte sind zum Vorlesen geschrieben. Eingeschaltet sehen alle den Bericht und die Chatzusammenfassung geht an den ganzen Tisch.",
+  "toa-adventure-tracker.settings.shareReport.hint": "Aus bleiben Tagesbericht und Logbuch bei der Spielleitung — die Spieler bekommen sie gar nicht erst übermittelt, nicht nur ausgeblendet. Die Ereignistexte sind zum Vorlesen geschrieben. Eingeschaltet sehen alle beides, und die Chatzusammenfassung geht an den ganzen Tisch.",
   "toa-adventure-tracker.eventName.crocodiles": "Riesenkrokodile",
   "toa-adventure-tracker.event.crocodiles": "Was wie ein treibender Stamm aussah, dreht bei. Der Schwanzschlag wirft das vordere Kanu herum, und dann sind es drei, die von unten kommen.",
   "toa-adventure-tracker.eventName.riverHag": "Flusshexe",
@@ -378,5 +378,14 @@
   "toa-adventure-tracker.foe.giantOctopus": "Riesenkrake",
   "toa-adventure-tracker.app.mode": "Reiseart",
   "toa-adventure-tracker.app.modeHint": "Die Zahlen zeigen die Hexfelder bei langsamem / normalem / schnellem Tempo.",
-  "toa-adventure-tracker.log.mode": "Reiseart"
+  "toa-adventure-tracker.log.mode": "Reiseart",
+  "toa-adventure-tracker.app.travelling": "Unterwegs",
+  "toa-adventure-tracker.settings.playerRolls.name": "Spieler dürfen selbst würfeln",
+  "toa-adventure-tracker.settings.playerRolls.hint": "Aus ist das Werkzeug allein für die Spielleitung — Spieler sehen im Fenster nur Reisetag, Mondphase, Reiseart, Wetter und Vorräte. Eingeschaltet bekommen sie die Rollenliste zurück und würfeln ihre eigenen Charaktere selbst, was ihre Würfel und Tastenkürzel greifen lässt.",
+  "toa-adventure-tracker.notify.allRested": "Alle Reisenden haben eine lange Rast gemacht. Der Tag könnte abgeschlossen werden.",
+  "toa-adventure-tracker.notify.restedAdvanced": "Alle haben gerastet — weiter mit Reisetag {day}.",
+  "toa-adventure-tracker.app.rested": "Lange Rast",
+  "toa-adventure-tracker.app.stillAwake": "Noch wach:",
+  "toa-adventure-tracker.settings.advanceOnLongRest.name": "Tag bei langer Rast automatisch weiterzählen",
+  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Sobald alle Reisenden eine lange Rast mit „neuer Tag“ gemacht haben, wird der Reisetag abgeschlossen und weitergezählt — mitsamt Bericht, Logbucheintrag und Folgen, falls der Tag ausgewertet wurde. Ein Tag, an dem noch nicht gereist wurde, wird nie weitergezählt, damit der Zähler nicht doppelt springt. Ausgeschaltet bekommst du nur einen Hinweis."
 }

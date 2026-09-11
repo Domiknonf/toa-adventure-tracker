@@ -306,7 +306,7 @@
   "toa-adventure-tracker.settings.partyLevel.name": "Party level",
   "toa-adventure-tracker.settings.partyLevel.hint": "For the hard/deadly encounter suggestions in the day report. 0 means: work it out from the character sheets. Enter a level when the sheets do not reflect the table.",
   "toa-adventure-tracker.settings.shareReport.name": "Share the day report with players",
-  "toa-adventure-tracker.settings.shareReport.hint": "Off, the report stays with the GM — players are never sent it, not merely shown a hidden panel. The event texts are written to be read aloud. On, everyone sees the report and the chat summary goes to the whole table.",
+  "toa-adventure-tracker.settings.shareReport.hint": "Off, the day report and the logbook stay with the GM — players are never sent them, not merely shown a hidden panel. The event texts are written to be read aloud. On, everyone sees both, and the chat summary goes to the whole table.",
   "toa-adventure-tracker.eventName.crocodiles": "Giant crocodiles",
   "toa-adventure-tracker.event.crocodiles": "What looked like a drifting log changes course. A tail strike spins the lead canoe around, and then there are three of them coming from below.",
   "toa-adventure-tracker.eventName.riverHag": "River hag",
@@ -378,5 +378,14 @@
   "toa-adventure-tracker.foe.giantOctopus": "Giant octopus",
   "toa-adventure-tracker.app.mode": "Travel mode",
   "toa-adventure-tracker.app.modeHint": "The numbers show hexes at slow / normal / fast pace.",
-  "toa-adventure-tracker.log.mode": "Mode"
+  "toa-adventure-tracker.log.mode": "Mode",
+  "toa-adventure-tracker.app.travelling": "Travelling",
+  "toa-adventure-tracker.settings.playerRolls.name": "Players may roll for themselves",
+  "toa-adventure-tracker.settings.playerRolls.hint": "Off, the tool belongs to the GM alone — a player's window shows only the travel day, the moon, the travel mode, the weather and the supplies. On, they get the roles panel back and roll their own characters, which puts the roll where their dice and keybinds are.",
+  "toa-adventure-tracker.notify.allRested": "Every traveller has taken a long rest. The day could be completed.",
+  "toa-adventure-tracker.notify.restedAdvanced": "Everyone has rested — on to travel day {day}.",
+  "toa-adventure-tracker.app.rested": "Long rest",
+  "toa-adventure-tracker.app.stillAwake": "Still awake:",
+  "toa-adventure-tracker.settings.advanceOnLongRest.name": "Advance the day on a long rest",
+  "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Once every traveller has taken a long rest with \"new day\", the travel day is completed and the counter moves — report, logbook entry and consequences included, if the day was resolved. A day nobody has travelled yet never advances, so the counter cannot jump twice. Switched off you just get a notification."
 }

@@ -18,6 +18,7 @@ import { applyConsequences, postDayToChat } from "./consequences.mjs";
 import { eventText, effectSummary } from "./events.mjs";
 import { weatherLabel } from "./weather.mjs";
 import { suggestionFor, partyLevel, budgets } from "./encounters.mjs";
+import { allRested, stillAwake } from "./rest.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -72,10 +73,19 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
   async _prepareContext(options) {
     const state = getState();
     const gm = game.user.isGM;
-    const party = this.#prepareParty(state);
+    // Whether this viewer gets the working surface at all. A player's window is
+    // a shop window by default: the travel day, the moon, how the party is
+    // travelling and what is left in the barrels.
+    const shared = !!setting("shareReport");
+    const rolling = gm || !!setting("playerRolls");
+    const party = (gm || rolling) ? this.#prepareParty(state) : [];
 
     return {
       gm,
+      shared,
+      rolling,
+      /** True for the compact read-only view: no roles, no report, no log. */
+      viewer: !gm,
       noGM: !game.users.activeGM,
       day: state.day,
       moon: this.#prepareMoon(state),
@@ -88,7 +98,13 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       // Rolling can only be judged once every filled role has an answer; the
       // resolve button says so rather than silently producing a thin day.
       pending: party.filter(m => m.roleId && !m.record).length,
-      unfilled: this.#prepareUnfilled(state),
+      // Which roles are empty is a planning question, and planning is the GM's.
+      unfilled: gm ? this.#prepareUnfilled(state) : [],
+      // What the party can see for itself: how they are travelling, and today's
+      // weather once it is known. Both are observable in the world, so neither
+      // is a spoiler - unlike what came out of the trees.
+      travel: this.#prepareTravel(state),
+      sky: this.#prepareSky(state, gm, shared),
       supplies: this.#prepareSupplies(state),
       /**
        * THE REPORT IS GM-ONLY UNLESS SHARED, AND IT IS WITHHELD HERE RATHER THAN
@@ -109,8 +125,49 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       reportHidden: !!state.report && !gm && !setting("shareReport"),
       partyLevel: partyLevel(),
       budget: budgets(),
-      log: this.#prepareLog(state),
-      exhaustion: worstExhaustion()
+      log: (gm || shared) ? this.#prepareLog(state) : null,
+      exhaustion: worstExhaustion(),
+      // Who has bedded down. Only interesting to whoever ends the day.
+      rest: gm ? {
+        all: allRested(state),
+        awake: stillAwake(state).map(a => a.name),
+        auto: !!setting("advanceOnLongRest")
+      } : null
+    };
+  }
+
+  /**
+   * How the party is travelling, as one read-only line.
+   *
+   * Players get this instead of eight disabled buttons: the buttons would be
+   * controls they cannot use, and a window full of greyed-out things reads as
+   * broken rather than as "not yours".
+   */
+  #prepareTravel(state) {
+    const mode = TRAVEL_MODES[state.mode] ?? TRAVEL_MODES[DEFAULT_MODE];
+    return {
+      mode: game.i18n.localize(`${MODULE_ID}.mode.${state.mode}`),
+      modeIcon: mode.icon,
+      modeHint: game.i18n.localize(`${MODULE_ID}.mode.${state.mode}Hint`),
+      pace: game.i18n.localize(`${MODULE_ID}.pace.${state.pace}`)
+    };
+  }
+
+  /**
+   * Today's weather, and how long it has been dry.
+   *
+   * Shown to everybody once the day is resolved: whether it is raining is not a
+   * secret the GM is keeping, it is the thing the characters are standing in.
+   * The EVENTS of the day stay behind the report gate; this is only the sky.
+   */
+  #prepareSky(state, gm, shared) {
+    const report = state.report;
+    if (!report?.weather) return { known: false, dryDays: Number(state.dryDays) || 0 };
+    return {
+      known: true,
+      label: weatherLabel(report.weather.key),
+      rain: !!report.weather.rain,
+      dryDays: Number(state.dryDays) || 0
     };
   }
 
@@ -640,9 +697,17 @@ function effectLabel(effect) {
 
 let instance = null;
 
-/** The one window. Created on demand, kept afterwards so its position survives. */
+/**
+ * The one window. Created on demand, kept afterwards so its position survives.
+ *
+ * A viewer's window opens narrower, because their view is a short column - day,
+ * moon, how you are travelling, what is in the barrels. Opening it at the GM's
+ * width would show a column of content beside a lot of nothing.
+ */
 export function getApp() {
-  return (instance ??= new AdventureTracker());
+  if (instance) return instance;
+  const options = game.user.isGM ? {} : { position: { width: 420, height: 620 } };
+  return (instance = new AdventureTracker(options));
 }
 
 export function openApp() {

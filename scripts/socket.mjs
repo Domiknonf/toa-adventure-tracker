@@ -1,5 +1,6 @@
 import { MODULE_ID, SOCKET } from "./const.mjs";
 import { assign, recordRoll, isWriter } from "./state.mjs";
+import { setting } from "./settings.mjs";
 
 /**
  * PLAYER ACTIONS -> THE GM.
@@ -23,6 +24,14 @@ export function registerSocket() {
 }
 
 /**
+ * The GM-side handler, exported so it can be exercised directly.
+ *
+ * The permission that matters lives in here rather than in the window, so it is
+ * worth being able to call it without a socket in the way.
+ */
+export { onMessage as handleRequest };
+
+/**
  * Apply one request. Runs on every client; all but one return immediately.
  *
  * `isActiveGM` (via state.isWriter) picks EXACTLY ONE GM even when several are
@@ -40,6 +49,15 @@ async function onMessage({ action, data, userId } = {}) {
     case "assign":
       if (!mayActFor(user, data?.actorId)) return refuse(user, data?.actorId);
       return assign(data.actorId, data.roleId);
+
+    case "rested": {
+      // Deliberately NOT behind `playerRolls`: taking a long rest is something
+      // a player did on their own character sheet, not an action inside this
+      // tool. Owning the actor is the whole permission.
+      if (!ownsActor(user, data?.actorId)) return refuse(user, data?.actorId);
+      const { recordRest } = await import("./rest.mjs");
+      return recordRest(data.actorId);
+    }
 
     case "record":
       if (!mayActFor(user, data?.actorId)) return refuse(user, data?.actorId);
@@ -60,9 +78,20 @@ async function onMessage({ action, data, userId } = {}) {
  * already hides the controls it may not use, but a socket message is just data -
  * anybody can emit one - so the permission that matters is the one applied here.
  */
+/** Plain ownership, with no opinion about what the world lets players do. */
+function ownsActor(user, actorId) {
+  if (!actorId) return false;
+  if (user.isGM) return true;
+  return !!game.actors.get(actorId)?.testUserPermission(user, "OWNER");
+}
+
 function mayActFor(user, actorId) {
   if (!actorId) return false;
   if (user.isGM) return true;
+  // The tool is the GM's unless the world says otherwise. Checked HERE and not
+  // only in the window, because the window merely hides controls - a socket
+  // message is data, and anybody can emit one.
+  if (!setting("playerRolls")) return false;
   const actor = game.actors.get(actorId);
   return !!actor?.testUserPermission(user, "OWNER");
 }
@@ -105,3 +134,20 @@ export const requestAssign = (actorId, roleId) =>
 
 export const requestRecord = (actorId, record) =>
   isWriter() ? recordRoll(actorId, record) : requestFromGM("record", { actorId, record });
+
+/**
+ * Report that a traveller has taken a long rest into a new day.
+ *
+ * Unlike the other two this one is fire-and-forget with no notification when no
+ * GM is connected: a player going to bed should not be told off for it, and the
+ * fact is recovered the moment somebody rests again with a GM online.
+ */
+export const requestRested = async (actorId) => {
+  if (isWriter()) {
+    const { recordRest } = await import("./rest.mjs");
+    return recordRest(actorId);
+  }
+  if (!game.users.activeGM) return false;
+  game.socket.emit(SOCKET, { action: "rested", data: { actorId }, userId: game.user.id });
+  return true;
+};

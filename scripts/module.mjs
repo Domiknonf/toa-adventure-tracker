@@ -9,6 +9,7 @@ import {
 } from "./state.mjs";
 import { getRoles, partyActors, modifierFor, worstExhaustion } from "./roles.mjs";
 import { resolveDay } from "./resolve.mjs";
+import { noteLongRest, allRested, stillAwake } from "./rest.mjs";
 import { moonFor } from "./moon.mjs";
 
 /* ------------------------------------------------------------------ */
@@ -25,6 +26,14 @@ Hooks.once("init", () => {
   const { loadTemplates } = foundry.applications.handlebars;
   loadTemplates([`modules/${MODULE_ID}/templates/tracker.hbs`]);
 });
+
+/**
+ * A long rest into a new day is the end of a travel day.
+ *
+ * Fires on whichever client ran the rest, so this only reports the fact; the GM
+ * side decides whether the counter moves (see rest.mjs).
+ */
+Hooks.on("dnd5e.restCompleted", (actor, result) => noteLongRest(actor, result));
 
 Hooks.once("ready", () => {
   registerActorHooks();
@@ -88,6 +97,10 @@ Hooks.once("ready", () => {
     modifierFor,
     /** The highest exhaustion level anyone in the party carries. */
     worstExhaustion,
+    /** Whether every traveller has taken their long rest tonight. */
+    allRested,
+    /** Which travellers the module is still waiting on for a long rest. */
+    stillAwake,
     /** The moon for any day, without changing anything. */
     moonFor,
 

@@ -162,6 +162,30 @@ export function registerSettings() {
    */
   reg("shareReport", { ...WORLD, type: Boolean, default: false });
 
+  /**
+   * Whether players may pick their own role and roll it.
+   *
+   * OFF by default: this is a GM's tool, and the window a player opens is a
+   * shop window - the travel day, the moon, how you are travelling and what is
+   * left in the barrels. Nothing they can press.
+   *
+   * Switched on, the roles panel comes back for them and each player rolls
+   * their own character, which puts the roll on their client where their dice
+   * and their advantage keybinds live. The switch is enforced GM-side in
+   * socket.mjs as well as hidden in the window: a socket message is only data,
+   * and anybody can emit one.
+   */
+  reg("playerRolls", { ...WORLD, type: Boolean, default: false });
+
+  /**
+   * Whether a long rest by the whole party moves the travel day on its own.
+   *
+   * OFF by default, because a counter that moves without being asked is a
+   * surprise the first time. Either way the GM is told once everybody has
+   * rested - that notification costs nothing and is useful on its own.
+   */
+  reg("advanceOnLongRest", { ...WORLD, type: Boolean, default: false });
+
   /* --- Per-user presentation --------------------------------- */
 
   reg("skipRollDialog", { scope: "client", config: true, type: Boolean, default: false });

@@ -49,6 +49,12 @@ export function blankState() {
     /** Consecutive days the party has gone short on food (see hungerGrace). */
     hungryDays: 0,
     /**
+     * actorId -> true for travellers who have taken a long rest that starts a
+     * new day. Cleared whenever the day changes, so it only ever describes the
+     * night the party is currently in (see rest.mjs).
+     */
+    rested: {},
+    /**
      * The resolved day: weather, events, hexes, consequences. Null until the GM
      * resolves the day, and cleared again when the day is completed.
      *
@@ -87,6 +93,7 @@ function migrate(state) {
 
   if (!state.schema || state.schema < 2) {
     state.assignments = {};
+    state.rested = {};
     state.rolls = {};
     state.report = null;
     state.supplies = { water: 0, food: 0 };
@@ -141,12 +148,14 @@ export const setDay = (day) => update(s => {
   s.day = cleanDay(day);
   s.report = null;
   s.rolls = {};
+  s.rested = {};
 });
 
 export const adjustDay = (delta) => update(s => {
   s.day = cleanDay(s.day + Number(delta || 0));
   s.report = null;
   s.rolls = {};
+  s.rested = {};
 });
 
 export const setPace = (pace) => update(s => { s.pace = pace; });
@@ -278,7 +287,17 @@ export const completeDay = () => update(s => {
 
   s.rolls = {};
   s.report = null;
+  s.rested = {};
   s.day = cleanDay(s.day + 1);
 });
 
 export const clearLog = () => update(s => { s.log = []; });
+
+/* ------------------------------------------------------------------ */
+/*  Rest                                                               */
+/* ------------------------------------------------------------------ */
+
+/** Note that one traveller has taken a long rest into a new day. */
+export const markRested = (actorId) => update(s => {
+  if (actorId) s.rested[actorId] = true;
+});

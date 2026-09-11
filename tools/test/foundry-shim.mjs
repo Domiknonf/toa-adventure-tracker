@@ -208,7 +208,13 @@ export function setupGame({ actors = [], isGM = true, gmOnline = true } = {}) {
 
   globalThis.game = {
     user: { id: "user1", isGM, isActiveGM: isGM },
-    users: { activeGM: gmOnline ? { id: "gm" } : null, get: () => ({ id: "user1", isGM, name: "Tester" }) },
+    users: {
+      activeGM: gmOnline ? { id: "gm" } : null,
+      // Keyed by id, not by the session: the GM-side permission check asks
+      // "who sent this", and answering with the RECEIVER's rights would make
+      // every socket message look like it came from a GM.
+      get: (id) => ({ id, isGM: id === "gm", name: id === "gm" ? "GM" : "Player" })
+    },
     i18n,
     actors: list,
     modules: { get: () => ({ api: null }) },

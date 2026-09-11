@@ -404,8 +404,13 @@ section("permissions");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 check(roles.canControl(notMine) === true, "the GM controls everything");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
-check(roles.canControl(gandalf) === true, "a player controls their own character");
-check(roles.canControl(notMine) === false, "but not somebody else's");
+// By default this is a GM's tool: a player controls nothing, not even their
+// own character. The playerRolls switch is what hands that back (tested below).
+check(roles.canControl(gandalf) === false, "by default a player controls nothing");
+settingValues.playerRolls = true;
+check(roles.canControl(gandalf) === true, "with the switch on, their own character");
+check(roles.canControl(notMine) === false, "but never somebody else's");
+settingValues.playerRolls = false;
 check(state.isWriter() === false, "a player is not the writer");
 const before = JSON.stringify(state.getState());
 await state.setDay(999);
@@ -413,6 +418,7 @@ check(JSON.stringify(state.getState()) === before, "a player's direct write is r
 check(await resolve.resolveDay() === null, "and a player cannot resolve the day");
 
 const socket = await import(`${R}/socket.mjs`);
+const socketHandler = socket.handleRequest;
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: false, gmOnline: false });
 notes.length = 0; emitted.length = 0;
 check(socket.requestAssign(gandalf.id, "navigator") === false, "with no GM online the request is refused");
@@ -492,11 +498,10 @@ setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
 const playerHtml = template(await instance._prepareContext({}));
 check(!playerHtml.includes("data-action=\"completeDay\""), "a player sees no complete button");
 check(!playerHtml.includes("data-action=\"resolveDay\""), "and cannot resolve the day");
-check(playerHtml.includes("Gandalf"), "but still sees the whole party");
-// The hex result is part of the report, which players are not sent - they see
-// the placeholder instead and hear the outcome from the GM.
+// By default the tool is the GM's: the player window is a shop window.
 check(!playerHtml.includes("toa-hexbox"), "and not the day's result, which is the GM's to narrate");
-check(playerHtml.includes("toa-role-select"), "they can still pick their own role");
+check(!playerHtml.includes("toa-role-select"), "and no role picker - the tool is the GM's");
+check(playerHtml.includes("toa-travel-line"), "they get the read-only travel line instead");
 check(!/\{\{|\}\}/.test(playerHtml), "player view renders cleanly");
 check(!/toa-adventure-tracker\.[a-z]/i.test(visible(playerHtml)), "player view leaks no key");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
@@ -779,6 +784,212 @@ chatMessages.length = 0;
 await conseq.postDayToChat(secret, { weather: "Klar", events: [] });
 check(chatMessages[0].whisper?.length === 0, "and goes to the table when shared");
 settingValues.shareReport = false;
+
+/* ------------------------------------------------------------------ */
+section("the tool is the GM's");
+settingValues.state = {};
+settingValues.shareReport = false;
+settingValues.playerRolls = false;
+await state.setDay(9);
+await state.setMode("canoe");
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 18; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 1);
+const gmDay = await resolve.resolveDay();
+check(gmDay.events.length > 0, "the day produced events");
+
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+let pc = await new app.AdventureTracker()._prepareContext({});
+
+// What a player DOES get: the ambient facts.
+check(pc.day === 9, "a player sees the travel day");
+check(!!pc.moon?.label, "and the moon phase");
+check(pc.travel.mode.length > 0 && pc.travel.pace.length > 0, "and how the party is travelling");
+check(!!pc.supplies, "and what is in the barrels");
+check(pc.sky.known === true && pc.sky.label.length > 0, "and today's weather, which they are standing in");
+
+// What a player does NOT get.
+check(pc.viewer === true, "the context knows it is a viewer");
+check(pc.rolling === false, "rolling is off for them");
+check(pc.party.length === 0, "no party list");
+check(pc.report === null, "no report");
+check(pc.log === null, "no logbook");
+check(pc.unfilled.length === 0, "no planning information");
+
+// Nothing secret may be anywhere in what reaches them, context or markup.
+const pcJson = JSON.stringify(pc);
+const pcHtml = compileTemplate()(pc);
+for (const event of gmDay.events) {
+  check(!pcJson.includes(events.eventText(event)), `prose "${event.id}" absent from the viewer context`);
+  check(!pcHtml.includes(events.eventText(event)), `prose "${event.id}" absent from the viewer DOM`);
+}
+check(!pcHtml.includes("data-action=\"roll\""), "no roll button anywhere in the viewer markup");
+check(!pcHtml.includes("data-action=\"resolveDay\""), "no resolve button");
+check(!pcHtml.includes("data-action=\"completeDay\""), "no complete button");
+check(!pcHtml.includes("data-mode="), "no mode buttons");
+check(!pcHtml.includes("data-pace="), "no pace buttons");
+check(!pcHtml.includes("toa-log"), "no logbook table");
+check(!/\{\{|\}\}/.test(pcHtml), "the viewer window renders cleanly");
+check(!/undefined|\[object Object\]/.test(pcHtml), "and has no undefined in it");
+
+// A player may not act, and the refusal is GM-side, not just hidden.
+check(roles.canControl(gandalf) === false, "a player cannot act for their own character either");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false, gmOnline: true });
+emitted.length = 0;
+socket.requestAssign(gandalf.id, "forager");
+check(emitted.length === 1, "a determined player can still emit a socket message");
+// ...and the GM-side handler is what actually refuses it.
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+const beforeAssign = JSON.stringify(state.getState().assignments);
+const realWarn2 = console.warn; console.warn = () => {};
+await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "forager" }, userId: "user1" });
+console.warn = realWarn2;
+check(JSON.stringify(state.getState().assignments) === beforeAssign,
+  "the GM side refuses it, because hiding a control is not a permission");
+
+/* --- the switch hands it back ------------------------------------- */
+settingValues.playerRolls = true;
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+pc = await new app.AdventureTracker()._prepareContext({});
+check(pc.rolling === true, "with the switch on, players roll again");
+check(pc.party.length === 2, "and get the party list back");
+check(roles.canControl(gandalf) === true, "and may act for their own character");
+check(roles.canControl(notMine) === false, "but still not for somebody else's");
+const rollingHtml = compileTemplate()(pc);
+check(rollingHtml.includes("toa-role-select"), "the role picker is back");
+check(rollingHtml.includes("data-action=\"roll\""), "and so is the roll button");
+// The report is a separate question and stays shut.
+check(pc.report === null, "the report stays with the GM regardless");
+check(!rollingHtml.includes("toa-hexbox"), "and so does the day's result");
+
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+const beforeAssign2 = JSON.stringify(state.getState().assignments);
+await socketHandler({ action: "assign", data: { actorId: gandalf.id, roleId: "forager" }, userId: "user1" });
+check(JSON.stringify(state.getState().assignments) !== beforeAssign2,
+  "and the GM side now accepts the same message");
+settingValues.playerRolls = false;
+settingValues.shareReport = false;
+
+/* --- sharing opens the report and the logbook --------------------- */
+settingValues.shareReport = true;
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+pc = await new app.AdventureTracker()._prepareContext({});
+check(!!pc.log, "sharing gives players the logbook");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+settingValues.shareReport = false;
+
+/* ------------------------------------------------------------------ */
+section("a long rest ends the travel day");
+const rest = await import(`${R}/rest.mjs`);
+settingValues.advanceOnLongRest = true;
+settingValues.state = {};
+await state.setDay(7);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 20; await doRoll(gandalf);
+queue.d100.push(99, 100);
+await resolve.resolveDay();
+
+const longRest = { longRest: true, type: "long", newDay: true };
+check(rest.allRested() === false, "nobody has rested yet");
+check(rest.stillAwake().length === 2, "two travellers still awake");
+
+let out = await rest.recordRest(gandalf.id);
+check(out.all === false, "one rest is not the whole party");
+check(state.getState().day === 7, "and the day has not moved");
+check(rest.stillAwake().length === 1, "one traveller left to bed down");
+
+out = await rest.recordRest(bilbo.id);
+check(out.all === true && out.advanced === true, "the last rest ends the day");
+check(out.completed === true, "and completes it properly, report and all");
+check(state.getState().day === 8, `the counter moved to 8 (got ${state.getState().day})`);
+check(state.getState().log.length === 1, "the day went into the logbook");
+check(Object.keys(state.getState().rested).length === 0, "and the rest record was cleared");
+
+// THE DOUBLE-ADVANCE GUARD. A GM who ends the day themselves lands on a fresh
+// day; the party then beds down, and the counter must NOT move again.
+settingValues.state = {};
+await state.setDay(3);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 20; await doRoll(gandalf);
+queue.d100.push(99, 100);
+await resolve.resolveDay();
+await state.completeDay();
+check(state.getState().day === 4, "the GM completed day 3 by hand");
+await rest.recordRest(gandalf.id);
+out = await rest.recordRest(bilbo.id);
+check(out.all === true && out.advanced === false, "everyone rested, but the day is untouched");
+check(out.reason === "untouched", "and it says why");
+check(state.getState().day === 4, "so the counter stays put - no double jump");
+
+// A day with rolls but no report still advances, without inventing a report.
+settingValues.state = {};
+await state.setDay(11);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 15; await doRoll(gandalf);
+await rest.recordRest(gandalf.id);
+out = await rest.recordRest(bilbo.id);
+check(out.advanced === true && out.completed === false, "rolls but no report: step the counter only");
+check(state.getState().day === 12, "the day moved");
+check(state.getState().log.length === 0, "and nothing was logged");
+
+// Switched off, it notifies and leaves the counter alone.
+settingValues.advanceOnLongRest = false;
+settingValues.state = {};
+await state.setDay(20);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 20; await doRoll(gandalf);
+queue.d100.push(99, 100);
+await resolve.resolveDay();
+notes.length = 0;
+await rest.recordRest(gandalf.id);
+out = await rest.recordRest(bilbo.id);
+check(out.advanced === false && out.reason === "disabled", "switched off it does not advance");
+check(state.getState().day === 20, "the counter stays");
+check(notes.some(n => n[0] === "info"), "but the GM is told everyone has rested");
+settingValues.advanceOnLongRest = true;
+
+// Only a LONG rest into a NEW DAY counts.
+settingValues.state = {};
+await state.setDay(5);
+let reported = [];
+const origEmit = game.socket.emit;
+check(rest.allRested() === false, "fresh day, nobody rested");
+// noteLongRest is the client-side filter; feed it the three rest shapes.
+const seen = [];
+const fakeActor = { id: gandalf.id };
+rest.noteLongRest(fakeActor, { type: "short", newDay: false });
+rest.noteLongRest(fakeActor, { longRest: true, type: "long", newDay: false });
+await new Promise(r => setTimeout(r, 10));
+check(Object.keys(state.getState().rested).length === 0,
+  "a short rest and a same-day long rest are both ignored");
+rest.noteLongRest(fakeActor, longRest);
+await new Promise(r => setTimeout(r, 20));
+check(state.getState().rested[gandalf.id] === true, "a long rest into a new day counts");
+
+// An actor outside the travelling party must not move the travel day.
+rest.noteLongRest({ id: notMine.id }, longRest);
+await new Promise(r => setTimeout(r, 20));
+check(!state.getState().rested[notMine.id], "somebody outside the party does not count");
+
+// An empty party is never "all rested".
+setupGame({ actors: [notMine], isGM: true });
+check(rest.allRested() === false, "an empty travelling party is never all rested");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+
+// Resting is a fact about your own sheet, so it is NOT behind playerRolls.
+settingValues.playerRolls = false;
+settingValues.state = {};
+await state.setDay(2);
+await socketHandler({ action: "rested", data: { actorId: gandalf.id }, userId: "user1" });
+check(state.getState().rested[gandalf.id] === true,
+  "a player may report their own rest even when they may not roll");
+const realWarn3 = console.warn; console.warn = () => {};
+await socketHandler({ action: "rested", data: { actorId: notMine.id }, userId: "user1" });
+console.warn = realWarn3;
+check(!state.getState().rested[notMine.id], "but not for a character they do not own");
+settingValues.advanceOnLongRest = false;
 
 /* ------------------------------------------------------------------ */
 section("journal export");

@@ -29,6 +29,7 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Folgen](#folgen)
 - [Kampfgrößen für schwer und tödlich](#kampfgrößen-für-schwer-und-tödlich)
 - [Was die Spieler sehen](#was-die-spieler-sehen)
+- [Lange Rast beendet den Tag](#lange-rast-beendet-den-tag)
 - [Weltoptionen](#weltoptionen)
 - [Eigene Rollen (JSON)](#eigene-rollen-json)
 - [API](#api)
@@ -68,7 +69,8 @@ darin), Foundry neu starten.
 
 ## Der Ablauf eines Reisetags
 
-**1. Rollen besetzen.** Jeder Charakter wählt im Fenster eine Rolle. Pro
+**1. Rollen besetzen.** Du weist jedem Charakter im Fenster eine Rolle zu
+(oder die Spieler tun es selbst, siehe [Was die Spieler sehen](#was-die-spieler-sehen)). Pro
 Charakter genau eine — das erzwingt die Datenstruktur. Dieselbe Rolle darf
 mehrfach besetzt werden, aber dann fehlt sie woanders.
 
@@ -355,26 +357,84 @@ der Person, die entscheidet.
 
 ## Was die Spieler sehen
 
-**Den Tagesbericht bekommen die Spieler standardmäßig nicht.** Und zwar nicht
-nur ausgeblendet: Er wird ihnen gar nicht erst übermittelt. Die Ereignistexte
-sind zum **Vorlesen** geschrieben — wer sie im eigenen Fenster mitlesen kann,
-hat die Überraschung schon verloren, und ein bloßes `{{#if gm}}` im Template
-hätte jedes Wort trotzdem in den Browser geliefert, wo die Konsole es jedem
-zeigt, der nachsieht.
+**Das Werkzeug gehört der Spielleitung.** Das Fenster, das ein Spieler öffnet,
+ist ein Schaufenster — es zeigt, was die Gruppe ohnehin weiß, und hat nichts
+zum Drücken.
 
-Spieler sehen: Reisetag, Mondphase, Reisetempo, die Rollenliste mit allen
-Würfen, die Vorräte und das Logbuch. Läuft eine Auswertung, steht bei ihnen
-*„Die Spielleitung wertet den heutigen Tag gerade aus."* statt einer leeren
-Fläche.
+Ein Spieler sieht:
 
-Bedienen können sie nur ihre eigenen Charaktere — Rolle wählen und würfeln.
-Der Wurf passiert dabei auf **ihrem** Client, damit ihre Würfel, ihre Module und
-ihre Vorteils-Tastenkürzel greifen.
+- den **Reisetag**
+- die **Mondphase** samt gezeichneter Scheibe
+- **wie** die Gruppe unterwegs ist (Reiseart und Tempo, als eine Zeile Text)
+- das **Wetter von heute**, sobald der Tag ausgewertet ist — darin stehen sie ja
+- die **Vorräte** und wie viele Tage ohne Regen vergangen sind
 
-Willst du es anders, schaltet **„Tagesbericht mit Spielern teilen"** beides um:
-Der Bericht erscheint auch bei ihnen, und die Chatzusammenfassung beim
-Tagesabschluss geht an den ganzen Tisch statt nur an dich. Ausgeschaltet wird
-sie dir zugeflüstert.
+Ein Spieler sieht **nicht**: die Rollenliste, die Würfe, den Tagesbericht, die
+Ereignisse, die Folgen, das Logbuch, die Kampfgrößen. Und zwar nicht nur
+ausgeblendet — das alles wird ihm **gar nicht erst übermittelt**. Ein `{{#if gm}}`
+im Template hätte jedes Wort trotzdem in seinen Browser geliefert, wo die
+Konsole es jedem zeigt, der nachsieht. Ein Test prüft genau das: kein
+Ereignistext taucht im Kontextobjekt oder im gerenderten Markup eines Spielers
+auf.
+
+Das Fenster öffnet für Spieler auch schmaler, weil ihre Ansicht eine kurze
+Spalte ist. Acht ausgegraute Knöpfe wären keine Information, sondern sähen
+kaputt aus.
+
+### Zwei Schalter, wenn du es anders willst
+
+**„Spieler dürfen selbst würfeln"** (Vorgabe: aus) gibt ihnen die Rollenliste
+zurück: Jeder trägt sich selbst in eine Rolle ein und würfelt seinen eigenen
+Charakter — auf **seinem** Client, damit seine Würfel, seine Module und seine
+Vorteils-Tastenkürzel greifen. Der Tagesbericht bleibt trotzdem bei dir; das
+sind zwei getrennte Fragen.
+
+Dieser Schalter ist eine **Rechtefrage und wird auf SL-Seite geprüft**, nicht
+nur im Fenster versteckt. Eine Socket-Nachricht sind bloß Daten, und emittieren
+kann sie jeder — deshalb lehnt die Gegenseite sie ab, und ein Test schickt die
+Nachricht von Hand vorbei, um das zu belegen.
+
+**„Tagesbericht mit Spielern teilen"** (Vorgabe: aus) öffnet Bericht *und*
+Logbuch für alle und schickt die Chatzusammenfassung an den ganzen Tisch statt
+nur an dich.
+
+---
+
+## Lange Rast beendet den Tag
+
+Wenn **alle Reisenden** eine lange Rast mit „neuer Tag" gemacht haben, ist die
+Nacht vorbei — der Zähler kann dann von selbst weiterspringen, statt auf den
+Knopf zu warten.
+
+Eingeschaltet über die Weltoption **„Tag bei langer Rast automatisch
+weiterzählen"** (Vorgabe: aus). Was dann passiert:
+
+| Lage | Ergebnis |
+|---|---|
+| Der Tag war **ausgewertet** | Der Tag wird richtig abgeschlossen: Folgen angewandt, Bericht in den Chat, Logbucheintrag, Zähler weiter. Also genau das, was der Knopf tut. |
+| Es wurde **gewürfelt, aber nicht ausgewertet** | Nur der Zähler springt weiter. Es wird kein Bericht erfunden, den niemand angefordert hat. |
+| Am Tag wurde **noch gar nicht gereist** | Nichts. Siehe unten. |
+
+**Der Zähler springt nie doppelt.** Wer den Tag selbst über „Tag abschließen"
+beendet, landet auf einem frischen Tag ohne Würfe und ohne Bericht. Legt sich
+die Gruppe danach schlafen, würde ein naiver Automatismus den Tag ein zweites
+Mal weiterzählen. Deshalb zählt er nur weiter, wenn am laufenden Tag tatsächlich
+gereist wurde — also ein Bericht oder mindestens ein Wurf vorliegt.
+
+Es zählt ausschließlich eine **lange** Rast mit gesetztem **„neuer Tag"**. Eine
+kurze Rast ist eine Verschnaufpause, und eine lange Rast ohne das Häkchen ist
+die Gruppe, die sich am selben Nachmittag von einem Kampf erholt — beides
+beendet keinen Reisetag. Auch Aktoren außerhalb der Reisegruppe zählen nicht
+mit: Das schlafende Haustier eines Spielers in der Stadt bewegt euren Reisetag
+nicht.
+
+Im Rollen-Panel zeigt ein kleines Mondsymbol, auf wen noch gewartet wird. Auch
+mit ausgeschaltetem Automatismus bekommst du eine Meldung, sobald alle gerastet
+haben — das kostet nichts und ist für sich schon nützlich.
+
+Eine lange Rast zu melden liegt bewusst **nicht** hinter „Spieler dürfen selbst
+würfeln": Dass jemand gerastet hat, ist eine Tatsache über seinen eigenen
+Charakterbogen und keine Handlung in diesem Werkzeug.
 
 ---
 
@@ -441,6 +501,12 @@ wenn Träger, Lasttiere oder NSCs mittrinken.
 |---|---|
 | Gruppenstufe | 0 = aus den Bögen errechnen |
 | Tagesbericht mit Spielern teilen | **aus** |
+| Spieler dürfen selbst würfeln | **aus** |
+
+### Automatik
+| Option | Vorgabe |
+|---|---|
+| Tag bei langer Rast automatisch weiterzählen | **aus** |
 
 ### Folgen
 | Option | Vorgabe |
@@ -536,6 +602,8 @@ const api = game.modules.get("toa-adventure-tracker").api;
 | `api.partyActors()` | alle | Wer als reisend gilt. |
 | `api.modifierFor(actor, role)` | alle | Modifikator vom Bogen. |
 | `api.worstExhaustion()` | alle | Höchster Erschöpfungsgrad in der Gruppe. |
+| `api.allRested()` | alle | Ob alle Reisenden ihre lange Rast gemacht haben. |
+| `api.stillAwake()` | alle | Auf wen noch gewartet wird. |
 | `api.moonFor(day)` | alle | Mondphase eines beliebigen Tages. |
 
 Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
@@ -559,6 +627,8 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 - Der **Würfelwurf passiert auf dem Client dessen, der klickt** — dort liegen
   seine Würfel, seine Module und seine Vorteils-Tastenkürzel. Nur das Ergebnis
   reist.
+- **Spieleraktionen sind standardmäßig abgeschaltet** und werden auf SL-Seite
+  abgelehnt, nicht nur im Fenster ausgeblendet.
 - Ist **keine SL verbunden**, sagt das Fenster das in einem Banner, statt Klicks
   ins Leere laufen zu lassen.
 - **Kein socketlib** als Abhängigkeit.
@@ -581,7 +651,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~590 Integrationstests
+npm test             # Mondmathematik + ~660 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```
@@ -598,7 +668,9 @@ einen Namen und einen Text hat** und keine verwaisten Texte herumliegen.
 (`tools/test/foundry-shim.mjs`) und prüft damit Zustandsübergänge, die
 Hex-Regeln, Reisearten, Wetter, Vorratsübertrag, Rechtetrennung, die
 XP-Arithmetik und das gerenderte Template. Darunter ein Lauf über 60 Seetage,
-der prüft, dass **kein einziges Landereignis** je in den Seepool leckt. Darunter ausdrücklich, dass **kein Ereignistext im
+der prüft, dass **kein einziges Landereignis** je in den Seepool leckt, und
+einer, der eine Spieler-Socket-Nachricht von Hand an die SL-Seite schickt, um zu
+belegen, dass die Ablehnung dort und nicht bloß im Fenster passiert. Darunter ausdrücklich, dass **kein Ereignistext im
 Spieler-Kontext auftaucht** — nicht im Kontextobjekt, nicht im gerenderten
 Markup.
 
@@ -616,6 +688,7 @@ Markup.
 | `scripts/encounters.mjs` | XP-Budgets, Kampfgrößen für schwer und tödlich |
 | `scripts/resolve.mjs` | **Die Tagesmaschine** — Wetter + Würfe → Hex, Ereignisse, Folgen |
 | `scripts/consequences.mjs` | Schreibt Schaden und Erschöpfung auf die Bögen |
+| `scripts/rest.mjs` | Lange Rast als Tagesende, mit Schutz vor Doppelsprung |
 | `scripts/socket.mjs` | Spieleraktionen → SL |
 | `scripts/app.mjs` | Das Fenster (ApplicationV2) |
 | `scripts/module.mjs` | Hooks, Scene Controls, API |

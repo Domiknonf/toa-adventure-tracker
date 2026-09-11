@@ -65,6 +65,7 @@
     {{!-- ---------------------------------------------------------------
           PACE
     ---------------------------------------------------------------- --}}
+    {{#if gm}}
     <section class="toa-panel">
       <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.mode"}}</h2>
       <div class="toa-modes">
@@ -100,7 +101,32 @@
         {{/each}}
       </div>
     </section>
+    {{else}}
+    {{!-- The viewer's version of the two panels above: what the party can see
+          for itself, with nothing to press. --}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">{{localize "toa-adventure-tracker.app.travelling"}}</h2>
+      <p class="toa-travel-line" data-tooltip-text="{{travel.modeHint}}">
+        <i class="{{travel.modeIcon}}"></i>
+        <strong>{{travel.mode}}</strong>
+        <span class="toa-dim">&middot;</span>
+        {{travel.pace}}
+      </p>
+      {{#if sky.known}}
+      <p class="toa-travel-line">
+        <i class="fa-solid {{#if sky.rain}}fa-cloud-showers-heavy{{else}}fa-sun{{/if}}"></i>
+        {{sky.label}}
+      </p>
+      {{/if}}
+      {{#if sky.dryDays}}
+      <p class="toa-hint toa-compact">
+        {{sky.dryDays}} {{localize "toa-adventure-tracker.app.dryDays"}}
+      </p>
+      {{/if}}
+    </section>
+    {{/if}}
 
+    {{#if rolling}}
     {{!-- ---------------------------------------------------------------
           ROLES
     ---------------------------------------------------------------- --}}
@@ -204,6 +230,17 @@
           <i class="fa-solid fa-dice"></i>
           <span>{{localize "toa-adventure-tracker.app.rollAll"}}</span>
         </button>
+        {{#if rest}}
+        {{#if rest.all}}
+        <span class="toa-tag good">
+          <i class="fa-solid fa-moon"></i> {{localize "toa-adventure-tracker.app.rested"}}
+        </span>
+        {{else if rest.awake.length}}
+        <span class="toa-tag" data-tooltip-text="{{localize 'toa-adventure-tracker.app.stillAwake'}}">
+          <i class="fa-solid fa-moon"></i> {{rest.awake.length}}
+        </span>
+        {{/if}}
+        {{/if}}
         {{#if gm}}
         <button type="button" class="toa-btn" data-action="clearRolls"
                 data-tooltip="toa-adventure-tracker.app.clearRollsHint">
@@ -217,6 +254,7 @@
         {{/if}}
       </div>
     </section>
+    {{/if}}
 
     {{!-- ---------------------------------------------------------------
           SUPPLIES
@@ -397,6 +435,7 @@
     </section>
     {{/if}}
 
+    {{#if log}}
     {{!-- ---------------------------------------------------------------
           LOGBOOK
     ---------------------------------------------------------------- --}}
@@ -455,6 +494,7 @@
       </div>
       {{/if}}
     </section>
+    {{/if}}
 
   </div>
 </div>

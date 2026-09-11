@@ -163,6 +163,19 @@
   /*  Pace                                                             */
   /* ---------------------------------------------------------------- */
 
+  /* The viewer's read-only travel line. Not a disabled control - a window full
+     of greyed-out buttons reads as broken rather than as "not yours". */
+  .toa-travel-line {
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--font-size-14, 0.875rem);
+  }
+
+  .toa-travel-line i { color: var(--toa-accent); width: 1.1rem; text-align: center; }
+  .toa-travel-line .toa-dim { color: var(--toa-dim); }
+
   .toa-modes {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -654,7 +667,20 @@
 
     /* Three pace cards side by side stop being readable well before the window
        stops being usable. */
-    .toa-modes {
+    /* The viewer's read-only travel line. Not a disabled control - a window full
+     of greyed-out buttons reads as broken rather than as "not yours". */
+  .toa-travel-line {
+    margin: 0 0 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--font-size-14, 0.875rem);
+  }
+
+  .toa-travel-line i { color: var(--toa-accent); width: 1.1rem; text-align: center; }
+  .toa-travel-line .toa-dim { color: var(--toa-dim); }
+
+  .toa-modes {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.4rem;
