@@ -229,6 +229,15 @@
       {{/if}}
 
       <div class="toa-day-actions">
+        {{#if gm}}
+        {{!-- The whole morning in one press: roll every outstanding role, then
+              work the day out. The narrower buttons stay for when one row needs
+              re-rolling or a day needs resolving again. --}}
+        <button type="button" class="toa-btn toa-btn-primary" data-action="runDay">
+          <i class="fa-solid fa-dice-d20"></i>
+          <span>{{localize "toa-adventure-tracker.app.runDay"}}</span>
+        </button>
+        {{/if}}
         <button type="button" class="toa-btn" data-action="rollAll">
           <i class="fa-solid fa-dice"></i>
           <span>{{localize "toa-adventure-tracker.app.rollAll"}}</span>
@@ -250,8 +259,8 @@
           <i class="fa-solid fa-eraser"></i>
           <span>{{localize "toa-adventure-tracker.app.clearRolls"}}</span>
         </button>
-        <button type="button" class="toa-btn toa-btn-primary" data-action="resolveDay">
-          <i class="fa-solid fa-dice-d20"></i>
+        <button type="button" class="toa-btn" data-action="resolveDay">
+          <i class="fa-solid fa-scale-balanced"></i>
           <span>{{localize "toa-adventure-tracker.app.resolveDay"}}</span>
         </button>
         {{/if}}
@@ -415,6 +424,24 @@
       {{#unless report.willApply}}
       <p class="toa-hint">{{localize "toa-adventure-tracker.app.notApplied"}}</p>
       {{/unless}}
+
+      {{!-- Applying is its own decision: the jungle has already bitten, but the
+            party may not be bedding down yet. The flag lives on the stored
+            report, so this cannot take the same hit points off twice. --}}
+      {{#if gm}}
+      <div class="toa-day-actions">
+        {{#if report.applied}}
+        <span class="toa-tag good">
+          <i class="fa-solid fa-check"></i> {{localize "toa-adventure-tracker.app.applied"}}
+        </span>
+        {{else}}
+        <button type="button" class="toa-btn toa-btn-primary" data-action="applyNow">
+          <i class="fa-solid fa-hand-holding-medical"></i>
+          <span>{{localize "toa-adventure-tracker.app.applyNow"}}</span>
+        </button>
+        {{/if}}
+      </div>
+      {{/if}}
       {{/if}}
 
       {{#if gm}}

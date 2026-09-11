@@ -390,5 +390,11 @@
   "toa-adventure-tracker.settings.advanceOnLongRest.hint": "Once every traveller has taken a long rest with \"new day\", the travel day is completed and the counter moves — report, logbook entry and consequences included, if the day was resolved. A day nobody has travelled yet never advances, so the counter cannot jump twice. Switched off you just get a notification.",
   "toa-adventure-tracker.settings.rollsToChat.name": "Post rolls to chat",
   "toa-adventure-tracker.settings.rollsToChat.hint": "On, every role check appears as a chat card — visible to all, with 3D dice if Dice So Nice is running. Off, rolling is silent: eight roles at once finish instantly instead of playing eight dice animations in a row. The results still show on the roles panel and in the report. The saving throws made during resolution never reach chat either way.",
-  "toa-adventure-tracker.reason.exceptional": "An exceptional bearing — one hex more than the pace promises."
+  "toa-adventure-tracker.reason.exceptional": "An exceptional bearing — one hex more than the pace promises.",
+  "toa-adventure-tracker.app.runDay": "Roll & resolve the day",
+  "toa-adventure-tracker.app.applyNow": "Apply consequences",
+  "toa-adventure-tracker.app.applied": "Consequences applied",
+  "toa-adventure-tracker.notify.applied": "Consequences applied to {n} travellers.",
+  "toa-adventure-tracker.notify.applyDisabled": "The world option for writing consequences to sheets is off - nothing was entered.",
+  "toa-adventure-tracker.confirm.resolveAgainApplied": "Careful: this day's consequences are already on the character sheets. Resolving again rerolls the day but does NOT take back the damage already done. Resolve again anyway?"
 }

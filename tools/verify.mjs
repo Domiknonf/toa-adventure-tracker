@@ -295,6 +295,58 @@ for (const terrain of new Set(eventRows.map(e => e.terrain))) {
 }
 if (!unreachable) ok(`every event terrain is reachable (${[...new Set(eventRows.map(e => e.terrain))].join(", ")})`);
 
+/* 17. EVERY NAMED IMPORT RESOLVES TO A REAL EXPORT.
+       Foundry loads these as ES modules in a browser: an import of a name that
+       no longer exists is `undefined` at use time, not an error at load time -
+       so the module starts, the window opens, and something fails much later
+       with a message that points nowhere near the cause.
+
+       This check exists because a careless edit once removed four exports from
+       const.mjs at a stroke. Nothing caught it directly; it surfaced two checks
+       later as "no travel mode can reach terrain", which is a symptom three
+       steps removed from "TRAVEL_MODES is gone". Checking the graph itself
+       names the actual problem. */
+const exportsOf = {};
+for (const file of scripts) {
+  const src = fs.readFileSync(path.join("scripts", file), "utf8");
+  const names = new Set();
+  for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:const|function|class|let)\s+(\w+)/gm)) names.add(m[1]);
+  // Re-exports: `export { onMessage as handleRequest };`
+  for (const m of src.matchAll(/^export\s*\{([^}]*)\}/gm)) {
+    for (const part of m[1].split(",")) {
+      const name = part.trim().split(/\s+as\s+/).pop().trim();
+      if (name) names.add(name);
+    }
+  }
+  exportsOf[file] = names;
+}
+
+let dangling = 0;
+let importCount = 0;
+const checkNames = (file, list, from, kind) => {
+  for (const part of list.split(",")) {
+    const name = part.trim().split(/\s+as\s+/)[0].trim();
+    if (!name) continue;
+    importCount++;
+    if (!exportsOf[from]?.has(name)) {
+      fail(`${file}: ${kind} "${name}" from ${from}, which does not export it`);
+      dangling++;
+    }
+  }
+};
+for (const file of scripts) {
+  const src = fs.readFileSync(path.join("scripts", file), "utf8");
+  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*"\.\/([\w.-]+\.mjs)"/g)) {
+    checkNames(file, m[1], m[2], "imports");
+  }
+  // The module uses dynamic imports to break a couple of cycles; those names
+  // are just as easy to get wrong and just as silent when they are.
+  for (const m of src.matchAll(/const\s*\{([^}]*)\}\s*=\s*await\s+import\("\.\/([\w.-]+\.mjs)"\)/g)) {
+    checkNames(file, m[1], m[2], "dynamically imports");
+  }
+}
+if (!dangling) ok(`every named import resolves to a real export (${importCount} imports)`);
+
 let orphans = 0;
 for (const key of Object.keys(tables[reference])) {
   const match = key.match(/^toa-adventure-tracker\.event\.(\w+)$/);

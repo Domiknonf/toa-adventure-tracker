@@ -233,6 +233,18 @@ export const setReport = (report) => update(s => { s.report = report; });
 
 export const clearReport = () => update(s => { s.report = null; });
 
+/**
+ * Mark the resolved day's consequences as written to the sheets.
+ *
+ * Lives on the report rather than in a local variable because it has to be
+ * true for EVERY client and survive a reload: applying twice would take the
+ * same hit points off a second time, and "did I already press it" is not a
+ * question a GM should have to answer from memory.
+ */
+export const markApplied = () => update(s => {
+  if (s.report) s.report.applied = true;
+});
+
 /* ------------------------------------------------------------------ */
 /*  Supplies                                                           */
 /* ------------------------------------------------------------------ */

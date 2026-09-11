@@ -5,7 +5,7 @@ import {
 import { setting, paceTable } from "./settings.mjs";
 import {
   getState, setDay, adjustDay, completeDay, setPace, setMode, clearRolls, clearLog,
-  setSupplies, clearReport
+  setSupplies, clearReport, markApplied
 } from "./state.mjs";
 import {
   getRoles, getRole, roleLabel, roleHint, roleCheck, modifierFor, partyActors,
@@ -54,6 +54,8 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       discardReport: AdventureTracker.#onDiscardReport,
       clearRolls: AdventureTracker.#onClearRolls,
       rollAll: AdventureTracker.#onRollAll,
+      runDay: AdventureTracker.#onRunDay,
+      applyNow: AdventureTracker.#onApplyNow,
       roll: AdventureTracker.#onRoll,
       editSupplies: AdventureTracker.#onEditSupplies,
       exportLog: AdventureTracker.#onExportLog,
@@ -392,7 +394,12 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         // like an oversight rather than a good night.
         savedAll: c.from?.length > 0 && c.from.every(f => f.saved === true)
       })),
-      willApply: !!setting("applyConsequences")
+      willApply: !!setting("applyConsequences"),
+      // Whether the consequences have already been written to the sheets. The
+      // Apply button reads this so it cannot be pressed twice.
+      applied: !!report.applied,
+      // Something worth applying at all - a quiet day has nothing to press.
+      hasConsequences: (report.consequences ?? []).length > 0
     };
   }
 
@@ -535,19 +542,98 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
   /* ---------------------------------------------------------------- */
 
   /**
+   * THE WHOLE DAY IN ONE CLICK: roll every outstanding role, then resolve.
+   *
+   * What a GM actually wants in the morning. Rolling eight roles by hand and
+   * then pressing resolve is nine clicks to answer one question, and the two
+   * halves are never useful apart - the report cannot be built until the rolls
+   * exist, and rolls with no report are just numbers.
+   *
+   * The separate buttons stay for when they are wanted: one row re-rolled, or
+   * a day resolved again without touching the rolls.
+   *
+   * Rolls only what is MISSING, so a roll the GM made by hand - or a player
+   * made, where that is allowed - is respected rather than thrown away.
+   */
+  static async #onRunDay(event, target) {
+    if (!game.user.isGM) return;
+    const existing = getState().report;
+    if (existing && !(await AdventureTracker.#confirmReresolve(existing))) return;
+
+    target.disabled = true;
+    try {
+      await AdventureTracker.#rollOutstanding();
+      await resolveDay();
+    } finally {
+      if (target.isConnected) target.disabled = false;
+    }
+  }
+
+  /**
+   * Roll every role that has somebody on it and no result yet.
+   *
+   * Sequential, not parallel: each roll may open dnd5e's configuration dialog,
+   * and five at once is not a decision anybody can make. It also keeps the chat
+   * in party order instead of in race order.
+   */
+  static async #rollOutstanding() {
+    const state = getState();
+    for (const actor of partyActors()) {
+      if (!canControl(actor)) continue;
+      if (state.rolls?.[actor.id]) continue;
+      const role = getRole(state.assignments?.[actor.id]);
+      if (!role) continue;
+      const record = await rollRole(actor, role, {});
+      if (record) await requestRecord(actor.id, record);
+    }
+  }
+
+  /**
+   * Ask before rolling a day again, and say plainly when the last one has
+   * already been written to the sheets - re-resolving does NOT take that back,
+   * and finding out afterwards is finding out too late.
+   */
+  static async #confirmReresolve(report) {
+    const key = report.applied ? "resolveAgainApplied" : "resolveAgain";
+    return DialogV2.confirm({
+      window: { title: game.i18n.localize(`${MODULE_ID}.app.resolveAgain`) },
+      content: `<p>${game.i18n.localize(`${MODULE_ID}.confirm.${key}`)}</p>`
+    });
+  }
+
+  /**
+   * Write the day's damage and exhaustion onto the sheets, and stop there.
+   *
+   * Separate from completing the day because they are separate decisions: the
+   * jungle has already bitten, but the party may not be bedding down yet. The
+   * flag is stored on the report, so pressing it twice cannot take the same hit
+   * points off twice.
+   */
+  static async #onApplyNow(event, target) {
+    const report = getState().report;
+    if (!report || report.applied) return;
+
+    target.disabled = true;
+    try {
+      const result = await applyConsequences(report);
+      await markApplied();
+      const hurt = result?.entries?.length ?? 0;
+      ui.notifications?.info(result?.applied
+        ? game.i18n.format(`${MODULE_ID}.notify.applied`, { n: hurt })
+        : game.i18n.localize(`${MODULE_ID}.notify.applyDisabled`));
+    } finally {
+      if (target.isConnected) target.disabled = false;
+    }
+  }
+
+  /**
    * Work out the day. Rolls weather, encounters and saving throws, and stores
    * the report - but writes nothing to any sheet, which is what makes doing it
    * again safe.
    */
   static async #onResolveDay(event, target) {
     const state = getState();
-    if (state.report) {
-      const ok = await DialogV2.confirm({
-        window: { title: game.i18n.localize(`${MODULE_ID}.app.resolveAgain`) },
-        content: `<p>${game.i18n.localize(`${MODULE_ID}.confirm.resolveAgain`)}</p>`
-      });
-      if (!ok) return;
-    }
+    if (state.report && !(await AdventureTracker.#confirmReresolve(state.report))) return;
     target.disabled = true;
     try {
       await resolveDay();
@@ -580,7 +666,10 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     // Sheets first, then the state. If applying to a sheet throws, the day has
     // not yet been logged and advanced, so the GM can see what happened and
     // retry rather than being left on day+1 with half the party unhurt.
-    await applyConsequences(report);
+    //
+    // Skipped when the Apply button already did it - otherwise finishing a day
+    // you had already applied would take the same hit points off twice.
+    if (!report.applied) await applyConsequences(report);
     await postDayToChat(report, {
       weather: weatherLabel(report.weather?.key),
       events: (report.events ?? []).map(e => ({

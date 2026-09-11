@@ -79,22 +79,43 @@ Eine Gruppe von vier kann nicht acht Rollen füllen. **Welche Rollen ihr leer
 lasst, ist die eigentliche Entscheidung dieses Fensters** — deshalb steht
 unbesetzt direkt unter der Liste und nicht erst im Bericht.
 
-**2. Würfeln.** Jeder würfelt seine Rolle selbst (oder die SL für alle, Knopf
-„Alles würfeln“). Läuft über die dnd5e-Würfelmechanik, also greifen
-Übungsbonus, Expertise, Vorteil, Segnen, Erschöpfung und andere Module.
+**2. „Tag würfeln & auswerten"** — ein Knopf. Er würfelt jede noch offene
+Rolle und wertet den Tag anschließend aus: Wetter, ob euch etwas findet, welches
+Ereignis, die Vorräte, die fälligen Rettungswürfe. Heraus kommt der Tagesbericht
+mit Ergebnis **und Begründung**.
 
-**3. Tag auswerten** (SL). Jetzt würfelt das Modul: Wetter, ob euch etwas
-findet, welches Ereignis, die Vorräte, die fälligen Rettungswürfe. Heraus
-kommt der Tagesbericht.
+Ein Wurf, der schon auf dem Tisch liegt, wird respektiert und nicht
+überschrieben — du kannst also eine einzelne Zeile von Hand würfeln und den Rest
+dem Knopf überlassen. Die getrennten Knöpfe „Alles würfeln" und „Tag auswerten"
+bleiben genau dafür erhalten.
 
-**Auf die Charakterbögen wird dabei nichts geschrieben.** Deshalb ist
-„Neu auswerten“ gefahrlos, wenn dir der Tag nicht gefällt.
+Gewürfelt wird über die dnd5e-Mechanik, also greifen Übungsbonus, Expertise,
+Vorteil, Segnen, Erschöpfung und andere Module. Mit der Weltoption **„Spieler
+dürfen selbst würfeln"** übernehmen die Spieler ihre eigenen Charaktere.
 
-**4. Vorlesen.** Der Bericht ist so geschrieben, dass man ihn vorlesen kann.
+**Auf die Charakterbögen wird dabei nichts geschrieben.** Deshalb ist „Neu
+auswerten" gefahrlos, wenn dir der Tag nicht gefällt.
 
-**5. Tag abschließen** (SL). *Jetzt* werden Schaden und Erschöpfung
-eingetragen, der Tag geht in den Chat und ins Logbuch, der Zähler springt
-weiter. Die Rollenverteilung bleibt bestehen.
+**3. Vorlesen.** Der Bericht ist so geschrieben, dass man ihn vorlesen kann.
+
+**4. „Folgen anwenden"** — der Knopf unter der Folgenliste. *Jetzt* werden
+Schaden und Erschöpfung auf die jeweiligen Charakterbögen geschrieben. Danach
+steht dort „Folgen angewendet" statt des Knopfs.
+
+Das ist eine eigene Entscheidung, getrennt vom Tagesabschluss: Der Dschungel hat
+schon zugebissen, aber die Gruppe legt sich vielleicht noch nicht schlafen. Der
+Merker liegt im **gespeicherten Bericht** — ein zweiter Druck kann dieselben
+Trefferpunkte also nicht ein zweites Mal abziehen, auch nicht nach einem
+Neuladen oder von einem anderen Rechner aus.
+
+**5. Tag abschließen** (SL). Der Tag geht in den Chat und ins Logbuch, der
+Zähler springt weiter. Wurden die Folgen noch nicht angewendet, holt dieser
+Schritt das nach — wurden sie es schon, rührt er sie nicht an. Die
+Rollenverteilung bleibt bestehen.
+
+> Willst du einen bereits angewendeten Tag neu auswerten, warnt der Dialog
+> ausdrücklich: Neu auswerten würfelt den Tag neu, **nimmt den bereits
+> angerichteten Schaden aber nicht zurück.**
 
 ---
 
@@ -710,7 +731,7 @@ Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
 ```bash
 npm install          # classic-level (Kompendien) + handlebars (Tests)
 npm run verify       # statische Prüfungen
-npm test             # Mondmathematik + ~680 Integrationstests
+npm test             # Mondmathematik + ~720 Integrationstests
 npm run check        # beides
 npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 ```

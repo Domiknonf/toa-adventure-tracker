@@ -1154,6 +1154,123 @@ await doRoll(gandalf);
 check(chatMessages.length >= 1, "with the switch on the yield is announced again");
 
 /* ------------------------------------------------------------------ */
+section("one click runs the day, another applies it");
+const ACTIONS = Object.getOwnPropertyDescriptor(app.AdventureTracker, "DEFAULT_OPTIONS").value.actions;
+const instance2 = new app.AdventureTracker();
+/** ApplicationV2 hands the clicked element to the handler; it only needs .disabled. */
+const fakeButton = () => ({ disabled: false, isConnected: true });
+
+settingValues.state = {};
+settingValues.applyConsequences = true;
+settingValues.rollsToChat = false;
+await state.setDay(12);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 1;                       // everyone fumbles, so there is damage to apply
+saveResult.value = false;
+
+// ONE press: roll every outstanding role AND resolve.
+check(Object.keys(state.getState().rolls).length === 0, "nothing rolled yet");
+queue.d100.push(99, 1);             // an ambush
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+const ran = state.getState();
+check(Object.keys(ran.rolls).length === 2, "one press rolled both roles");
+check(!!ran.report, "and resolved the day");
+check(ran.report.reasons.length > 0, "the report carries its reasons");
+check(ran.report.applied !== true, "but wrote nothing to any sheet yet");
+
+// A roll already on the board is respected rather than thrown away.
+const keptTotal = ran.rolls[gandalf.id].total;
+queue.d100.push(99, 100);
+await ACTIONS.resolveDay.call(instance2, {}, fakeButton());
+check(state.getState().rolls[gandalf.id].total === keptTotal,
+  "resolving again leaves existing rolls alone");
+
+/* --- Apply is its own step ---------------------------------------- */
+settingValues.state = {};
+await state.setDay(13);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 1;
+queue.d100.push(99, 1);
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+let rep = state.getState().report;
+check(rep.consequences.length > 0, "the day cost somebody something");
+
+for (const a of [gandalf, bilbo]) { a.damageTaken.length = 0; a.system.attributes.exhaustion = 0; }
+const hpBefore2 = gandalf.system.attributes.hp.value;
+
+await ACTIONS.applyNow.call(instance2, {}, fakeButton());
+check(state.getState().report.applied === true, "the report is marked applied");
+const damaged = rep.consequences.find(c => c.actorId === gandalf.id && c.damage > 0);
+if (damaged) {
+  check(gandalf.damageTaken.length === 1, "damage went to the sheet exactly once");
+  check(gandalf.system.attributes.hp.value === hpBefore2 - damaged.damage, "hit points dropped");
+}
+
+/**
+ * PRESSING APPLY AGAIN MUST DO NOTHING.
+ *
+ * The flag lives on the stored report rather than in a local variable, so it
+ * survives a re-render and a reload - "did I already press it" is not a
+ * question a GM should answer from memory, and the wrong answer costs the party
+ * the same hit points a second time.
+ */
+const takenOnce = [...gandalf.damageTaken];
+await ACTIONS.applyNow.call(instance2, {}, fakeButton());
+check(gandalf.damageTaken.length === takenOnce.length, "a second Apply changes nothing");
+
+// Completing the day must not apply them a second time either.
+await ACTIONS.completeDay.call(instance2, {}, fakeButton());
+check(gandalf.damageTaken.length === takenOnce.length,
+  "completing an already-applied day does not double up");
+check(state.getState().day === 14, "and the day still advanced");
+check(state.getState().log.length === 1, "and was logged");
+
+// The other order still works: complete WITHOUT pressing Apply first.
+settingValues.state = {};
+await state.setDay(20);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "vanguard");
+dice.d20 = 1;
+queue.d100.push(99, 1);
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+rep = state.getState().report;
+for (const a of [gandalf, bilbo]) { a.damageTaken.length = 0; a.system.attributes.exhaustion = 0; }
+const expectDamage = rep.consequences.some(c => c.damage > 0);
+await ACTIONS.completeDay.call(instance2, {}, fakeButton());
+if (expectDamage) {
+  check([...gandalf.damageTaken, ...bilbo.damageTaken].length > 0,
+    "completing an unapplied day still applies the consequences");
+}
+check(state.getState().day === 21, "and advances");
+
+// The context tells the template which state the button is in.
+settingValues.state = {};
+await state.setDay(30);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 1;
+queue.d100.push(99, 1);
+await ACTIONS.runDay.call(instance2, {}, fakeButton());
+let ctx2 = await instance2._prepareContext({});
+check(ctx2.report.applied === false, "context: not applied yet");
+const beforeHtml = compileTemplate()(ctx2);
+check(beforeHtml.includes('data-action="applyNow"'), "so the Apply button is offered");
+await ACTIONS.applyNow.call(instance2, {}, fakeButton());
+ctx2 = await instance2._prepareContext({});
+check(ctx2.report.applied === true, "context: applied");
+const afterHtml = compileTemplate()(ctx2);
+check(!afterHtml.includes('data-action="applyNow"'), "and the button is gone");
+check(afterHtml.includes(game.i18n.localize("toa-adventure-tracker.app.applied")),
+  "replaced by a note that it is done");
+
+for (const a of [gandalf, bilbo, notMine]) {
+  a.system.attributes.exhaustion = 0;
+  a.system.attributes.hp.value = a.system.attributes.hp.max;
+}
+settingValues.rollsToChat = true;
+
+/* ------------------------------------------------------------------ */
 section("journal export");
 journals.length = 0;
 settingValues.state = {};
