@@ -1309,14 +1309,15 @@ for (const a of [gandalf, bilbo, notMine]) {
 settingValues.rollsToChat = true;
 
 /* ------------------------------------------------------------------ */
-section("role overview, and batches that do not prompt");
+section("the role board, and batches that do not prompt");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 settingValues.state = {};
 await state.setDay(1);
+await state.assign(gandalf.id, "navigator");
 let gctx = await new app.AdventureTracker()._prepareContext({});
 
-check(gctx.roleGuide.length === 6, `the overview lists every role (${gctx.roleGuide.length})`);
-for (const row of gctx.roleGuide) {
+check(gctx.board.roles.length === 6, `the board lists every role (${gctx.board.roles.length})`);
+for (const row of gctx.board.roles) {
   check(!!row.label && !row.label.includes("adventure-tracker"), `${row.id}: has a name`);
   check(!!row.check, `${row.id}: names the skill it rolls`);
   check(Number.isFinite(row.dc), `${row.id}: names its DC`);
@@ -1327,15 +1328,57 @@ for (const row of gctx.roleGuide) {
   check(!!row.unfilled && !row.unfilled.includes("adventure-tracker"),
     `${row.id}: says what leaving it empty costs`);
 }
-const guideHtml = compileTemplate()(gctx);
-check(guideHtml.includes("toa-guide-table"), "the overview renders");
-check(guideHtml.includes(gctx.roleGuide[0].effect), "with the effect text in it");
 
-// Players do not get it - it is part of the working surface.
-setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
-const viewerHtml = compileTemplate()(await new app.AdventureTracker()._prepareContext({}));
-check(!viewerHtml.includes("toa-guide-table"), "a viewer does not get the overview");
+/* --- who is on what ----------------------------------------------- */
+const navRow = gctx.board.roles.find(r => r.id === "navigator");
+check(navRow.holders.length === 1 && navRow.holders[0].name === "Gandalf",
+  "the board names who took the role");
+check(navRow.holders[0].mod === "+9", `and the modifier they bring (${navRow.holders[0].mod})`);
+check(!navRow.empty, "a filled role is not marked empty");
+check(gctx.board.roles.find(r => r.id === "vanguard").empty, "an unfilled one is");
+// A GM has no single character, so no column that would have to pick one.
+check(gctx.board.mine === false, "the GM gets no personal column");
+
+const guideHtml = compileTemplate()(gctx);
+check(guideHtml.includes("toa-board"), "the board renders");
+check(guideHtml.includes(gctx.board.roles[0].effect), "with the effect text in it");
+check(guideHtml.includes("Gandalf"), "and the name of whoever is on the role");
+
+/* --- THE PLAYER'S VIEW -------------------------------------------- */
+/* The board is the reason a player opens this window at all: what there is to
+   do, who has it, what it rolls and what they would bring to it. None of it is
+   the day report, which is what the secrecy is actually about. */
+settingValues.playerRolls = false;
+settingValues.shareReport = false;
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false, character: bilbo });
+const viewerCtx = await new app.AdventureTracker()._prepareContext({});
+const viewerHtml = compileTemplate()(viewerCtx);
+
+check(viewerCtx.rolling === false, "a player still gets no working surface");
+check(viewerHtml.includes("toa-board"), "but they do get the board");
+check(viewerHtml.includes("Gandalf"), "including who is on which role");
+check(viewerHtml.includes(viewerCtx.board.roles[0].check), "and the skill each one rolls");
+check(viewerHtml.includes(viewerCtx.board.roles[0].effect), "and what the role does");
+
+// Their OWN numbers, for every role - the answer to "where would I be useful".
+check(viewerCtx.board.mine === true, "a player gets a personal column");
+check(viewerCtx.board.you === "Bilbo", "headed with their own character");
+const viewerStealth = viewerCtx.board.roles.find(r => r.id === "rearguard");
+check(viewerStealth.you === "+8", `their own modifier per role (${viewerStealth.you})`);
+check(viewerCtx.board.roles.every(r => r.you !== ""), "filled in for every role, not just theirs");
+
+// The pace malus is on the board rather than only in the report, so it can be
+// read BEFORE the roll it applies to.
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+await state.setPace("fast");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false, character: bilbo });
+const fastBoard = (await new app.AdventureTracker()._prepareContext({})).board;
+check(fastBoard.roles.find(r => r.id === "vanguard").paceMod === "-5",
+  "the current pace's malus is shown per role");
+
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+settingValues.state = {};
+await state.setDay(1);
 
 /* --- a batch must never ask about advantage ----------------------- */
 settingValues.skipRollDialog = false;   // a single roll SHOULD still ask
@@ -1441,6 +1484,71 @@ await exportAction.call(instance);
 check(journals.length === 1, "export wrote one journal entry");
 check(journals[0].pages[0].text.content.includes("<table>"), "with the log table");
 check(!journals[0].pages[0].text.content.includes("undefined"), "and no undefined");
+
+/* ------------------------------------------------------------------ */
+section("the button in the left rail");
+
+/* Importing the bootstrap registers its hooks; none of them FIRE on import, so
+   this is safe to do last and still exercises the real registration. */
+await import(`${R}/module.mjs`);
+
+/** Run the hook the way core does: hand it the controls object to mutate. */
+const railFor = (isGM) => {
+  setupGame({ actors: [gandalf, bilbo, notMine], isGM });
+  const controls = { tokens: { name: "tokens", order: 0, tools: {} } };
+  Hooks.callAll("getSceneControlButtons", controls);
+  return controls;
+};
+
+const gmRail = railFor(true);
+const group = gmRail["toa-adventure-tracker"];
+check(!!group, "the module adds its own category, not a tool in somebody else's");
+check(gmRail.tokens.tools["toa-adventure-tracker"] === undefined,
+  "and leaves the core categories alone");
+check(typeof group.title === "string" && group.title.startsWith("toa-adventure-tracker."),
+  "the category is titled from the language file, not hardcoded");
+
+/* The three things core is unforgiving about, each one a bug that only shows up
+   when somebody clicks: a category with no activeTool throws, a tool with
+   neither onChange nor onClick throws, and a control keyed by the wrong name
+   never renders. */
+check(!!group.activeTool && group.activeTool in group.tools,
+  `activeTool names a real tool ("${group.activeTool}")`);
+check(group.name === "toa-adventure-tracker", "the control carries its own key as its name");
+for (const [key, tool] of Object.entries(group.tools)) {
+  check(tool.name === key, `${key}: name matches its key`);
+  check(typeof tool.onChange === "function", `${key}: has onChange (v13 calls this one)`);
+  check(typeof tool.onClick === "function", `${key}: has onClick (core throws without either)`);
+  check(tool.button === true, `${key}: is a momentary button, not a mode`);
+  check(Number.isFinite(tool.order), `${key}: has an order`);
+}
+
+// Opening it is the common case, so the category itself does it - one click,
+// not two. Deactivation must NOT (onChange fires both ways).
+let opened = 0;
+const realRender = app.AdventureTracker.prototype.render;
+app.AdventureTracker.prototype.render = function () { opened++; return this; };
+try {
+  group.onChange({}, true);
+  check(opened === 1, "clicking the category opens the window");
+  group.onChange({}, false);
+  check(opened === 1, "leaving it does not open a second one");
+} finally {
+  app.AdventureTracker.prototype.render = realRender;
+}
+
+// Running the day is the GM's. A player is not shown a control they cannot use.
+check("runDay" in gmRail["toa-adventure-tracker"].tools, "the GM gets the run-day tool");
+const playerRail = railFor(false);
+check(!!playerRail["toa-adventure-tracker"], "a player still gets the category");
+check(!("runDay" in playerRail["toa-adventure-tracker"].tools),
+  "but not the run-day tool");
+
+// ...and the refusal is in the code as well as in the rail, because a rail is
+// only a rendering.
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: false });
+check(await app.AdventureTracker.runDay() === false, "runDay refuses a non-GM outright");
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 
 /* ------------------------------------------------------------------ */
 console.log(`\n${passed} passed, ${failed} failed`);

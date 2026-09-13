@@ -221,14 +221,17 @@ export const journals = [];
 /* --- game --------------------------------------------------------- */
 export const settingValues = {};
 
-export function setupGame({ actors = [], isGM = true, gmOnline = true } = {}) {
+export function setupGame({ actors = [], isGM = true, gmOnline = true, character = null } = {}) {
   const store = new Map(actors.map(a => [a.id, a]));
   const list = [...actors];
   list.get = (id) => store.get(id);
   list.getName = (name) => list.find(a => a.name === name);
 
   globalThis.game = {
-    user: { id: "user1", isGM, isActiveGM: isGM },
+    // `character` is the actor a player brought to the table - what the role
+    // board fills its "you" column from. Null for a user who has none, which
+    // is the normal case for a GM.
+    user: { id: "user1", isGM, isActiveGM: isGM, character },
     users: {
       activeGM: gmOnline ? { id: "gm" } : null,
       // Keyed by id, not by the session: the GM-side permission check asks

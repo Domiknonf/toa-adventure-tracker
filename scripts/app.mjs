@@ -1,5 +1,5 @@
 import {
-  MODULE_ID, REFRESH_HOOK, PACE_ORDER, DEBOUNCE_MS, ROLE, MODE_ORDER, TRAVEL_MODES,
+  MODULE_ID, REFRESH_HOOK, PACE_ORDER, DEBOUNCE_MS, MODE_ORDER, TRAVEL_MODES,
   DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
@@ -8,8 +8,8 @@ import {
   clearReport, markApplied
 } from "./state.mjs";
 import {
-  getRoles, getRole, roleLabel, roleHint, roleCheck, modifierFor, partyActors,
-  canControl, rollRole, unitLabel, paceModifierFor, worstExhaustion
+  getRoles, getRole, roleLabel, roleHint, roleEffect, roleCheck, modifierFor,
+  partyActors, canControl, rollRole, unitLabel, paceModifierFor, worstExhaustion
 } from "./roles.mjs";
 import { moonFor, disc } from "./moon.mjs";
 import { requestAssign, requestRecord } from "./socket.mjs";
@@ -105,7 +105,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       // weather once it is known. Both are observable in the world, so neither
       // is a spoiler - unlike what came out of the trees.
       travel: this.#prepareTravel(state),
-      roleGuide: this.#prepareRoleGuide(state),
+      board: this.#prepareBoard(state),
       sky: this.#prepareSky(state, gm, shared),
       /**
        * THE REPORT IS GM-ONLY UNLESS SHARED, AND IT IS WITHHELD HERE RATHER THAN
@@ -168,36 +168,77 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
   }
 
   /**
-   * WHAT EACH ROLE ROLLS AND WHAT IT ACTUALLY DOES.
+   * THE ROLE BOARD: every role, who is on it, and what it is worth.
    *
-   * A reference panel, not decoration. Which roles to leave empty is the real
-   * decision this window asks for, and it cannot be made from a dropdown of
-   * names - "Nachhut" says nothing about whether skipping it costs hit points.
+   * The one panel EVERYBODY gets, GM and player alike, and the answer to the
+   * only question a player can actually act on: what is there to do, who has
+   * already taken it, what gets rolled for it and what do I bring to it.
    *
-   * Writing this is also what exposed that the medic had no mechanical effect
-   * at all: the column was simply empty. If a role cannot be described here, it
-   * does not deserve to be in the list.
+   * None of it is a spoiler. Who volunteered for the rearguard is said out loud
+   * at the table; a skill modifier is on a sheet its owner can already read.
+   * What stays behind the report gate is what came out of the trees - and that
+   * is a different panel entirely (see the comment on `report`).
+   *
+   * Writing the effect column is also what once exposed that the medic had no
+   * mechanical effect at all: the cell was simply empty. If a role cannot be
+   * described here, it does not deserve to be in the list.
    */
-  #prepareRoleGuide(state) {
-    const table = paceTable()[state.pace] ?? {};
-    return getRoles(state.mode).map(role => {
+  #prepareBoard(state) {
+    const actors = partyActors();
+    const byId = new Map(actors.map(a => [a.id, a]));
+    const assignments = state.assignments ?? {};
+
+    /**
+     * Whose numbers fill the "you" column.
+     *
+     * The character this user brought to the table, not every actor they
+     * happen to own - a player with three sheets wants their own bonuses, not
+     * a spreadsheet. The GM gets no column: they can see everyone's already,
+     * and a single number would have to pick one of them arbitrarily.
+     */
+    const mine = game.user.isGM
+      ? null
+      : (byId.get(game.user.character?.id) ?? actors.find(a => a.isOwner) ?? null);
+
+    const roles = getRoles(state.mode).map(role => {
       const check = roleCheck(role);
-      const paceMod = role.id === ROLE.NAVIGATOR ? (table.navMod ?? 0) : (table.mods?.[role.id] ?? 0);
+      // Everyone on this role. Usually nobody or one; two scouts is a legal and
+      // occasionally sensible choice, so the board shows however many there are.
+      const holders = Object.entries(assignments)
+        .filter(([, roleId]) => roleId === role.id)
+        .map(([actorId]) => byId.get(actorId))
+        .filter(Boolean)
+        .map(actor => ({
+          id: actor.id,
+          name: actor.name,
+          img: actor.img,
+          mod: signed(modifierFor(actor, role)),
+          rolled: !!state.rolls?.[actor.id]
+        }));
+
       return {
         id: role.id,
         icon: role.icon ?? "",
         label: roleLabel(role),
+        hint: roleHint(role),
         check: check?.label ?? "",
         dc: role.dc ?? null,
-        // What it does mechanically, in one line, from lang/*.json.
-        effect: game.i18n.localize(`${MODULE_ID}.role.${role.id}.effect`),
+        // What the CURRENT pace does to this particular roll - the malus that is
+        // easiest to forget and hardest to explain after the fact.
+        paceMod: signedOrEmpty(paceModifierFor(role, state)),
+        effect: roleEffect(role),
         // What it costs to leave empty - the other half of the decision.
         unfilled: game.i18n.localize(`${MODULE_ID}.unfilled.${role.unfilled ?? "fail"}`),
         critical: role.unfilled === "worse",
-        // The current pace's effect on this particular roll, if any.
-        paceMod: signedOrEmpty(paceMod)
+        holders,
+        empty: !holders.length,
+        // This viewer's own modifier for the role, filled or not: the answer to
+        // "where would I actually be useful".
+        you: mine ? signed(modifierFor(mine, role)) : ""
       };
     });
+
+    return { roles, you: mine?.name ?? "", mine: !!mine };
   }
 
   /** Moon of the current day, plus the drawing geometry. */
@@ -560,17 +601,31 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
    * made, where that is allowed - is respected rather than thrown away.
    */
   static async #onRunDay(event, target) {
-    if (!game.user.isGM) return;
-    const existing = getState().report;
-    if (existing && !(await AdventureTracker.#confirmReresolve(existing))) return;
-
     target.disabled = true;
     try {
-      await AdventureTracker.#rollOutstanding();
-      await resolveDay();
+      await AdventureTracker.runDay();
     } finally {
       if (target.isConnected) target.disabled = false;
     }
+  }
+
+  /**
+   * The same thing, callable without a button.
+   *
+   * Public because the scene-control tool needs it and the rail has no DOM
+   * element to disable - the guard there is that the window opens first, so a
+   * second click lands on the button, which does disable itself.
+   *
+   * @returns {Promise<boolean>} Whether a day was actually resolved.
+   */
+  static async runDay() {
+    if (!game.user.isGM) return false;
+    const existing = getState().report;
+    if (existing && !(await AdventureTracker.#confirmReresolve(existing))) return false;
+
+    await AdventureTracker.#rollOutstanding();
+    await resolveDay();
+    return true;
   }
 
   /**

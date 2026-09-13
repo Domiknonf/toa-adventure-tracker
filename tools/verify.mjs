@@ -104,7 +104,9 @@ for (const file of langs) {
 }
 
 /* 5. EVERY LANGUAGE HAS THE SAME KEYS. A key present in one file and missing in
-      another shows the raw key path to half the table and nobody else. */
+      another shows the raw key path to half the table and nobody else. Vacuous
+      while the module ships a single table, and deliberately kept: the day a
+      second one arrives is the day it starts mattering. */
 const [reference, ...others] = langs;
 for (const file of others) {
   const missing = Object.keys(tables[reference]).filter(k => !(k in tables[file]));
@@ -112,6 +114,21 @@ for (const file of others) {
   for (const key of missing) fail(`${file}: missing key "${key}" (present in ${reference})`);
   for (const key of extra) fail(`${file}: extra key "${key}" (absent from ${reference})`);
   if (!missing.length && !extra.length) ok(`${file}: same key set as ${reference}`);
+}
+
+/* 5b. THE FALLBACK LANGUAGE HAS A TABLE.
+       Foundry loads the client's language and keeps "en" as `_fallback`; a key
+       missing from BOTH renders as its own dotted path. A module that ships only
+       `de` therefore shows raw key paths to every table that has not switched
+       Foundry to German - which is not a missing translation, it is a broken
+       window, and it is invisible to anyone testing in German.
+       Declaring "en" is what makes the module speak SOMETHING to everybody. */
+const declared = new Set((JSON.parse(fs.readFileSync("module.json", "utf8")).languages ?? [])
+  .map(l => l.lang));
+if (!declared.has("en")) {
+  fail('module.json: no "en" language entry - every non-matching client falls back to raw key paths');
+} else {
+  ok(`module.json: the fallback language ("en") has a table (${declared.size} entries, ${langs.length} file(s))`);
 }
 
 /* 6. EVERY STATICALLY REFERENCED i18n KEY EXISTS. Interpolated keys - the

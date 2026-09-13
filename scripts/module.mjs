@@ -115,34 +115,71 @@ Hooks.once("ready", () => {
 /* ------------------------------------------------------------------ */
 
 /**
- * A button in the Journal Notes control group.
+ * THE TRACKER'S OWN CATEGORY IN THE LEFT RAIL.
  *
- * Deliberately NOT its own control group: a group of one button costs a whole
- * category in the left rail, and in v13 a custom category has its own sharp edges
- * (a layer-less group needs care to activate at all). Notes is where the
- * campaign-bookkeeping tools already live.
+ * Its own group, next to Token Controls and Journal Notes, rather than a tool
+ * buried inside somebody else's category: the travel day is not note-keeping,
+ * and a button nobody can find is a button nobody presses.
  *
- * v13 SHAPE: `controls` is an OBJECT keyed by control name, and each control's
- * `tools` is an object too - both were arrays through v12. The optional chaining
- * below is what keeps a future rename from throwing during the hook rather than
- * just leaving the button out.
+ * v13 SHAPE, all of it verified against the SceneControls definitions rather
+ * than remembered:
+ *  - `controls` is an OBJECT keyed by control name, and so is each control's
+ *    `tools`. Both were arrays through v12.
+ *  - `activeTool` is NOT optional in practice. A category without one throws an
+ *    unhelpful error the moment somebody clicks it (foundryvtt#12903), which is
+ *    the kind of bug that only ever shows up at the table.
+ *  - `layer` IS optional, and omitted here on purpose: this category drives no
+ *    canvas layer, it opens a window. Core guarded that path in v12 Stable 3
+ *    (foundryvtt#11107); the cost of getting it wrong the other way - inventing
+ *    a canvas layer just to hang a button off - is a broken canvas, which is a
+ *    far worse failure than a misplaced button.
+ *  - A tool with NEITHER `onChange` nor `onClick` makes core throw
+ *    (foundryvtt#12761), so both are given rather than guessed at.
+ *
+ * Clicking the CATEGORY opens the window directly, so the common case is one
+ * click; the tools inside it are for the second one.
  */
 Hooks.on("getSceneControlButtons", (controls) => {
-  const notes = controls?.notes;
-  if (!notes?.tools) return;
+  if (!controls) return;
 
-  notes.tools[MODULE_ID] = {
+  // A momentary button: it does something and leaves the active tool alone.
+  const button = (name, order, title, icon, onPress) => ({
+    name, order, title, icon,
+    visible: true,
+    button: true,
+    onChange: onPress,
+    onClick: onPress
+  });
+
+  const tools = {
+    open: button("open", 1, `${MODULE_ID}.control.open`, "fa-solid fa-person-hiking",
+      () => openApp())
+  };
+
+  // Running the day is the GM's, and so is the tool. Hidden rather than
+  // disabled: a control a player can see and not use is a question they have to
+  // ask. The API refuses it a second time anyway (AdventureTracker.runDay).
+  if (game.user.isGM) {
+    tools.runDay = button("runDay", 2, `${MODULE_ID}.control.runDay`, "fa-solid fa-dice-d20",
+      async () => {
+        // The window first: the report is the point, and opening it afterwards
+        // would mean the dice land somewhere nobody is looking.
+        openApp();
+        await AdventureTracker.runDay();
+      });
+  }
+
+  controls[MODULE_ID] = {
     name: MODULE_ID,
+    // Last in the rail. The core categories are the canvas ones and they should
+    // stay where everybody's hands already know they are.
     order: 100,
     title: `${MODULE_ID}.app.title`,
     icon: "fa-solid fa-person-hiking",
-    // A momentary button, not a stateful tool: it opens a window and leaves the
-    // active tool alone.
-    button: true,
     visible: true,
-    // v13 calls onChange; core throws outright on a tool that has NEITHER an
-    // onChange nor an onClick, so both are supplied rather than guessed at.
-    onChange: () => openApp(),
-    onClick: () => openApp()
+    activeTool: "open",
+    tools,
+    // Fires on activation AND deactivation, hence the guard.
+    onChange: (event, active) => { if (active) openApp(); }
   };
 });

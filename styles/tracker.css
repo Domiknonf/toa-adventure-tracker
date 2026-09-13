@@ -624,6 +624,58 @@
   .toa-guide-role i { color: var(--toa-accent); margin-right: 0.2rem; }
   .toa-guide-check { white-space: nowrap; }
 
+  /* ---------------------------------------------------------------- */
+  /*  The role board                                                   */
+  /* ---------------------------------------------------------------- */
+
+  /* The one table a player reads, so it is given room the folded GM reference
+     never needed: portraits, and a column for your own numbers. */
+  .toa-board { font-size: var(--font-size-12, 0.75rem); }
+
+  .toa-board-holders { min-width: 7rem; }
+
+  /* Portrait, name and modifier as one chip, so two people on one role wrap as
+     two units instead of interleaving into a word salad. */
+  .toa-holder {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.1rem 0.25rem 0.1rem 0;
+    padding: 0.1rem 0.35rem 0.1rem 0.1rem;
+    border: 1px solid var(--toa-line);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.18);
+    max-width: 100%;
+  }
+
+  .toa-holder img {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+  }
+
+  .toa-holder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toa-holder-mod { color: var(--toa-dim); font-variant-numeric: tabular-nums; }
+
+  /* Already rolled today. A quiet ring rather than a badge: it is a progress
+     cue, not a result - the result is the GM's. */
+  .toa-holder.rolled { border-color: var(--toa-accent); }
+
+  /* An empty role is the thing worth noticing on this table. */
+  .toa-board-empty .toa-guide-role { opacity: 0.75; }
+  .toa-board-empty .toa-dim { color: var(--toa-dim); font-style: italic; }
+
+  .toa-board-you {
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--toa-accent);
+    font-weight: 700;
+  }
+
   .toa-sub-title {
     margin: 0.85rem 0 0.35rem;
     font-size: var(--font-size-12, 0.75rem);
@@ -722,46 +774,36 @@
 
     /* Three pace cards side by side stop being readable well before the window
        stops being usable. */
-    /* The viewer's read-only travel line. Not a disabled control - a window full
-     of greyed-out buttons reads as broken rather than as "not yours". */
-  .toa-travel-line {
-    margin: 0 0 0.35rem;
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    font-size: var(--font-size-14, 0.875rem);
-  }
+    .toa-paces { grid-template-columns: 1fr; }
 
-  .toa-travel-line i { color: var(--toa-accent); width: 1.1rem; text-align: center; }
-  .toa-travel-line .toa-dim { color: var(--toa-dim); }
+    /* Four modes fit; four modes and a caption each do not. */
+    .toa-modes { grid-template-columns: repeat(2, 1fr); }
 
-  .toa-modes {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.4rem;
-  }
+    /* Six columns do not fit in 460px, and a table that scrolls sideways is a
+       table nobody reads - so the board stops being a table and becomes one
+       card per role. Nothing is dropped: on a narrow window the effect text is
+       the whole reason a player opened this. */
+    .toa-board thead { display: none; }
+    .toa-board, .toa-board tbody, .toa-board tr, .toa-board td { display: block; }
 
-  .toa-mode {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.15rem;
-    padding: 0.45rem 0.3rem;
-    border: 1px solid var(--toa-line);
-    border-radius: var(--toa-radius);
-    background: rgba(0, 0, 0, 0.18);
-    line-height: 1.25;
-    height: auto;
-  }
+    .toa-board tr {
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--toa-line);
+    }
 
-  .toa-mode.on { border-color: var(--toa-accent); box-shadow: inset 0 0 0 1px var(--toa-accent); }
-  .toa-mode[disabled] { opacity: 0.65; cursor: default; }
-  .toa-mode i { font-size: 1.1rem; color: var(--toa-accent); }
-  .toa-mode-name { font-weight: 700; }
-  /* The three ceilings as "1 / 2 / 3" - says more about a mode than an adjective. */
-  .toa-mode-range { font-size: var(--font-size-11, 0.6875rem); color: var(--toa-dim); }
+    .toa-board td { border: 0; padding: 0.1rem 0; }
+    /* A role with nothing to say in a cell should not leave a blank line. */
+    .toa-board td:empty { display: none; }
 
-  .toa-paces { grid-template-columns: 1fr; }
+    /* Out of the table, a bare "+3" no longer has a column heading to explain
+       it, so the cell carries its own. */
+    .toa-board-you { text-align: left; }
+
+    .toa-board-you::before {
+      content: attr(data-label) " ";
+      color: var(--toa-dim);
+      font-weight: 400;
+    }
 
     /* Portrait and name on one line, the task and the roll stacked under it. */
     .toa-member {

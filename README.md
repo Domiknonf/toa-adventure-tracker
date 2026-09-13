@@ -62,9 +62,31 @@ darin), Foundry neu starten.
 
 ### Fenster öffnen
 
-- **Scene Controls** → Journal-Notes-Gruppe → Wanderer-Symbol
+- **Eigener Knopf in der linken Werkzeugleiste** — das Wanderer-Symbol, unter
+  den Kartenwerkzeugen. Ein Klick auf die Gruppe öffnet das Fenster sofort; in
+  der Leiste daneben liegen „Wildnisreise öffnen“ und (nur SL) „Tag laufen
+  lassen“.
 - Kompendium **Wildnisreise: Makros** → „Wildnisreise öffnen“
 - `game.modules.get("toa-adventure-tracker").api.open()`
+
+Der Knopf ist eine **eigene Kategorie**, keine Schaltfläche in einer fremden
+Gruppe: Ein Reisetag ist keine Notizverwaltung, und ein Knopf, den niemand
+findet, ist ein Knopf, den niemand drückt. Er steuert bewusst *keine*
+Leinwandebene — er öffnet ein Fenster. Spieler sehen ihn ebenfalls, denn ihre
+Ansicht ist inzwischen mehr als ein Schaufenster (siehe unten).
+
+### Sprache
+
+**Das Modul spricht Deutsch, egal was in Foundry eingestellt ist.** Es liefert
+eine einzige Sprachdatei (`lang/de.json`) und meldet sie auch als Tabelle für
+`en` an — das ist die Sprache, auf die Foundry zurückfällt, wenn es für die
+eingestellte keine findet. Ohne diesen Eintrag würde jeder Tisch, der Foundry
+nicht auf Deutsch stellt, rohe Schlüsselpfade wie
+`toa-adventure-tracker.app.day` zu sehen bekommen — und zwar unsichtbar für
+jeden, der auf Deutsch testet. `verify.mjs` prüft genau das.
+
+Fest verdrahtete Texte gibt es trotzdem keine: Wer übersetzen will, legt
+`lang/xx.json` an und trägt sie in `module.json` ein.
 
 ---
 
@@ -81,7 +103,7 @@ unbesetzt direkt unter der Liste und nicht erst im Bericht.
 
 **2. „Tag würfeln & auswerten"** — ein Knopf. Er würfelt jede noch offene
 Rolle und wertet den Tag anschließend aus: Wetter, ob euch etwas findet, welches
-Ereignis, die Vorräte, die fälligen Rettungswürfe. Heraus kommt der Tagesbericht
+Ereignis, die fälligen Rettungswürfe. Heraus kommt der Tagesbericht
 mit Ergebnis **und Begründung**.
 
 Ein Wurf, der schon auf dem Tisch liegt, wird respektiert und nicht
@@ -130,9 +152,10 @@ Rollenverteilung bleibt bestehen.
 | **Feldscher** | Medizin | 12 | Nimmt bei Erfolg dem am stärksten erschöpften Reisenden einen Grad Erschöpfung ab. | folgenlos |
 | **Kartograph** | Nachforschungen | 12 | Fängt einen misslungenen Navigationswurf auf: halbe Strecke statt null, mindestens ein Hexfeld. | folgenlos |
 
-Dieselbe Tabelle steht **im Fenster selbst**, aufklappbar unter der Rollenliste
-(„Rollen-Übersicht") — samt der Modifikatoren, die das gewählte Tempo gerade auf
-die einzelnen Proben legt.
+Dieselbe Tabelle steht **im Fenster selbst** — die
+[Rollentafel](#die-rollentafel), die auch die Spieler sehen: wer die Rolle
+gerade hat, welchen Modifikator er darauf bringt, was das gewählte Tempo auf
+die Probe legt, und was du selbst darauf hättest.
 
 > **Der Feldscher tat lange nichts.** Seine Beschreibung versprach, er nehme
 > Erschöpfung wieder ab — die Engine hatte nie von ihm gehört. Aufgefallen ist
@@ -268,10 +291,10 @@ Rollenwahl ist der größte Hebel im ganzen System.
 ## Wetter
 
 Wetter wird **gewürfelt, nie eingestellt.** Es gibt bewusst keinen Regenschalter:
-Die ganze Vorratsrechnung ergibt nur dann etwas, wenn Trockenperioden der Gruppe
-*zustoßen*. Eine SL, die jeden Morgen entscheiden müsste, ob es regnet, wird
-sich — völlig zu Recht — für die Geschichte entscheiden, die sie ohnehin im Kopf
-hat, und die Fässer laufen nie aus Versehen leer.
+Ein Sturm bedeutet nur dann etwas, wenn er der Gruppe *zustößt*. Eine SL, die
+jeden Morgen entscheiden müsste, ob es regnet, wird sich — völlig zu Recht —
+für die Geschichte entscheiden, die sie ohnehin im Kopf hat, und der Dschungel
+wäre nie unangenehmer, als es gerade passt.
 
 | Wetter | Vorgabe | Wirkung |
 |---|---|---|
@@ -306,15 +329,14 @@ es gekostet hat.
 
 Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
 (Schaden, Erschöpfung, Rettungswurf, kostet den Tag). Alle Texte liegen in
-`lang/de.json` und `lang/en.json` — du kannst jede Zeile umschreiben, ohne
-Code anzufassen.
+`lang/de.json` — du kannst jede Zeile umschreiben, ohne Code anzufassen.
 
 **Ein misslungener Nebenrolle löst ihr Ereignis nicht garantiert aus**, sondern
 mit einer Wahrscheinlichkeit (Verfolgung 35 / 45 %, Lager 30 / 35 %). Eine
 Vierergruppe lässt zwangsläufig Rollen leer; würde jede davon jeden Tag feuern,
 stünden jeden Morgen dieselben Absätze im Bericht und keiner davon hieße noch
 etwas. So ist eine unbesetzte Rolle ein **Risiko**, das ihr tragt, statt einer
-Steuer, die ihr zahlt. Navigation, Vorräte und Wetter sind davon ausgenommen —
+Steuer, die ihr zahlt. Navigation und Wetter sind davon ausgenommen —
 das ist Arithmetik, kein Pech.
 
 ---
@@ -357,7 +379,7 @@ Damit wird die Rollenwahl zum eigentlichen Überlebensfaktor:
 | **ohne** | 0,49 | 193/200 | 111/200 |
 
 Wer im Dschungel niemanden das Lager aufschlagen lässt, wird zermahlen. Das ist
-Absicht — und es steht in der Rollen-Übersicht im Fenster, bevor der erste Wurf
+Absicht — und es steht in der Rollentafel im Fenster, bevor der erste Wurf
 fällt.
 
 > Spielt ihr mit normalen langen Rasten, ändert das nichts zum Schlechteren:
@@ -438,9 +460,7 @@ der Person, die entscheidet.
 
 ## Was die Spieler sehen
 
-**Das Werkzeug gehört der Spielleitung.** Das Fenster, das ein Spieler öffnet,
-ist ein Schaufenster — es zeigt, was die Gruppe ohnehin weiß, und hat nichts
-zum Drücken.
+**Die Auswertung gehört der Spielleitung — die Rollentafel gehört allen.**
 
 Ein Spieler sieht:
 
@@ -448,19 +468,46 @@ Ein Spieler sieht:
 - die **Mondphase** samt gezeichneter Scheibe
 - **wie** die Gruppe unterwegs ist (Reiseart und Tempo, als eine Zeile Text)
 - das **Wetter von heute**, sobald der Tag ausgewertet ist — darin stehen sie ja
-- die **Vorräte** und wie viele Tage ohne Regen vergangen sind
+- die **Rollentafel**
 
-Ein Spieler sieht **nicht**: die Rollenliste, die Würfe, den Tagesbericht, die
-Ereignisse, die Folgen, das Logbuch, die Kampfgrößen. Und zwar nicht nur
-ausgeblendet — das alles wird ihm **gar nicht erst übermittelt**. Ein `{{#if gm}}`
-im Template hätte jedes Wort trotzdem in seinen Browser geliefert, wo die
-Konsole es jedem zeigt, der nachsieht. Ein Test prüft genau das: kein
-Ereignistext taucht im Kontextobjekt oder im gerenderten Markup eines Spielers
-auf.
+### Die Rollentafel
 
-Das Fenster öffnet für Spieler auch schmaler, weil ihre Ansicht eine kurze
-Spalte ist. Acht ausgegraute Knöpfe wären keine Information, sondern sähen
-kaputt aus.
+Die eigentliche Antwort auf „was kann ich hier tun“. Eine Zeile pro Rolle, und
+darin:
+
+| Spalte | Was drinsteht |
+|---|---|
+| **Rolle** | Name und Symbol; der Tooltip erklärt sie in einem Satz |
+| **Besetzt durch** | Wer sie hat — Porträt, Name und **dessen Modifikator** auf diese Probe. Ein Ring um das Porträt heißt: heute schon gewürfelt. Leer steht „niemand“ |
+| **Probe** | Welcher Skill gewürfelt wird, der **SG**, und der **Auf- oder Abschlag des aktuellen Tempos** |
+| **Du** | **Dein eigener** Wert auf diese Probe — für *jede* Rolle, nicht nur für deine. Die Antwort auf „wo wäre ich eigentlich nützlich“ |
+| **Wirkung** | Was die Rolle mechanisch bewirkt |
+| **Unbesetzt** | Was es kostet, sie leer zu lassen |
+
+Bei der Spielleitung ist die Tafel zugeklappt (sie hat die Arbeitsfläche
+darüber), bei Spielern aufgeklappt — für sie *ist* sie das Fenster. Die
+Spalte „Du“ füllt sich aus dem Charakter, der dem Benutzer zugewiesen ist; die
+Spielleitung bekommt sie nicht, weil sie sonst willkürlich einen von allen
+auswählen müsste.
+
+Nichts davon ist ein Geheimnis: Wer sich für die Nachhut gemeldet hat, wird am
+Tisch laut gesagt, und ein Fertigkeitsmodifikator steht auf einem Bogen, den
+sein Besitzer ohnehin lesen darf. Das Tempo-Malus gehört sogar ausdrücklich
+**vor** den Wurf — es hinterher im Bericht zu erklären ist zu spät.
+
+### Was ein Spieler nicht sieht
+
+Der **Tagesbericht**: die Ereignisse, die Folgen, die Kampfgrößen, das Logbuch,
+die Würfe. Und zwar nicht nur ausgeblendet — das alles wird ihm **gar nicht
+erst übermittelt**. Ein `{{#if gm}}` im Template hätte jedes Wort trotzdem in
+seinen Browser geliefert, wo die Konsole es jedem zeigt, der nachsieht. Ein
+Test prüft genau das: kein Ereignistext taucht im Kontextobjekt oder im
+gerenderten Markup eines Spielers auf.
+
+Auch die **Bedienung** bleibt bei der Spielleitung: Reiseart, Tempo, Tag
+weiterschalten, auswerten, anwenden. Ein Spieler bekommt sie nicht ausgegraut
+zu sehen, sondern gar nicht — acht tote Knöpfe wären keine Information, sondern
+sähen kaputt aus.
 
 ### Zwei Schalter, wenn du es anders willst
 
@@ -703,7 +750,6 @@ const api = game.modules.get("toa-adventure-tracker").api;
 | `api.open()` | alle | Fenster öffnen. |
 | `api.setDay(n)` / `api.adjustDay(d)` | SL | Reisetag. Verwirft die Auswertung. |
 | `api.setPace("slow"\|"normal"\|"fast")` | SL | Reisetempo. |
-| `api.setSupplies({ water, food })` | SL | Vorräte setzen. |
 | `await api.resolveDay()` | SL | Tag auswerten. Schreibt **nichts** auf Bögen. |
 | `api.clearReport()` | SL | Auswertung verwerfen. |
 | `api.completeDay()` | SL | Protokollieren und weiterzählen. Wendet **keine** Folgen an — das tut der Knopf im Fenster. |
@@ -770,13 +816,14 @@ npm run build:packs  # packs/_source/*.json -> LevelDB-Kompendium
 einmal etwas kaputtgemacht hat: Import-Zyklen, Templates mit mehr oder weniger
 als genau einem Wurzelelement, `data-action`s ohne Handler, i18n-Schlüssel, die
 gleichzeitig Blatt und Zweig sind, Sprachdateien mit unterschiedlichen
-Schlüsselmengen, Manifest-Pfade ins Leere — und, weil die Ereignistabelle der
+Schlüsselmengen, eine fehlende Tabelle für die Rückfallsprache, Manifest-Pfade
+ins Leere — und, weil die Ereignistabelle der
 eigentliche Inhalt dieses Moduls ist, **dass jedes Ereignis in jeder Sprache
 einen Namen und einen Text hat** und keine verwaisten Texte herumliegen.
 
 `npm test` fährt einen minimalen Foundry-Ersatz hoch
 (`tools/test/foundry-shim.mjs`) und prüft damit Zustandsübergänge, die
-Hex-Regeln, Reisearten, Wetter, Vorratsübertrag, Rechtetrennung, die
+Hex-Regeln, Reisearten, Wetter, die Rollentafel, Rechtetrennung, die
 XP-Arithmetik und das gerenderte Template. Darunter ein Lauf über 60 Seetage,
 der prüft, dass **kein einziges Landereignis** je in den Seepool leckt, und
 einer, der eine Spieler-Socket-Nachricht von Hand an die SL-Seite schickt, um zu

@@ -103,7 +103,25 @@ export function roleLabel(role) {
 
 export function roleHint(role) {
   if (role?.hint) return game.i18n.localize(role.hint);
-  const key = `${MODULE_ID}.role.${role.id}.hint`;
+  return optional(`${MODULE_ID}.role.${role.id}.hint`);
+}
+
+/**
+ * What the role DOES, in one line - the sentence the role board prints.
+ *
+ * Empty rather than a raw key path when nobody wrote one: a custom role is
+ * allowed to be pure flavour, and `toa-adventure-tracker.role.cook.effect`
+ * printed in a table cell reads as a bug even when it is only an omission.
+ * The default roles are held to a higher standard by verify.mjs, which fails
+ * the build if one of them has no description.
+ */
+export function roleEffect(role) {
+  if (role?.effect) return game.i18n.localize(role.effect);
+  return optional(`${MODULE_ID}.role.${role.id}.effect`);
+}
+
+/** A localization that is allowed not to exist. */
+function optional(key) {
   const text = game.i18n.localize(key);
   return text === key ? "" : text;
 }

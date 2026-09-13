@@ -212,39 +212,6 @@
       {{!-- An empty role is a guaranteed failure, and which ones to leave empty
             is the actual choice this window asks for - so it is said up front,
             not discovered afterwards in the report. --}}
-      {{!-- What each role rolls and what it actually does. Folded away by
-            default: it is a reference, not something to read every morning. --}}
-      {{#if roleGuide.length}}
-      <details class="toa-guide">
-        <summary>{{localize "toa-adventure-tracker.app.roleGuide"}}</summary>
-        <table class="toa-guide-table">
-          <thead>
-            <tr>
-              <th>{{localize "toa-adventure-tracker.app.role"}}</th>
-              <th>{{localize "toa-adventure-tracker.app.check"}}</th>
-              <th>{{localize "toa-adventure-tracker.app.effect"}}</th>
-              <th>{{localize "toa-adventure-tracker.app.ifUnfilled"}}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each roleGuide}}
-            <tr>
-              <td class="toa-guide-role">
-                {{#if icon}}<i class="{{icon}}"></i>{{/if}} {{label}}
-              </td>
-              <td class="toa-guide-check">
-                {{check}}{{#if dc}} <span class="toa-dc">{{localize "toa-adventure-tracker.app.dc"}} {{dc}}</span>{{/if}}
-                {{#if paceMod}}<span class="toa-pacemod">{{paceMod}}</span>{{/if}}
-              </td>
-              <td>{{effect}}</td>
-              <td class="{{#if critical}}toa-mod-bad{{/if}}">{{unfilled}}</td>
-            </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </details>
-      {{/if}}
-
       {{#if unfilled.length}}
       <div class="toa-unfilled">
         <span class="toa-unfilled-label">{{localize "toa-adventure-tracker.app.unfilled"}}:</span>
@@ -293,6 +260,77 @@
         </button>
         {{/if}}
       </div>
+    </section>
+    {{/if}}
+
+    {{!-- ---------------------------------------------------------------
+          THE ROLE BOARD
+          Everybody's panel: what there is to do, who has it, what it rolls
+          and what each of us brings to it. Folded for the GM, who has the
+          working surface above; open for a player, for whom this IS the
+          window.
+    ---------------------------------------------------------------- --}}
+    {{#if board.roles.length}}
+    <section class="toa-panel">
+      <details class="toa-guide" {{#unless gm}}open{{/unless}}>
+        <summary>{{localize "toa-adventure-tracker.app.roleBoard"}}</summary>
+
+        <table class="toa-guide-table toa-board">
+          <thead>
+            <tr>
+              <th>{{localize "toa-adventure-tracker.app.role"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.onIt"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.check"}}</th>
+              {{#if board.mine}}
+              <th class="toa-board-you" data-tooltip-text="{{board.you}}">
+                {{localize "toa-adventure-tracker.app.you"}}
+              </th>
+              {{/if}}
+              <th>{{localize "toa-adventure-tracker.app.effect"}}</th>
+              <th>{{localize "toa-adventure-tracker.app.ifUnfilled"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each board.roles}}
+            <tr class="{{#if empty}}toa-board-empty{{/if}}">
+              <td class="toa-guide-role" data-tooltip-text="{{hint}}">
+                {{#if icon}}<i class="{{icon}}"></i>{{/if}} {{label}}
+              </td>
+
+              <td class="toa-board-holders">
+                {{#each holders}}
+                <span class="toa-holder {{#if rolled}}rolled{{/if}}">
+                  <img src="{{img}}" alt="" loading="lazy">
+                  <span class="toa-holder-name">{{name}}</span>
+                  <span class="toa-holder-mod">{{mod}}</span>
+                </span>
+                {{else}}
+                <span class="toa-dim">{{localize "toa-adventure-tracker.app.nobody"}}</span>
+                {{/each}}
+              </td>
+
+              <td class="toa-guide-check">
+                {{check}}{{#if dc}} <span class="toa-dc">{{localize "toa-adventure-tracker.app.dc"}} {{dc}}</span>{{/if}}
+                {{#if paceMod}}
+                <span class="toa-pacemod"
+                      data-tooltip="toa-adventure-tracker.app.paceModHint">{{paceMod}}</span>
+                {{/if}}
+              </td>
+
+              {{#if ../board.mine}}
+              <td class="toa-board-you"
+                  data-label="{{localize 'toa-adventure-tracker.app.you'}}">{{you}}</td>
+              {{/if}}
+
+              <td>{{effect}}</td>
+              <td class="{{#if critical}}toa-mod-bad{{/if}}">{{unfilled}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+
+        <p class="toa-hint toa-compact">{{localize "toa-adventure-tracker.app.boardHint"}}</p>
+      </details>
     </section>
     {{/if}}
 
