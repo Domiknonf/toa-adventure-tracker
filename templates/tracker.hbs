@@ -492,6 +492,13 @@
           {{#if exhaustion}}<span class="toa-tag bad">+{{exhaustion}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
           {{#if heals}}<span class="toa-tag good">&minus;{{heals}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
           {{#if untouched}}<span class="toa-tag">{{localize "toa-adventure-tracker.app.noEffect"}}</span>{{/if}}
+          {{!-- Not the same thing: the jungle came at them and missed. The save
+                beside this tag is the whole reason the day cost nothing. --}}
+          {{#if warded}}
+          <span class="toa-tag good" data-tooltip="toa-adventure-tracker.app.wardedHint">
+            <i class="fa-solid fa-shield"></i> {{localize "toa-adventure-tracker.app.warded"}}
+          </span>
+          {{/if}}
 
           {{!-- The night. A camp event that got through costs the breather -
                 which for a table that cannot long rest is the whole day's

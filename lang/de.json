@@ -363,6 +363,8 @@
   "toa-adventure-tracker.app.allReadyAuto": "Der Tag wird automatisch weitergezählt.",
   "toa-adventure-tracker.app.waitingOn": "Es fehlen noch:",
   "toa-adventure-tracker.app.noEffect": "kein Effekt",
+  "toa-adventure-tracker.app.warded": "abgewehrt",
+  "toa-adventure-tracker.app.wardedHint": "Etwas hat zugeschlagen und wurde abgewehrt: Ein gelungener Rettungswurf hebt das Ereignis ganz auf — kein Schaden, keine Erschöpfung. Der Wurf steht daneben.",
   "toa-adventure-tracker.app.shortRest": "kurze Rast möglich",
   "toa-adventure-tracker.app.noRest": "keine Rast",
   "toa-adventure-tracker.app.noRestHint": "Ein Lagerereignis hat zugeschlagen: diese Nacht bringt keine Erholung — keine kurze Rast, keine Trefferwürfel.",

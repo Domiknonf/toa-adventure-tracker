@@ -477,9 +477,20 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
        */
       consequences: (report.consequences ?? []).map(c => ({
         ...c,
-        // Nothing was written and nothing was prevented - a genuinely quiet
-        // day for this one traveller.
-        untouched: !c.damage && !c.exhaustion && !c.heals,
+        /**
+         * THREE STATES, NOT TWO.
+         *
+         * "Nothing happened to you" and "something came at you and you turned
+         * it aside" look identical on a sheet and are completely different at
+         * the table - and a report that renders them the same way invites
+         * exactly one question: why did the kamadan cost nobody anything?
+         *
+         * A save here cancels the event outright rather than halving it (see
+         * resolve.resolveConsequences), so the whole story of a warded event
+         * lives in this flag and the roll printed beside it.
+         */
+        untouched: !c.damage && !c.exhaustion && !c.heals && !(c.from ?? []).length,
+        warded: !c.damage && !c.exhaustion && !c.heals && !!(c.from ?? []).length,
         // A camp event got through, so tonight is not a rest.
         restless: !!c.restless,
         /**

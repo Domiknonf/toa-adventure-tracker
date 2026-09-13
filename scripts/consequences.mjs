@@ -121,7 +121,12 @@ export async function postDayToChat(report, texts) {
     if (c.damage) bits.push(game.i18n.format(`${MODULE_ID}.chat.damage`, { n: c.damage }));
     if (c.exhaustion) bits.push(game.i18n.format(`${MODULE_ID}.chat.exhaustion`, { n: c.exhaustion }));
     if (c.heals) bits.push(game.i18n.format(`${MODULE_ID}.chat.healed`, { n: c.heals }));
-    if (!bits.length) bits.push(game.i18n.localize(`${MODULE_ID}.app.noEffect`));
+    // Warded off is not the same as untouched, and the chat log is where the
+    // day is read back weeks later - by which time nobody remembers the roll.
+    if (!bits.length) {
+      bits.push(game.i18n.localize(
+        `${MODULE_ID}.app.${(c.from ?? []).length ? "warded" : "noEffect"}`));
+    }
     bits.push(game.i18n.localize(`${MODULE_ID}.app.${c.restless ? "noRest" : "shortRest"}`));
     return `<li>${foundry.utils.escapeHTML(c.actorName)}: ${bits.join(", ")}</li>`;
   }).join("");

@@ -432,21 +432,86 @@ dice.d20 = 1;  await doRoll(bilbo);
 saveResult.value = false;
 queue.d100.push(99, 1);       // ambush
 report = await resolve.resolveDay();
-check(report.consequences.length > 0, "the ambush produced consequences");
+/* NOT `consequences.length > 0` - that went vacuous the day every traveller
+   started getting a line. What has to be true is that the ambush COST somebody
+   something, which is the thing the sheets are then checked against. */
+const billed = report.consequences.filter(c => c.damage || c.exhaustion);
+check(billed.length > 0, `the ambush cost somebody something (${billed.length} travellers)`);
+check(report.consequences.some(c => c.damage > 0), "and some of it was hit points");
 
-const hpBefore = gandalf.system.attributes.hp.value;
+const hpBefore = Object.fromEntries(report.consequences.map(c => [c.actorId,
+  game.actors.get(c.actorId).system.attributes.hp.value]));
 const applied = await conseq.applyConsequences(report);
 check(applied.applied === true, "consequences are applied by default");
-const hurt = report.consequences.find(c => c.actorId === gandalf.id);
-if (hurt?.damage) {
-  check(gandalf.damageTaken.length > 0, "damage went through actor.applyDamage()");
-  check(gandalf.system.attributes.hp.value === hpBefore - hurt.damage, "hit points actually dropped");
+
+/* Unconditional, for everybody the day billeded. The old version guarded each
+   assertion behind "if this traveller took damage", so a day that happened to
+   billed nobody skipped the whole check and still reported success. */
+for (const c of billed) {
+  const actor = game.actors.get(c.actorId);
+  if (c.damage) {
+    check(actor.damageTaken.includes(c.damage),
+      `${c.actorName}: damage went through actor.applyDamage()`);
+    check(actor.system.attributes.hp.value === hpBefore[c.actorId] - c.damage,
+      `${c.actorName}: hit points actually dropped`);
+  }
+  if (c.exhaustion) {
+    check(actor.system.attributes.exhaustion >= c.exhaustion - (c.heals ?? 0),
+      `${c.actorName}: exhaustion was written to the sheet`);
+  }
 }
-const exhausted = report.consequences.find(c => c.exhaustion > 0);
-if (exhausted) {
-  const actor = game.actors.get(exhausted.actorId);
-  check(actor.system.attributes.exhaustion > 0, "exhaustion was written to the sheet");
+
+/* --- AND THE OTHER SIDE: A SAVE CANCELS THE EVENT OUTRIGHT ---------- */
+/* Not half damage - these are days rather than fireballs, so the save asks
+   "did it get you". Which means a day CAN legitimately cost nothing at all,
+   and the report has to say so as "warded off" rather than "no effect", or the
+   table is left wondering why the leopard was free. */
+for (const a of [gandalf, bilbo, notMine]) {
+  a.system.attributes.exhaustion = 0;
+  a.system.attributes.hp.value = a.system.attributes.hp.max;
+  a.damageTaken.length = 0;
 }
+/* Pinned rather than hoped for: only SOME ambushes offer a save, and a day that
+   happens to draw one that does not proves nothing. `pick` indexes its pool with
+   Math.random, so this picks a saving ambush on purpose - and the same value
+   sits above the pursuit (45) and camp (35) gates, so nothing else joins in. */
+const evmod0 = await import(`${R}/events.mjs`);
+const ambushes = evmod0.byCategory("ambush", "foot");
+const savingIdx = ambushes
+  .map((e, i) => [e, i])
+  .filter(([e, i]) => e.save && ((i + 0.5) / ambushes.length) * 100 > 45)
+  .pop();
+check(!!savingIdx, "there is an ambush with a save that can be pinned cleanly");
+const realRandom0 = Math.random;
+Math.random = () => (savingIdx[1] + 0.5) / ambushes.length;
+
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "vanguard" } });
+dice.d20 = 18; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+saveResult.value = true;                    // everybody makes it
+queue.d100.length = 0;
+queue.d100.push(99, 1);                     // and something jumps them anyway
+const wardedReport = await resolve.resolveDay();
+check(wardedReport.events.some(e => e.id === savingIdx[0].id),
+  `the pinned ambush is the one that came (${savingIdx[0].id})`);
+check(wardedReport.consequences.every(c => !c.damage && !c.exhaustion),
+  "a passed save cancels the event outright, damage and exhaustion together");
+await conseq.applyConsequences(wardedReport);
+check(gandalf.damageTaken.length === 0 && bilbo.damageTaken.length === 0,
+  "so nothing reaches any sheet");
+
+const wardedCtx = await new app.AdventureTracker()._prepareContext({});
+const wardedRows = wardedCtx.report.consequences.filter(c => c.warded);
+check(wardedRows.length > 0, `whoever rolled it is marked as having warded it off (${wardedRows.length})`);
+check(wardedRows.every(c => !c.untouched),
+  "and NOT as untouched - those are different days and must not read alike");
+check(wardedCtx.report.consequences.filter(c => c.untouched).every(c => !c.from.length),
+  "untouched is reserved for the travellers nothing came near");
+const wardedHtml = compileTemplate()(wardedCtx);
+check(wardedHtml.includes(game.i18n.localize("toa-adventure-tracker.app.warded")),
+  "the report says it out loud");
+Math.random = realRandom0;
+saveResult.value = false;
 // Reset EVERY traveller, not just the one found above. A day can exhaust
 // several, and leaving one at 3 silently caps the travel of every later test -
 // which is exactly how this leaked into the travel-mode section and made it

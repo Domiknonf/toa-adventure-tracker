@@ -614,14 +614,22 @@ bereit sind — das kostet nichts und ist für sich schon nützlich.
 Der Bericht listet **jeden Reisenden**, auch die, denen nichts passiert ist:
 
 ```
-Akk Akk:   kein Effekt          · kurze Rast möglich
-Brombert:  +1 Erschöpfung       · keine Rast
-Maleth:    kein Effekt          · kurze Rast möglich
+Akk Akk:   kein Effekt                    · kurze Rast möglich
+Brombert:  +1 Erschöpfung                 · keine Rast
+Maleth:    abgewehrt  KON 18/13           · kurze Rast möglich
 ```
 
 Ein Name, der einfach fehlt, liest sich als vergessen und nicht als verschont —
 und die zweite Hälfte jeder Zeile ist für eine Gruppe ohne lange Rasten die
 wichtigste Zeile im ganzen Bericht.
+
+**„Abgewehrt" ist nicht „kein Effekt".** Ein gelungener Rettungswurf hebt das
+Ereignis **ganz** auf — kein halber Schaden, keine Erschöpfung: Das sind Tage
+und keine Feuerbälle, der Wurf fragt „hat es dich erwischt". Ein Kamadan, der
+2W6 und einen Grad Erschöpfung im Kasten stehen hat und trotzdem niemanden
+etwas kostet, ist deshalb kein Fehler — es hat der eine Getroffene seinen Wurf
+geschafft. Weil genau das aussieht, als hätte die Auswertung nichts getan,
+steht es jetzt als eigener Zustand da, mit dem Wurf daneben.
 
 **Ein Lagerereignis, das durchkommt, kostet die Nachtruhe.** Keine kurze Rast,
 keine Trefferwürfel. Genau das hat die Beschreibung des Lagermeisters immer
