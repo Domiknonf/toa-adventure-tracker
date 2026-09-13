@@ -109,11 +109,20 @@ export async function postDayToChat(report, texts) {
       + `<strong>${r.total}</strong>${r.dc ? ` / ${r.dc}` : ""}${verdict}</li>`;
   }).join("");
 
+  /**
+   * ONE LINE PER TRAVELLER, the untouched ones included.
+   *
+   * A name missing from this list reads as forgotten, not as spared - and the
+   * last bit, whether tonight is a rest, is the line a party that cannot long
+   * rest actually cares about.
+   */
   const harm = (report.consequences ?? []).map(c => {
     const bits = [];
     if (c.damage) bits.push(game.i18n.format(`${MODULE_ID}.chat.damage`, { n: c.damage }));
     if (c.exhaustion) bits.push(game.i18n.format(`${MODULE_ID}.chat.exhaustion`, { n: c.exhaustion }));
     if (c.heals) bits.push(game.i18n.format(`${MODULE_ID}.chat.healed`, { n: c.heals }));
+    if (!bits.length) bits.push(game.i18n.localize(`${MODULE_ID}.app.noEffect`));
+    bits.push(game.i18n.localize(`${MODULE_ID}.app.${c.restless ? "noRest" : "shortRest"}`));
     return `<li>${foundry.utils.escapeHTML(c.actorName)}: ${bits.join(", ")}</li>`;
   }).join("");
 

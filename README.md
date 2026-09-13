@@ -30,7 +30,9 @@ Eine Tagesstrecke kennt genau drei Antworten: **0, 1 oder 2 Hexfelder.**
 - [Folgen](#folgen)
 - [Kampfgrößen für schwer und tödlich](#kampfgrößen-für-schwer-und-tödlich)
 - [Was die Spieler sehen](#was-die-spieler-sehen)
-- [Lange Rast beendet den Tag](#lange-rast-beendet-den-tag)
+- [Bereit für morgen](#bereit-für-morgen)
+- [Was der Tag jedem einzelnen gekostet hat](#was-der-tag-jedem-einzelnen-gekostet-hat)
+- [Die Grung und euer Grung](#die-grung-und-euer-grung)
 - [Weltoptionen](#weltoptionen)
 - [Eigene Rollen (JSON)](#eigene-rollen-json)
 - [API](#api)
@@ -409,11 +411,10 @@ Reiseereignissen ist damit kein zweiter Ratschenmechanismus; was eure Gruppe
 verwundet, sind die Kämpfe, die ihr aus den Begegnungen macht, und die zählt
 dieses Modul nicht mit.
 
-> **Was dabei nicht funktioniert:** die Weltoption *„Tag automatisch
-> weiterschalten, wenn alle lange rasten"*. Sie hängt an einer langen Rast mit
-> gesetztem „New Day" — die es bei euch im Dschungel nie gibt. Für euch endet
-> der Tag über den Knopf **„Tag abschließen"**. Sag Bescheid, wenn du willst,
-> dass eine kurze Rast das ebenfalls auslöst.
+> **Und das Tagesende?** Früher hing der Automatismus an einer langen Rast mit
+> „neuer Tag", die es bei euch im Dschungel nie gibt. Deshalb gibt es jetzt den
+> Knopf **„Bereit"** in jedem Spielerfenster — siehe
+> [Bereit für morgen](#bereit-für-morgen).
 
 ---
 
@@ -557,14 +558,32 @@ nur an dich.
 
 ---
 
-## Lange Rast beendet den Tag
+## Bereit für morgen
 
-Wenn **alle Reisenden** eine lange Rast mit „neuer Tag" gemacht haben, ist die
-Nacht vorbei — der Zähler kann dann von selbst weiterspringen, statt auf den
-Knopf zu warten.
+**Jeder Spieler hat einen Knopf: „Bereit".** Damit sagt sein Charakter, dass er
+mit dem Tag durch ist. Im Fenster steht dann für alle sichtbar, wer schon
+eingecheckt hat und **auf wen noch gewartet wird** — namentlich, nicht als
+„2/4", denn „wir warten auf Brombert" kann man beantworten, eine Zahl nicht.
 
-Eingeschaltet über die Weltoption **„Tag bei langer Rast automatisch
-weiterzählen"** (Vorgabe: aus). Was dann passiert:
+Der Knopf ist ein **Umschalter**: Wer ihn gedrückt hat und dann doch noch das
+Lager durchsuchen will, nimmt ihn selbst wieder zurück. Die SL darf ihn für
+jeden drücken — irgendwer muss für den Spieler antworten können, der sich
+mitten im Dschungel ausgeloggt hat.
+
+Er liegt bewusst **nicht** hinter „Spieler dürfen selbst würfeln". Dieser
+Schalter entscheidet, ob Spieler das *Werkzeug* bedienen; „ich bin fertig" ist
+eine Aussage über den eigenen Charakter, die die SL sonst laut abfragen müsste.
+Damit ist es die eine Bedienung, die ein Spieler immer hat — auch bei einem
+Tisch, der den Tracker sonst rein SL-seitig fährt.
+
+> **Warum ein Knopf und nicht die lange Rast?** Früher hing das Tagesende an
+> einer langen Rast mit „neuer Tag". Für einen Tisch, dessen Hausregel lange
+> Rasten in der Wildnis verbietet, kam die nie zustande — der Automatismus
+> konnte bei euch schlicht nicht auslösen. Eine lange Rast zählt weiterhin
+> mit, für Tische, die sie nehmen; sie ist nur nicht mehr der einzige Weg.
+
+Eingeschaltet über die Weltoption **„Tag automatisch weiterzählen, wenn alle
+bereit sind"** (Vorgabe: aus). Was dann passiert:
 
 | Lage | Ergebnis |
 |---|---|
@@ -578,20 +597,93 @@ die Gruppe danach schlafen, würde ein naiver Automatismus den Tag ein zweites
 Mal weiterzählen. Deshalb zählt er nur weiter, wenn am laufenden Tag tatsächlich
 gereist wurde — also ein Bericht oder mindestens ein Wurf vorliegt.
 
-Es zählt ausschließlich eine **lange** Rast mit gesetztem **„neuer Tag"**. Eine
-kurze Rast ist eine Verschnaufpause, und eine lange Rast ohne das Häkchen ist
-die Gruppe, die sich am selben Nachmittag von einem Kampf erholt — beides
-beendet keinen Reisetag. Auch Aktoren außerhalb der Reisegruppe zählen nicht
-mit: Das schlafende Haustier eines Spielers in der Stadt bewegt euren Reisetag
-nicht.
+Auf dem zweiten Weg — der langen Rast — zählt ausschließlich eine **lange** Rast
+mit gesetztem **„neuer Tag"**. Eine kurze Rast ist eine Verschnaufpause, und
+eine lange Rast ohne das Häkchen ist die Gruppe, die sich am selben Nachmittag
+von einem Kampf erholt; beides ist keine Aussage, dass der Reisetag vorbei ist.
+Auch Aktoren außerhalb der Reisegruppe zählen nicht mit: Das schlafende
+Haustier eines Spielers in der Stadt bewegt euren Reisetag nicht.
 
-Im Rollen-Panel zeigt ein kleines Mondsymbol, auf wen noch gewartet wird. Auch
-mit ausgeschaltetem Automatismus bekommst du eine Meldung, sobald alle gerastet
-haben — das kostet nichts und ist für sich schon nützlich.
+Auch mit ausgeschaltetem Automatismus bekommst du eine Meldung, sobald alle
+bereit sind — das kostet nichts und ist für sich schon nützlich.
 
-Eine lange Rast zu melden liegt bewusst **nicht** hinter „Spieler dürfen selbst
-würfeln": Dass jemand gerastet hat, ist eine Tatsache über seinen eigenen
-Charakterbogen und keine Handlung in diesem Werkzeug.
+---
+
+## Was der Tag jedem einzelnen gekostet hat
+
+Der Bericht listet **jeden Reisenden**, auch die, denen nichts passiert ist:
+
+```
+Akk Akk:   kein Effekt          · kurze Rast möglich
+Brombert:  +1 Erschöpfung       · keine Rast
+Maleth:    kein Effekt          · kurze Rast möglich
+```
+
+Ein Name, der einfach fehlt, liest sich als vergessen und nicht als verschont —
+und die zweite Hälfte jeder Zeile ist für eine Gruppe ohne lange Rasten die
+wichtigste Zeile im ganzen Bericht.
+
+**Ein Lagerereignis, das durchkommt, kostet die Nachtruhe.** Keine kurze Rast,
+keine Trefferwürfel. Genau das hat die Beschreibung des Lagermeisters immer
+versprochen („eine Nacht, die nicht als Rast zählt") — bis jetzt machte es
+nichts davon wahr. Wer seinen Rettungswurf schafft, hat das Ereignis abgewehrt
+und behält damit auch seine Nacht.
+
+> Der **Anwenden**-Knopf erscheint nur noch, wenn es tatsächlich etwas zu
+> schreiben gibt. Vorher stand er auch an einem Tag da, an dem niemand etwas
+> abbekommen hatte — ein Knopf, der nichts tut, erzieht dazu, ihm nicht zu
+> trauen.
+
+---
+
+## Die Grung und euer Grung
+
+Wenn eine Gruppe einen Grung dabei hat, sollte ein Dschungel voller Grung das
+merken. Eine Patrouille, die euren froschblütigen Späher ignoriert, hätte auch
+irgendetwas anderes sein können; eine, die auf ihn zeigt und lacht, ist eine
+Szene.
+
+Trage dazu unter **Weltoptionen → „Der Grung in der Gruppe"** seinen Namen ein
+(Name, ID oder UUID gehen alle). Ab dann sind vier zusätzliche Ereignisse im
+Spiel, die es **nur mit ihm** gibt:
+
+| Ereignis | Was passiert | Antwort | Wenn er nichts zu sagen hat |
+|---|---|---|---|
+| **Spott** | Eine Patrouille zeigt auf ihn und ahmt seinen Gang nach | Überzeugen SG 12 | Erst Feigen, dann Steine — 1W4, nur auf ihn |
+| **Wegzoll** | Sechs Grung an einer Furt verhandeln mit *ihm*, nicht mit euch | Täuschen SG 13 | Umweg durch den Sumpf, 1 Erschöpfung für alle |
+| **Der falsche Name** | Jemand ruft aus dem Unterholz einen Namen, der nicht seiner ist | Auftreten SG 13 | Der Rufer bleibt den ganzen Tag in Hörweite |
+| **Ein Käfer** | Ein sehr kleiner, sehr blauer Grung bringt ihm ein Geschenk | — | — (ein guter Tag) |
+
+**Die Antwort ist ein Rettungswurf mit Worten.** Ein normales Ereignis lässt
+jeden einzeln würfeln; ein Sippen-Ereignis lässt **einen** würfeln — den, um
+den es geht — und ein Erfolg wendet es für die **ganze Gruppe** ab. Die Probe
+läuft über sein Blatt, durch das System, ohne Chatkarte; die Zahl steht im
+Bericht neben dem Ereignis, damit am Tisch nicht „er hat sie rumgekriegt" steht,
+sondern „Überzeugen 23/12".
+
+Der Wurf entscheidet außerdem, **welche Hälfte des Textes vorgelesen wird** —
+deshalb hat auch das Ereignis ohne mechanische Kosten eine Probe. Die Geschichte
+ist der Punkt:
+
+> Acht Augen im Blattwerk, vier Speerspitzen — und dann Gelächter. Sie zeigen
+> auf Akk Akk, quaken etwas Kurzes, Boshaftes, und einer ahmt seinen Gang nach.
+> Was genau gesagt wurde, versteht am Lagerfeuer nur einer. Und der darf
+> zurückquaken.
+> **Was Akk Akk zurückruft, sitzt.** Einen Herzschlag lang ist es still im
+> Blattwerk — dann kippt die halbe Patrouille vor Lachen fast von den Ästen und
+> zieht nach Norden ab. Zwei von ihnen üben den Gang noch stundenlang.
+
+**Ohne Eintrag existieren diese Ereignisse nicht.** Sie werden nicht seltener
+gezogen oder allgemeiner formuliert — sie kommen gar nicht erst in den Topf,
+denn eine Patrouille, die einen der Ihren erkennt, ergibt in einer Gruppe ohne
+Grung keinen Sinn. `verify` prüft dabei, dass jedes Sippen-Ereignis den Namen
+auch wirklich nennt und dass jede Antwort **beide** Enden hat: Ein fehlendes
+Ende fällt sonst genau bei dem Wurf auf, den niemand getestet hat — mitten im
+Vorlesen.
+
+Das Ganze hängt an einem allgemeinen `kin`-Feld, nicht an einer
+Grung-Sonderbehandlung. Eine zweite Sippe wäre eine Zeile in `KIN` plus ihre
+Texte.
 
 ---
 
@@ -691,7 +783,7 @@ Unabhängig vom Zahlenmodifikator.
 ### Automatik
 | Option | Vorgabe |
 |---|---|
-| Tag bei langer Rast automatisch weiterzählen | **aus** |
+| Tag automatisch weiterzählen, wenn alle bereit sind | **aus** |
 | Würfe in den Chat schreiben | an |
 
 ### Folgen
@@ -704,6 +796,11 @@ Unabhängig vom Zahlenmodifikator.
 | Option | Vorgabe |
 |---|---|
 | Eigene Rollen (JSON) | leer |
+
+### Sippe
+| Option | Vorgabe |
+|---|---|
+| Der Grung in der Gruppe | leer |
 
 ### Pro Person
 | Option | Vorgabe |
@@ -787,8 +884,8 @@ const api = game.modules.get("toa-adventure-tracker").api;
 | `api.partyActors()` | alle | Wer als reisend gilt. |
 | `api.modifierFor(actor, role)` | alle | Modifikator vom Bogen. |
 | `api.worstExhaustion()` | alle | Höchster Erschöpfungsgrad in der Gruppe. |
-| `api.allRested()` | alle | Ob alle Reisenden ihre lange Rast gemacht haben. |
-| `api.stillAwake()` | alle | Auf wen noch gewartet wird. |
+| `api.allReady()` | alle | Ob alle Reisenden bereit für morgen sind. |
+| `api.notReady()` | alle | Auf wen noch gewartet wird. |
 | `api.moonFor(day)` | alle | Mondphase eines beliebigen Tages. |
 
 Schreibende Aufrufe sind auf SL-Ebene abgesichert: Ein Spieler, der
@@ -874,7 +971,7 @@ Markup.
 | `scripts/encounters.mjs` | XP-Budgets, Kampfgrößen für schwer und tödlich |
 | `scripts/resolve.mjs` | **Die Tagesmaschine** — Wetter + Würfe → Hex, Ereignisse, Folgen |
 | `scripts/consequences.mjs` | Schreibt Schaden und Erschöpfung auf die Bögen |
-| `scripts/rest.mjs` | Lange Rast als Tagesende, mit Schutz vor Doppelsprung |
+| `scripts/rest.mjs` | „Bereit für morgen“ und das Tagesende, mit Schutz vor Doppelsprung |
 | `scripts/socket.mjs` | Spieleraktionen → SL |
 | `scripts/app.mjs` | Das Fenster (ApplicationV2) |
 | `scripts/module.mjs` | Hooks, Scene Controls, API |

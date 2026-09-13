@@ -28,7 +28,7 @@ export const REFRESH_HOOK = `${MODULE_ID}.refresh`;
  * stored shape CHANGES MEANING. A new optional field needs nothing - a state that
  * lacks it already reads correctly through the defaults in state.blankState().
  */
-export const STATE_SCHEMA = 2;
+export const STATE_SCHEMA = 3;
 
 /* ------------------------------------------------------------------ */
 /*  Moon                                                               */
@@ -401,6 +401,36 @@ export const EVENT_CHANCE = {
 /* ------------------------------------------------------------------ */
 
 /**
+ * KIN: EVENTS THAT ARE ABOUT SOMEBODY AT THE TABLE.
+ *
+ * An event may declare `kin`. It then enters the pools ONLY when the world has
+ * named a traveller of that kin (see the `grungKin` setting), and its prose is
+ * formatted with `{name}` - that traveller's own.
+ *
+ * The point is that a jungle full of grung should notice the grung walking
+ * through it. A patrol that ignores your frog-blooded ranger is a patrol that
+ * could have been anything; one that points at him and laughs is a scene.
+ *
+ * The kin never gets a worse day out of it than anybody else would: these are
+ * ordinary events with ordinary costs, and the retort below is the way out of
+ * every one of them.
+ */
+export const KIN = {
+  GRUNG: "grung"
+};
+
+/**
+ * A RETORT is a save made with words, by one particular character.
+ *
+ * Where an ordinary event offers each traveller a Constitution save, a kin
+ * event offers ONE roll to the traveller it is about - the answer they shout
+ * back. It is rolled once, not per head, and success cancels the event for
+ * everyone, exactly as a passed save does.
+ *
+ * Its outcome also picks which half of the event's prose is read, so a retort
+ * is worth rolling even for an event that costs nothing: the story is the point.
+
+/**
  * THE EVENT COMPILATION.
  *
  * Every day the engine produces REASONS, not just numbers. A day that cost the
@@ -458,6 +488,12 @@ export const EVENTS = [
   { id: "raptorsSeen",  category: "encounter", blocks: false, target: "party" , foe: { key: "velociraptor", cr: "1/4" }},
   { id: "zombiesSeen",  category: "encounter", blocks: true,  target: "party" , foe: { key: "zombie", cr: "1/4" }},
   { id: "grungPatrol",  category: "encounter", blocks: false, target: "party" , foe: { key: "grung", cr: "1/4" }},
+  /* Grung who have noticed the grung walking with you. Only in play once the
+     world names one (see KIN); the retort is how each of them ends. */
+  { id: "grungMockery", category: "encounter", kin: KIN.GRUNG, blocks: false, damage: "1d4",
+    target: "kin", retort: { skill: "per", dc: 12 }, foe: { key: "grung", cr: "1/4" }},
+  { id: "grungToll",    category: "encounter", kin: KIN.GRUNG, blocks: false, exhaustion: 1,
+    target: "party", retort: { skill: "dec", dc: 13 }, foe: { key: "grung", cr: "1/4" }},
   { id: "hadrosaurs",   category: "encounter", blocks: false, target: "party" , foe: { key: "hadrosaurus", cr: "1/4" }},
   { id: "tabaxiHunter", category: "encounter", blocks: false, target: "party" },
   { id: "vegepygmies",  category: "encounter", blocks: true,  target: "party" , foe: { key: "vegepygmy", cr: "1/4" }},
@@ -466,6 +502,8 @@ export const EVENTS = [
 
   /* --- Pursuit: the rearguard left a trail ---------------------- */
   { id: "followedEyes", category: "pursuit", blocks: false, target: "party" , terrain: "any"},
+  { id: "grungNamesake", category: "pursuit", kin: KIN.GRUNG, blocks: false,
+    target: "party", retort: { skill: "prf", dc: 13 }, foe: { key: "grung", cr: "1/4" }},
   { id: "batiriTrail",  category: "pursuit", damage: "1d6", target: "random" , foe: { key: "goblin", cr: "1/4" }},
   { id: "undeadFollow", category: "pursuit", blocks: false, target: "party" , foe: { key: "zombie", cr: "1/4" }},
   { id: "kamadan",      category: "pursuit", damage: "2d6", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" , foe: { key: "kamadan", cr: "4" }},
@@ -504,6 +542,7 @@ export const EVENTS = [
   { id: "freshSpring",  category: "boon", target: "party" },
   { id: "gameTrail",    category: "boon", target: "party" },
   { id: "fruitGrove",   category: "boon", target: "party" },
+  { id: "grungGift",    category: "boon", kin: KIN.GRUNG, heals: 1, target: "party" },
 
   /* --- River: the canoe's own troubles ---------------------------- */
   { id: "crocodiles",   category: "ambush", terrain: "river", damage: "2d10", blocks: true, target: "random", foe: { key: "giantCrocodile", cr: "5" } },

@@ -237,17 +237,6 @@
           <i class="fa-solid fa-dice"></i>
           <span>{{localize "toa-adventure-tracker.app.rollAll"}}</span>
         </button>
-        {{#if rest}}
-        {{#if rest.all}}
-        <span class="toa-tag good">
-          <i class="fa-solid fa-moon"></i> {{localize "toa-adventure-tracker.app.rested"}}
-        </span>
-        {{else if rest.awake.length}}
-        <span class="toa-tag" data-tooltip-text="{{localize 'toa-adventure-tracker.app.stillAwake'}}">
-          <i class="fa-solid fa-moon"></i> {{rest.awake.length}}
-        </span>
-        {{/if}}
-        {{/if}}
         {{#if gm}}
         <button type="button" class="toa-btn" data-action="clearRolls"
                 data-tooltip="toa-adventure-tracker.app.clearRollsHint">
@@ -335,6 +324,54 @@
     {{/if}}
 
     {{!-- ---------------------------------------------------------------
+          READY FOR TOMORROW
+          The one control a player always has, and the list that answers
+          "can we move on yet" without asking the table out loud.
+    ---------------------------------------------------------------- --}}
+    {{#if ready.total}}
+    <section class="toa-panel">
+      <h2 class="toa-panel-title">
+        {{localize "toa-adventure-tracker.app.ready"}}
+        <span class="toa-pending {{#if ready.all}}toa-ready-all{{/if}}">{{ready.count}}/{{ready.total}}</span>
+      </h2>
+
+      <ul class="toa-readylist">
+        {{#each ready.rows}}
+        <li class="toa-readyrow {{#if ready}}on{{/if}}">
+          <img class="toa-portrait" src="{{img}}" alt="" loading="lazy">
+          <span class="toa-readyname">{{name}}</span>
+          {{#if editable}}
+          <button type="button" class="toa-btn toa-readybtn" data-action="ready"
+                  data-actor-id="{{id}}" data-ready="{{#if ready}}false{{else}}true{{/if}}">
+            <i class="fa-solid {{#if ready}}fa-rotate-left{{else}}fa-check{{/if}}"></i>
+            <span>{{#if ready}}{{localize "toa-adventure-tracker.app.notReadyYet"}}
+                  {{else}}{{localize "toa-adventure-tracker.app.imReady"}}{{/if}}</span>
+          </button>
+          {{else}}
+          <span class="toa-readystate">
+            {{#if ready}}<i class="fa-solid fa-check"></i> {{localize "toa-adventure-tracker.app.isReady"}}
+            {{else}}<i class="fa-regular fa-hourglass"></i> {{localize "toa-adventure-tracker.app.stillBusy"}}{{/if}}
+          </span>
+          {{/if}}
+        </li>
+        {{/each}}
+      </ul>
+
+      {{#if ready.all}}
+      <p class="toa-hint toa-compact">
+        <i class="fa-solid fa-check"></i>
+        {{localize "toa-adventure-tracker.app.allReady"}}
+        {{#if ready.auto}}{{localize "toa-adventure-tracker.app.allReadyAuto"}}{{/if}}
+      </p>
+      {{else if ready.waiting.length}}
+      <p class="toa-hint toa-compact">
+        {{localize "toa-adventure-tracker.app.waitingOn"}} {{#each ready.waiting}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}
+      </p>
+      {{/if}}
+    </section>
+    {{/if}}
+
+    {{!-- ---------------------------------------------------------------
           THE DAY'S REPORT
           Every number comes with its reason attached.
     ---------------------------------------------------------------- --}}
@@ -400,6 +437,18 @@
           </div>
           {{/if}}
 
+          {{!-- The roll that settled a kin event. Shown with its number: "he
+                talked them round" is a verdict, "Überzeugen 17/12" is a fact
+                the table can argue with. --}}
+          {{#with retort}}
+          <div class="toa-event-effects">
+            <span class="toa-tag {{#if ok}}good{{else}}bad{{/if}}">
+              <i class="fa-solid fa-comment"></i>
+              {{by}} &middot; {{skill}} {{#if total}}{{total}}/{{dc}}{{/if}}
+            </span>
+          </div>
+          {{/with}}
+
           {{!-- How many of them make a real fight. A suggestion, nothing more:
                 the module never spawns a token or starts combat. --}}
           {{#if foe}}
@@ -429,15 +478,34 @@
       <p class="toa-hint">{{localize "toa-adventure-tracker.app.quietDay"}}</p>
       {{/if}}
 
+      {{!-- ONE LINE PER TRAVELLER, the untouched ones included: a name simply
+            missing from this list reads as forgotten rather than as spared,
+            and whether tonight is a rest is the most consequential thing the
+            report says to a party that cannot long rest. --}}
       {{#if report.consequences.length}}
       <h3 class="toa-sub-title">{{localize "toa-adventure-tracker.app.consequences"}}</h3>
       <ul class="toa-consequences">
         {{#each report.consequences}}
-        <li>
+        <li class="{{#if untouched}}toa-untouched{{/if}}">
           <strong>{{actorName}}</strong>
           {{#if damage}}<span class="toa-tag bad">&minus;{{damage}} {{localize "toa-adventure-tracker.app.hp"}}</span>{{/if}}
           {{#if exhaustion}}<span class="toa-tag bad">+{{exhaustion}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
           {{#if heals}}<span class="toa-tag good">&minus;{{heals}} {{localize "toa-adventure-tracker.app.exhaustionShort"}}</span>{{/if}}
+          {{#if untouched}}<span class="toa-tag">{{localize "toa-adventure-tracker.app.noEffect"}}</span>{{/if}}
+
+          {{!-- The night. A camp event that got through costs the breather -
+                which for a table that cannot long rest is the whole day's
+                bill. --}}
+          {{#if restless}}
+          <span class="toa-tag bad" data-tooltip="toa-adventure-tracker.app.noRestHint">
+            <i class="fa-solid fa-fire-flame-curved"></i> {{localize "toa-adventure-tracker.app.noRest"}}
+          </span>
+          {{else}}
+          <span class="toa-tag good">
+            <i class="fa-solid fa-campground"></i> {{localize "toa-adventure-tracker.app.shortRest"}}
+          </span>
+          {{/if}}
+
           {{!-- The saves were rolled without chat cards, so their numbers only
                 exist here. --}}
           {{#each saves}}
@@ -454,7 +522,13 @@
 
       {{!-- Applying is its own decision: the jungle has already bitten, but the
             party may not be bedding down yet. The flag lives on the stored
-            report, so this cannot take the same hit points off twice. --}}
+            report, so this cannot take the same hit points off twice.
+
+            Gated on there being something to WRITE, which is no longer the same
+            as the roster having rows in it - everybody is listed now, including
+            the people the day did nothing to. A button that applies nothing is
+            a button that teaches you to distrust it. --}}
+      {{#if report.hasConsequences}}
       {{#if gm}}
       <div class="toa-day-actions">
         {{#if report.applied}}
@@ -468,6 +542,7 @@
         </button>
         {{/if}}
       </div>
+      {{/if}}
       {{/if}}
       {{/if}}
 

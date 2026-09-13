@@ -50,13 +50,19 @@ async function onMessage({ action, data, userId } = {}) {
       if (!mayActFor(user, data?.actorId)) return refuse(user, data?.actorId);
       return assign(data.actorId, data.roleId);
 
-    case "rested": {
-      // Deliberately NOT behind `playerRolls`: taking a long rest is something
-      // a player did on their own character sheet, not an action inside this
-      // tool. Owning the actor is the whole permission.
+    case "ready": {
+      /**
+       * Deliberately NOT behind `playerRolls`.
+       *
+       * That switch decides whether players run the TOOL - pick roles, roll
+       * checks. Saying "I am done with today" is not that: it is a statement
+       * about their own character that the GM was going to ask for out loud
+       * anyway. Owning the actor is the whole permission, and it stays the
+       * one control a player always has.
+       */
       if (!ownsActor(user, data?.actorId)) return refuse(user, data?.actorId);
-      const { recordRest } = await import("./rest.mjs");
-      return recordRest(data.actorId);
+      const { recordReady } = await import("./rest.mjs");
+      return recordReady(data.actorId, data?.value !== false);
     }
 
     case "record":
@@ -136,18 +142,22 @@ export const requestRecord = (actorId, record) =>
   isWriter() ? recordRoll(actorId, record) : requestFromGM("record", { actorId, record });
 
 /**
- * Report that a traveller has taken a long rest into a new day.
+ * Say that a traveller is (or is no longer) ready for tomorrow.
  *
- * Unlike the other two this one is fire-and-forget with no notification when no
- * GM is connected: a player going to bed should not be told off for it, and the
- * fact is recovered the moment somebody rests again with a GM online.
+ * `quiet` is for the path nobody pressed: a long rest reports itself through
+ * the system's hook, and a player going to bed while the GM happens to be
+ * offline should not be told off for it. The BUTTON is not quiet - a click that
+ * silently does nothing is worse than a warning.
  */
-export const requestRested = async (actorId) => {
+export const requestReady = async (actorId, value = true, { quiet = false } = {}) => {
   if (isWriter()) {
-    const { recordRest } = await import("./rest.mjs");
-    return recordRest(actorId);
+    const { recordReady } = await import("./rest.mjs");
+    return recordReady(actorId, value);
   }
-  if (!game.users.activeGM) return false;
-  game.socket.emit(SOCKET, { action: "rested", data: { actorId }, userId: game.user.id });
-  return true;
+  if (quiet) {
+    if (!game.users.activeGM) return false;
+    game.socket.emit(SOCKET, { action: "ready", data: { actorId, value }, userId: game.user.id });
+    return true;
+  }
+  return requestFromGM("ready", { actorId, value });
 };

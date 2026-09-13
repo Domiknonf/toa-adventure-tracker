@@ -12,13 +12,13 @@ import {
   partyActors, canControl, rollRole, unitLabel, paceModifierFor, worstExhaustion
 } from "./roles.mjs";
 import { moonFor, disc } from "./moon.mjs";
-import { requestAssign, requestRecord } from "./socket.mjs";
+import { requestAssign, requestRecord, requestReady } from "./socket.mjs";
 import { resolveDay } from "./resolve.mjs";
 import { applyConsequences, postDayToChat } from "./consequences.mjs";
 import { eventText, effectSummary } from "./events.mjs";
 import { weatherLabel } from "./weather.mjs";
 import { suggestionFor, partyLevel, budgets } from "./encounters.mjs";
-import { allRested, stillAwake } from "./rest.mjs";
+import { allReady, notReady } from "./rest.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -57,6 +57,7 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       runDay: AdventureTracker.#onRunDay,
       applyNow: AdventureTracker.#onApplyNow,
       roll: AdventureTracker.#onRoll,
+      ready: AdventureTracker.#onReady,
       exportLog: AdventureTracker.#onExportLog,
       clearLog: AdventureTracker.#onClearLog
     }
@@ -128,12 +129,15 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       budget: budgets(),
       log: (gm || shared) ? this.#prepareLog(state) : null,
       exhaustion: worstExhaustion(),
-      // Who has bedded down. Only interesting to whoever ends the day.
-      rest: gm ? {
-        all: allRested(state),
-        awake: stillAwake(state).map(a => a.name),
-        auto: !!setting("advanceOnLongRest")
-      } : null
+      /**
+       * READY FOR TOMORROW.
+       *
+       * Everybody's panel, not the GM's. It is the one control a player always
+       * has - it survives `playerRolls` being off, because "I am done with
+       * today" is a statement about their own character rather than a use of
+       * the GM's tool.
+       */
+      ready: this.#prepareReady(state, gm)
     };
   }
 
@@ -239,6 +243,42 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
     });
 
     return { roles, you: mine?.name ?? "", mine: !!mine };
+  }
+
+  /**
+   * WHO IS DONE WITH TODAY.
+   *
+   * Replaces waiting for a long rest. A table whose house rules bar long rests
+   * in the wild never produces one with `newDay` set, so the old trigger simply
+   * never fired for them - and the answer to "can we move on" was a question
+   * asked out loud every evening. Now it is a button and a list.
+   *
+   * A long rest still counts, for tables that take them (see rest.mjs).
+   */
+  #prepareReady(state, gm) {
+    const flags = state.ready ?? {};
+    const rows = partyActors().map(actor => ({
+      id: actor.id,
+      name: actor.name,
+      img: actor.img,
+      ready: !!flags[actor.id],
+      // Anybody may say THEIR OWN character is ready; the GM may say it for
+      // anyone, because somebody has to be able to answer for the player who
+      // logged off mid-jungle.
+      editable: gm || actor.isOwner
+    }));
+
+    const waiting = rows.filter(r => !r.ready);
+    return {
+      rows,
+      count: rows.length - waiting.length,
+      total: rows.length,
+      all: rows.length > 0 && !waiting.length,
+      // Named rather than counted: "we are waiting on Brombert" is actionable,
+      // "3 of 4" is not.
+      waiting: waiting.map(r => r.name),
+      auto: gm ? !!setting("advanceOnReady") : false
+    };
   }
 
   /** Moon of the current day, plus the drawing geometry. */
@@ -413,6 +453,13 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         category: event.category,
         title: game.i18n.localize(`${MODULE_ID}.eventName.${event.id}`),
         text: eventText(event),
+        // The roll that settled a kin event, so the table sees the number
+        // behind "he talked them round" rather than being told the outcome.
+        retort: event.retortResult ? {
+          ...event.retortResult,
+          skill: game.i18n.localize(
+            CONFIG.DND5E?.skills?.[event.retortResult.skill]?.label ?? event.retort?.skill ?? "")
+        } : null,
         blocks: !!event.blocks,
         good: event.category === "boon",
         effects: effectSummary(event).map(e => ({ ...e, label: effectLabel(e) })),
@@ -420,8 +467,21 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         // rather than narrate it. Null for hazards and friendly meetings.
         foe: suggestionFor(event)
       })),
+      /**
+       * THE ROSTER: one line per traveller, the untouched ones included.
+       *
+       * "Maleth: nothing, short rest tonight" is information; Maleth simply
+       * missing from the list is an unanswered question. It is also the only
+       * place the night's rest is reported, which for a table that cannot long
+       * rest is the most consequential line in the report.
+       */
       consequences: (report.consequences ?? []).map(c => ({
         ...c,
+        // Nothing was written and nothing was prevented - a genuinely quiet
+        // day for this one traveller.
+        untouched: !c.damage && !c.exhaustion && !c.heals,
+        // A camp event got through, so tonight is not a rest.
+        restless: !!c.restless,
         /**
          * What each save actually rolled. The engine makes these without a chat
          * card (a dozen 3D animations per day is not information, it is a
@@ -443,8 +503,13 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
       // Whether the consequences have already been written to the sheets. The
       // Apply button reads this so it cannot be pressed twice.
       applied: !!report.applied,
-      // Something worth applying at all - a quiet day has nothing to press.
-      hasConsequences: (report.consequences ?? []).length > 0
+      /**
+       * Something worth APPLYING - which is no longer the same as "the roster
+       * has rows in it". Every traveller is listed now, so the button has to
+       * ask whether any of those rows actually writes something.
+       */
+      hasConsequences: (report.consequences ?? [])
+        .some(c => c.damage || c.exhaustion || c.heals)
     };
   }
 
@@ -577,6 +642,35 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         const record = await rollRole(actor, role, { batch: true });
         if (record) await requestRecord(actor.id, record);
       }
+    } finally {
+      if (target.isConnected) target.disabled = false;
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Ready for tomorrow                                               */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Toggle one traveller's "ready for tomorrow".
+   *
+   * A toggle, not a one-way flag: somebody who pressed it and then remembered
+   * they wanted to search the camp can take it back without asking the GM to
+   * edit the world state.
+   *
+   * Permission is decided in #prepareReady and re-decided GM-side in socket.mjs.
+   * This only refuses the obvious - the actor is not in the party, or the row
+   * was not this user's to press.
+   */
+  static async #onReady(event, target) {
+    const actorId = target.dataset.actorId;
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+    if (!game.user.isGM && !actor.isOwner) return;
+
+    target.disabled = true;
+    try {
+      await requestReady(actorId, target.dataset.ready !== "false");
     } finally {
       if (target.isConnected) target.disabled = false;
     }
@@ -828,6 +922,10 @@ function effectLabel(effect) {
     case "save": return game.i18n.format(`${MODULE_ID}.effect.save`, {
       ability: game.i18n.localize(CONFIG.DND5E?.abilities?.[effect.ability]?.abbreviation
         ?? CONFIG.DND5E?.abilities?.[effect.ability]?.label ?? effect.ability),
+      dc: effect.dc
+    });
+    case "retort": return game.i18n.format(`${MODULE_ID}.effect.retort`, {
+      skill: game.i18n.localize(CONFIG.DND5E?.skills?.[effect.skill]?.label ?? effect.skill),
       dc: effect.dc
     });
     default: return "";

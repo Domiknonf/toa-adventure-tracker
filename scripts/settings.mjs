@@ -93,6 +93,19 @@ export function registerSettings() {
 
   reg("customRoles", { ...WORLD, type: String, default: "" });
 
+  /* --- Kin ---------------------------------------------------- */
+
+  /**
+   * The grung in the party, by name, id or uuid.
+   *
+   * Empty by default, and that is not a degraded mode: with nothing here the
+   * grung-kin events never enter the pools at all, because a patrol that
+   * recognises one of its own makes no sense in a party that has none.
+   *
+   * Filled in, the jungle starts noticing. See KIN in const.mjs.
+   */
+  reg("grungKin", { ...WORLD, type: String, default: "" });
+
   /* --- Encounter sizing --------------------------------------- */
 
   /**
@@ -155,13 +168,13 @@ export function registerSettings() {
   reg("playerRolls", { ...WORLD, type: Boolean, default: false });
 
   /**
-   * Whether a long rest by the whole party moves the travel day on its own.
+   * Whether the travel day moves on its own once every traveller is ready.
    *
    * OFF by default, because a counter that moves without being asked is a
    * surprise the first time. Either way the GM is told once everybody has
-   * rested - that notification costs nothing and is useful on its own.
+   * checked in - that notification costs nothing and is useful on its own.
    */
-  reg("advanceOnLongRest", { ...WORLD, type: Boolean, default: false });
+  reg("advanceOnReady", { ...WORLD, type: Boolean, default: false });
 
   /**
    * Whether the role checks and yield rolls produce chat cards.

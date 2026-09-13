@@ -39,11 +39,13 @@ export function blankState() {
     /** actorId -> roll record. Cleared when the day is completed. */
     rolls: {},
     /**
-     * actorId -> true for travellers who have taken a long rest that starts a
-     * new day. Cleared whenever the day changes, so it only ever describes the
-     * night the party is currently in (see rest.mjs).
+     * actorId -> true for travellers who are done with today and ready for the
+     * next one. Set by the player's own button, or by a long rest into a new
+     * day where the table still takes those. Cleared whenever the day changes,
+     * so it only ever describes the night the party is currently in
+     * (see rest.mjs).
      */
-    rested: {},
+    ready: {},
     /**
      * The resolved day: weather, events, hexes, consequences. Null until the GM
      * resolves the day, and cleared again when the day is completed.
@@ -83,13 +85,25 @@ function migrate(state) {
 
   if (!state.schema || state.schema < 2) {
     state.assignments = {};
-    state.rested = {};
+    state.ready = {};
     state.rolls = {};
     state.report = null;
     // Old entries carry `miles` where new ones carry `hexes`. Left as they are:
     // the logbook renders whichever it finds, and rewriting history into a unit
     // it was never measured in would be a lie in the name of tidiness.
     state.log = Array.isArray(state.log) ? state.log : [];
+  }
+
+  /**
+   * Schema 2 stored `rested`: who had taken a long rest into a new day. Schema
+   * 3 stores `ready`: who has said they are done with today. A long rest still
+   * sets it, so the old flags mean the same thing and are carried across rather
+   * than thrown away - a party that is halfway through a night when the module
+   * updates should not have to say so twice.
+   */
+  if (state.schema < 3) {
+    if (state.rested && !Object.keys(state.ready ?? {}).length) state.ready = state.rested;
+    delete state.rested;
   }
 
   state.schema = STATE_SCHEMA;
@@ -135,14 +149,14 @@ export const setDay = (day) => update(s => {
   s.day = cleanDay(day);
   s.report = null;
   s.rolls = {};
-  s.rested = {};
+  s.ready = {};
 });
 
 export const adjustDay = (delta) => update(s => {
   s.day = cleanDay(s.day + Number(delta || 0));
   s.report = null;
   s.rolls = {};
-  s.rested = {};
+  s.ready = {};
 });
 
 export const setPace = (pace) => update(s => { s.pace = pace; });
@@ -268,17 +282,25 @@ export const completeDay = () => update(s => {
 
   s.rolls = {};
   s.report = null;
-  s.rested = {};
+  s.ready = {};
   s.day = cleanDay(s.day + 1);
 });
 
 export const clearLog = () => update(s => { s.log = []; });
 
 /* ------------------------------------------------------------------ */
-/*  Rest                                                               */
+/*  Ready for tomorrow                                                 */
 /* ------------------------------------------------------------------ */
 
-/** Note that one traveller has taken a long rest into a new day. */
-export const markRested = (actorId) => update(s => {
-  if (actorId) s.rested[actorId] = true;
+/**
+ * Set or clear one traveller's "ready for tomorrow".
+ *
+ * A toggle rather than a one-way flag: somebody who pressed it and then
+ * remembered they wanted to search the camp should be able to take it back
+ * without the GM editing the world state.
+ */
+export const markReady = (actorId, value = true) => update(s => {
+  if (!actorId) return;
+  if (value) s.ready[actorId] = true;
+  else delete s.ready[actorId];
 });

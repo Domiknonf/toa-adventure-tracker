@@ -1,4 +1,5 @@
 import { MODULE_ID, EVENTS, TRAVEL_MODES, DEFAULT_TERRAIN, DEFAULT_MODE } from "./const.mjs";
+import { kinActor, kinName } from "./roles.mjs";
 
 /**
  * THE EVENT COMPILATION, selection side.
@@ -27,9 +28,19 @@ export function inMode(event, mode = DEFAULT_MODE) {
   return (TRAVEL_MODES[mode] ?? TRAVEL_MODES[DEFAULT_MODE]).terrains.includes(terrain);
 }
 
+/**
+ * Whether a kin event has somebody to be about.
+ *
+ * An event that names a kin is a scene involving one traveller. With nobody of
+ * that kin in the party it is not a milder scene, it is a nonsensical one - so
+ * it never enters the pool at all rather than being drawn and then explained
+ * away.
+ */
+export const kinPresent = (event) => !event?.kin || !!kinActor(event.kin);
+
 /** Every event of one category that the given mode can draw. */
 export const byCategory = (category, mode = DEFAULT_MODE) =>
-  EVENTS.filter(e => e.category === category && inMode(e, mode));
+  EVENTS.filter(e => e.category === category && inMode(e, mode) && kinPresent(e));
 
 /**
  * One random event from a category, avoiding anything in `exclude`.
@@ -47,8 +58,27 @@ export function pick(category, exclude = new Set(), mode = DEFAULT_MODE) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-/** An event's narrative text. The whole compilation is translatable. */
-export const eventText = (event) => game.i18n.localize(`${MODULE_ID}.event.${event.id}`);
+/**
+ * An event's narrative text.
+ *
+ * `format` rather than `localize` so a kin event can say the traveller's actual
+ * name. For the other seventy-odd events there is no `{name}` in the string and
+ * format returns it unchanged, so this costs nothing.
+ *
+ * A retort splits the text in two: the shout back either worked or it did not,
+ * and "they moved on laughing" and "they moved on with your rations" are not
+ * the same evening. The base text is the setup, and this appends whichever
+ * ending was rolled.
+ */
+export function eventText(event) {
+  const data = event.kin ? { name: kinName(event.kin) } : {};
+  const setup = game.i18n.format(`${MODULE_ID}.event.${event.id}`, data);
+  if (!event.retort || !event.retortResult) return setup;
+
+  const ending = game.i18n.format(
+    `${MODULE_ID}.retort.${event.id}.${event.retortResult.ok ? "ok" : "fail"}`, data);
+  return `${setup} ${ending}`;
+}
 
 /**
  * Which travellers an event touches.
@@ -59,6 +89,13 @@ export const eventText = (event) => game.i18n.localize(`${MODULE_ID}.event.${eve
 export function targetsOf(event, actors) {
   if (!actors.length) return [];
   if (event.target === "random") return [actors[Math.floor(Math.random() * actors.length)]];
+  // "kin" is the one traveller the event is about. Falls back to nobody rather
+  // than to the party: an event aimed at a character who is not travelling
+  // today should hit no one, not everyone.
+  if (event.target === "kin") {
+    const one = kinActor(event.kin);
+    return one && actors.some(a => a.id === one.id) ? [one] : [];
+  }
   return actors;
 }
 
@@ -76,6 +113,8 @@ export function effectSummary(event) {
   if (event.heals) parts.push({ kind: "heals", value: event.heals });
   if (event.blocks) parts.push({ kind: "blocks" });
   if (event.save) parts.push({ kind: "save", ability: event.save.ability, dc: event.save.dc });
+  // A retort is a save made with words, so it is summarised as one.
+  if (event.retort) parts.push({ kind: "retort", skill: event.retort.skill, dc: event.retort.dc });
   return parts;
 }
 

@@ -66,7 +66,14 @@ globalThis.CONFIG = {
       ste: { label: "Heimlichkeit", ability: "dex", fullKey: "stealth" },
       ath: { label: "Athletik", ability: "str", fullKey: "athletics" },
       med: { label: "Medizin", ability: "wis", fullKey: "medicine" },
-      inv: { label: "Nachforschungen", ability: "int", fullKey: "investigation" }
+      inv: { label: "Nachforschungen", ability: "int", fullKey: "investigation" },
+      // The social three. Missing them once meant a retort silently fell back
+      // to a bare Charisma check and the test that was meant to prove the
+      // skill roll passed anyway - the same shape of hole as the Investigation
+      // gap that quietly dropped the cartographer.
+      per: { label: "Überzeugen", ability: "cha", fullKey: "persuasion" },
+      dec: { label: "Täuschen", ability: "cha", fullKey: "deception" },
+      prf: { label: "Auftreten", ability: "cha", fullKey: "performance" }
     },
     abilities: {
       str: { label: "Stärke", fullKey: "strength" },
@@ -82,13 +89,20 @@ globalThis.CONFIG = {
 };
 
 /* --- Actors ------------------------------------------------------- */
-export function makeActor({ id, name, skills = {}, abilities = {}, owner = true, hp = 30, exhaustion = 0, level = 5 }) {
+/**
+ * `owner` says this is a player character at all (`hasPlayerOwner`), which is
+ * what puts it in the travelling party. `mine` says THIS user owns it, which is
+ * what decides whether they may press its buttons. They are the same thing for
+ * most test actors and deliberately separable: another player's character is a
+ * party member the viewer may not act for, and nothing else models that.
+ */
+export function makeActor({ id, name, skills = {}, abilities = {}, owner = true, mine = owner, hp = 30, exhaustion = 0, level = 5 }) {
   return {
     id, name, uuid: `Actor.${id}`, type: "character",
     img: `icons/${id}.webp`,
-    isOwner: owner,
+    isOwner: mine,
     hasPlayerOwner: owner,
-    testUserPermission: () => owner,
+    testUserPermission: (user) => (user?.isGM ? true : mine),
     system: {
       isCreature: true,
       attributes: { hp: { value: hp, max: hp }, exhaustion },

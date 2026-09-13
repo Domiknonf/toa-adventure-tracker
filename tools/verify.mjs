@@ -214,6 +214,53 @@ for (const file of langs) {
 }
 if (!missingEvents) ok(`every event has a name and text in all languages (${eventIds.length} events)`);
 
+/* 10b. EVERY RETORT HAS BOTH ENDINGS, IN EVERY LANGUAGE.
+       A retort splits an event's prose in two: the shout back worked, or it did
+       not. A missing half prints its own key path in the middle of a scene that
+       is being read aloud - and it only shows up on the roll that goes the way
+       nobody tested. */
+/**
+ * Each EVENTS entry as `[id, body]`.
+ *
+ * Deliberately not a lazy `[\s\S]*?` reaching for the next keyword: that runs
+ * straight through the end of one entry into the next, so every event before a
+ * `retort:` looked like it had one. The body pattern allows exactly one level of
+ * nested braces, which is what `save`, `foe` and `retort` are.
+ */
+const eventEntries = [...constSrc.matchAll(/\{\s*id:\s*"(\w+)",((?:[^{}]|\{[^{}]*\})*)\}/g)]
+  .map(m => [m[1], m[2]]);
+const retortIds = eventEntries.filter(([, body]) => /\bretort:/.test(body)).map(([id]) => id);
+let missingRetorts = 0;
+for (const file of langs) {
+  for (const id of retortIds) {
+    for (const half of ["ok", "fail"]) {
+      const key = `${PREFIX}retort.${id}.${half}`;
+      if (!(key in tables[file])) {
+        fail(`${file}: retort "${id}" has no "${half}" ending ("${key}")`);
+        missingRetorts++;
+      }
+    }
+  }
+}
+if (!missingRetorts) ok(`every retort has both endings in all languages (${retortIds.length} retorts)`);
+
+/* 10c. EVERY KIN EVENT ACTUALLY NAMES SOMEBODY.
+       A kin event exists to be ABOUT one traveller - that is the whole reason it
+       is kept out of the pools until the world names one. Prose with no {name}
+       in it is a generic event wearing a gate it does not need, which is worse
+       than either: rarer than it should be, and no more personal for it. */
+const kinIds = eventEntries.filter(([, body]) => /\bkin:/.test(body)).map(([id]) => id);
+let namelessKin = 0;
+for (const id of kinIds) {
+  const key = `${PREFIX}event.${id}`;
+  const text = tables[reference][key] ?? "";
+  if (!text.includes("{name}")) {
+    fail(`kin event "${id}" never says {name} - it is not about anybody`);
+    namelessKin++;
+  }
+}
+if (!namelessKin) ok(`every kin event names its traveller (${kinIds.length} events)`);
+
 /* 11. NO ORPHAN EVENT PROSE. A text whose event was renamed or dropped is dead
        weight that reads as coverage - it makes check 10 look satisfied while the
        real entry goes unwritten. */

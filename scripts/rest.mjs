@@ -1,26 +1,34 @@
 import { MODULE_ID } from "./const.mjs";
 import { setting } from "./settings.mjs";
-import { getState, isWriter, markRested, adjustDay, completeDay } from "./state.mjs";
+import { getState, isWriter, markReady, adjustDay, completeDay } from "./state.mjs";
 import { partyActors } from "./roles.mjs";
 
 /**
- * THE LONG REST AS THE END OF THE TRAVEL DAY.
+ * "READY FOR TOMORROW", AND THE END OF THE TRAVEL DAY.
  *
- * When everybody has bedded down for the night, the night is over - so the
- * counter can move on its own instead of waiting for somebody to remember the
- * button.
+ * There are two ways a traveller says they are done with today, and both land
+ * here:
  *
- * The rest happens on whichever client ran it, so this is another
- * player-action-to-GM path: the resting client reports the fact, exactly one GM
- * records it, and that GM decides whether the day is done.
+ *  1. THE BUTTON, in their own window. The primary one, and the only one that
+ *     works for a table whose house rules bar long rests in the wild - such a
+ *     party never produces a long rest with `newDay`, so waiting for one waits
+ *     forever.
+ *  2. A LONG REST into a new day, for tables that do take them. Free, since the
+ *     system already announces it.
+ *
+ * Either way exactly one GM records it, and that GM decides whether the day is
+ * done - the player's client only reports the fact.
  */
 
 /**
  * Called on every client from the `dnd5e.restCompleted` hook.
  *
- * Only a LONG rest that starts a NEW DAY counts. A short rest is a breather and
- * a long rest without the new-day flag is the party sleeping off a fight in the
- * same afternoon - neither ends a day of travel.
+ * Only a LONG rest that starts a NEW DAY counts here. A short rest is a
+ * breather and a long rest without the new-day flag is the party sleeping off a
+ * fight in the same afternoon - neither is a statement that today is over.
+ *
+ * A table that only ever short-rests in the jungle simply never reaches this;
+ * the button is their path, and it is not a lesser one.
  */
 export function noteLongRest(actor, result) {
   if (!result?.longRest && result?.type !== "long") return;
@@ -31,21 +39,21 @@ export function noteLongRest(actor, result) {
 
   // Imported lazily: socket.mjs imports state.mjs, and pulling it in at module
   // scope would put rest.mjs in the middle of that chain for no benefit.
-  import("./socket.mjs").then(({ requestRested }) => requestRested(actor.id));
+  import("./socket.mjs").then(({ requestReady }) => requestReady(actor.id, true, { quiet: true }));
 }
 
 /**
- * GM side: record the rest, then decide whether the day is over.
+ * GM side: record it, then decide whether the day is over.
  *
  * Returns what it did, which is mostly for the tests - at the table the answer
  * arrives as a notification and a moved counter.
  */
-export async function recordRest(actorId) {
+export async function recordReady(actorId, value = true) {
   if (!isWriter()) return null;
-  await markRested(actorId);
+  await markReady(actorId, value);
 
   const state = getState();
-  if (!allRested(state)) return { all: false };
+  if (!allReady(state)) return { all: false };
 
   /**
    * WAS THE DAY ACTUALLY TRAVELLED?
@@ -63,9 +71,9 @@ export async function recordRest(actorId) {
 
   // Tell the GM either way - the counter moving on its own should never be a
   // surprise, and when it deliberately does NOT move that is worth saying too.
-  const enabled = !!setting("advanceOnLongRest");
+  const enabled = !!setting("advanceOnReady");
   if (!enabled) {
-    ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.notify.allRested`));
+    ui.notifications?.info(game.i18n.localize(`${MODULE_ID}.notify.allReady`));
     return { all: true, advanced: false, reason: "disabled" };
   }
 
@@ -86,32 +94,35 @@ export async function recordRest(actorId) {
       }))
     });
     await completeDay();
-    ui.notifications?.info(game.i18n.format(`${MODULE_ID}.notify.restedAdvanced`, { day: getState().day }));
+    ui.notifications?.info(game.i18n.format(`${MODULE_ID}.notify.readyAdvanced`, { day: getState().day }));
     return { all: true, advanced: true, completed: true };
   }
 
   // Rolls but no report: the GM ran the day loosely. Step the counter and
   // leave it at that rather than inventing a report nobody asked for.
   await adjustDay(1);
-  ui.notifications?.info(game.i18n.format(`${MODULE_ID}.notify.restedAdvanced`, { day: getState().day }));
+  ui.notifications?.info(game.i18n.format(`${MODULE_ID}.notify.readyAdvanced`, { day: getState().day }));
   return { all: true, advanced: true, completed: false };
 }
 
 /**
- * Has every traveller taken their long rest?
+ * Has every traveller said they are ready?
  *
- * An empty party is NOT "all rested" - otherwise a world with no characters in
+ * An empty party is NOT "all ready" - otherwise a world with no characters in
  * the travelling list would advance its day every time anybody anywhere slept.
  */
-export function allRested(state = getState()) {
+export function allReady(state = getState()) {
   const party = partyActors();
   if (!party.length) return false;
-  const rested = state.rested ?? {};
-  return party.every(actor => rested[actor.id]);
+  const ready = state.ready ?? {};
+  return party.every(actor => ready[actor.id]);
 }
 
-/** Who the window is still waiting on. */
-export function stillAwake(state = getState()) {
-  const rested = state.rested ?? {};
-  return partyActors().filter(actor => !rested[actor.id]);
+/** Who the window is still waiting on - the list the GM actually wants. */
+export function notReady(state = getState()) {
+  const ready = state.ready ?? {};
+  return partyActors().filter(actor => !ready[actor.id]);
 }
+
+/** Whether one traveller has said they are ready. */
+export const isReady = (actorId, state = getState()) => !!state.ready?.[actorId];

@@ -9,7 +9,7 @@ import {
 } from "./state.mjs";
 import { getRoles, partyActors, modifierFor, worstExhaustion } from "./roles.mjs";
 import { resolveDay } from "./resolve.mjs";
-import { noteLongRest, allRested, stillAwake } from "./rest.mjs";
+import { noteLongRest, allReady, notReady } from "./rest.mjs";
 import { moonFor } from "./moon.mjs";
 
 /* ------------------------------------------------------------------ */
@@ -95,10 +95,10 @@ Hooks.once("ready", () => {
     modifierFor,
     /** The highest exhaustion level anyone in the party carries. */
     worstExhaustion,
-    /** Whether every traveller has taken their long rest tonight. */
-    allRested,
-    /** Which travellers the module is still waiting on for a long rest. */
-    stillAwake,
+    /** Whether every traveller has said they are ready for tomorrow. */
+    allReady,
+    /** Which travellers have not said so yet. */
+    notReady,
     /** The moon for any day, without changing anything. */
     moonFor,
 

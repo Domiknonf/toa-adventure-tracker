@@ -1,5 +1,5 @@
 import {
-  MODULE_ID, DEFAULT_ROLES, ROLE, PARTY_SOURCE, TRAVEL_MODES, DEFAULT_MODE
+  MODULE_ID, DEFAULT_ROLES, ROLE, KIN, PARTY_SOURCE, TRAVEL_MODES, DEFAULT_MODE
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import { getState } from "./state.mjs";
@@ -225,6 +225,31 @@ export function partyActors() {
 }
 
 const sortByName = (actors) => [...actors].sort((a, b) => a.name.localeCompare(b.name));
+
+/**
+ * The traveller a kin event is ABOUT, or null.
+ *
+ * Resolved the same forgiving way as the group actor: an id, a uuid or a plain
+ * name all work, because the world option is typed by a human who should not
+ * have to know which of the three Foundry wanted.
+ *
+ * Null when nothing is configured, which is what keeps the kin events out of
+ * the pools entirely (see events.byCategory) - a party with no grung in it
+ * should never meet grung who recognise one.
+ */
+export function kinActor(kin) {
+  if (kin !== KIN.GRUNG) return null;
+  const ref = String(setting("grungKin") ?? "").trim();
+  if (!ref) return null;
+  return game.actors?.get(ref)
+    ?? game.actors?.find(a => a.uuid === ref)
+    ?? game.actors?.getName(ref)
+    ?? null;
+}
+
+/** The name a kin event uses, with a fallback so prose never renders a blank. */
+export const kinName = (kin) =>
+  kinActor(kin)?.name ?? game.i18n.localize(`${MODULE_ID}.kin.${kin}`);
 
 
 /**

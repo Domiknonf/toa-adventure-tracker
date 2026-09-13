@@ -11,9 +11,12 @@ const check = (cond, msg) => { if (cond) passed++; else { failed++; console.log(
 const section = (s) => console.log(`\n--- ${s} ---`);
 
 /* Party */
-const gandalf = makeActor({ id: "aaa1", name: "Gandalf", skills: { sur: 9, prc: 7, ste: 1, med: 5, inv: 6 }, abilities: { wis: 4, con: 2 } });
-const bilbo   = makeActor({ id: "bbb2", name: "Bilbo",   skills: { sur: 2, prc: 3, ste: 8, med: 0, inv: 2 }, abilities: { wis: 1, con: 1 } });
+const gandalf = makeActor({ id: "aaa1", name: "Gandalf", skills: { sur: 9, prc: 7, ste: 1, med: 5, inv: 6, per: 4, dec: 2, prf: 1 }, abilities: { wis: 4, con: 2, cha: 1 } });
+const bilbo   = makeActor({ id: "bbb2", name: "Bilbo",   skills: { sur: 2, prc: 3, ste: 8, med: 0, inv: 2, per: 3, dec: 5, prf: 2 }, abilities: { wis: 1, con: 1, cha: 2 } });
 const notMine = makeActor({ id: "ccc3", name: "Fremder", skills: { sur: 0 }, abilities: { wis: 0 }, owner: false });
+/* A party member somebody ELSE plays: in the travelling list, but not this
+   user's to press buttons for. Nothing else in the fixture models that. */
+const theirs  = makeActor({ id: "ddd4", name: "Maleth", skills: { sur: 3, prc: 4, ste: 2, med: 3, inv: 1, per: 2, dec: 1, prf: 3 }, abilities: { wis: 2, con: 1, cha: 0 }, mine: false });
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 
 const settings = await import(`${R}/settings.mjs`);
@@ -284,10 +287,16 @@ section("exhaustion is not a ratchet");
  */
 
 // RULE ONE: no level of exhaustion is unavoidable. Every event that hands one
-// out must offer a save, or it is a cost with no play in it.
+// out must offer a way past it, or it is a cost with no play in it.
+//
+// TWO ways count, and the second was added later: an ordinary save, or a
+// RETORT - one character answering back for the whole party, which cancels the
+// event exactly as a passed save does. Widened deliberately rather than
+// deleted; an event with neither is still the bug this check was written for.
 const { EVENTS: ALL_EVENTS } = await import(`${R}/const.mjs`);
 for (const event of ALL_EVENTS.filter(e => e.exhaustion)) {
-  check(!!event.save, `event "${event.id}" offers a save against its exhaustion`);
+  check(!!event.save || !!event.retort,
+    `event "${event.id}" offers a save or a retort against its exhaustion`);
 }
 
 // RULE TWO: a camp well made takes a level back off.
@@ -514,13 +523,26 @@ settingValues.state = {
   log: [{ day: 13, pace: "slow", miles: 9, lost: false }]
 };
 const migrated = state.getState();
-check(migrated.schema === 2, "schema is raised");
+check(migrated.schema === 3, "schema is raised");
 check(migrated.day === 14, "the day counter survives");
 check(migrated.log.length === 1, "the logbook survives");
 check(migrated.log[0].miles === 9, "old entries keep their miles rather than being faked into hexes");
 check(Object.keys(migrated.assignments).length === 0, "task assignments are dropped");
 check(migrated.report === null, "the report field is present and empty");
-check(migrated.rested && Object.keys(migrated.rested).length === 0, "and the rest record too");
+check(migrated.ready && Object.keys(migrated.ready).length === 0, "and the ready record too");
+
+/* Schema 2 -> 3 renamed `rested` to `ready`. A party halfway through a night
+   when the module updates should not have to check in twice. */
+settingValues.state = {
+  schema: 2, day: 9, pace: "normal", mode: "foot",
+  assignments: {}, rolls: {}, report: null, log: [],
+  rested: { [gandalf.id]: true }
+};
+const fromTwo = state.getState();
+check(fromTwo.schema === 3, "schema 2 is raised to 3");
+check(fromTwo.ready?.[gandalf.id] === true, "who had rested is now who is ready");
+check(fromTwo.rested === undefined, "and the old field is gone rather than lingering");
+check(fromTwo.day === 9, "the day counter survives that too");
 
 /* ------------------------------------------------------------------ */
 section("permissions");
@@ -1005,9 +1027,9 @@ setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 settingValues.shareReport = false;
 
 /* ------------------------------------------------------------------ */
-section("a long rest ends the travel day");
+section("ready for tomorrow ends the travel day");
 const rest = await import(`${R}/rest.mjs`);
-settingValues.advanceOnLongRest = true;
+settingValues.advanceOnReady = true;
 settingValues.state = {};
 await state.setDay(7);
 await state.assign(gandalf.id, "navigator");
@@ -1016,20 +1038,20 @@ queue.d100.push(99, 100);
 await resolve.resolveDay();
 
 const longRest = { longRest: true, type: "long", newDay: true };
-check(rest.allRested() === false, "nobody has rested yet");
-check(rest.stillAwake().length === 2, "two travellers still awake");
+check(rest.allReady() === false, "nobody has checked in yet");
+check(rest.notReady().length === 2, "two travellers still to come");
 
-let out = await rest.recordRest(gandalf.id);
-check(out.all === false, "one rest is not the whole party");
+let out = await rest.recordReady(gandalf.id);
+check(out.all === false, "one check-in is not the whole party");
 check(state.getState().day === 7, "and the day has not moved");
-check(rest.stillAwake().length === 1, "one traveller left to bed down");
+check(rest.notReady().length === 1, "one traveller left to check in");
 
-out = await rest.recordRest(bilbo.id);
-check(out.all === true && out.advanced === true, "the last rest ends the day");
+out = await rest.recordReady(bilbo.id);
+check(out.all === true && out.advanced === true, "the last check-in ends the day");
 check(out.completed === true, "and completes it properly, report and all");
 check(state.getState().day === 8, `the counter moved to 8 (got ${state.getState().day})`);
 check(state.getState().log.length === 1, "the day went into the logbook");
-check(Object.keys(state.getState().rested).length === 0, "and the rest record was cleared");
+check(Object.keys(state.getState().ready).length === 0, "and the ready record was cleared");
 
 // THE DOUBLE-ADVANCE GUARD. A GM who ends the day themselves lands on a fresh
 // day; the party then beds down, and the counter must NOT move again.
@@ -1041,9 +1063,9 @@ queue.d100.push(99, 100);
 await resolve.resolveDay();
 await state.completeDay();
 check(state.getState().day === 4, "the GM completed day 3 by hand");
-await rest.recordRest(gandalf.id);
-out = await rest.recordRest(bilbo.id);
-check(out.all === true && out.advanced === false, "everyone rested, but the day is untouched");
+await rest.recordReady(gandalf.id);
+out = await rest.recordReady(bilbo.id);
+check(out.all === true && out.advanced === false, "everyone ready, but the day is untouched");
 check(out.reason === "untouched", "and it says why");
 check(state.getState().day === 4, "so the counter stays put - no double jump");
 
@@ -1052,14 +1074,14 @@ settingValues.state = {};
 await state.setDay(11);
 await state.assign(gandalf.id, "navigator");
 dice.d20 = 15; await doRoll(gandalf);
-await rest.recordRest(gandalf.id);
-out = await rest.recordRest(bilbo.id);
+await rest.recordReady(gandalf.id);
+out = await rest.recordReady(bilbo.id);
 check(out.advanced === true && out.completed === false, "rolls but no report: step the counter only");
 check(state.getState().day === 12, "the day moved");
 check(state.getState().log.length === 0, "and nothing was logged");
 
 // Switched off, it notifies and leaves the counter alone.
-settingValues.advanceOnLongRest = false;
+settingValues.advanceOnReady = false;
 settingValues.state = {};
 await state.setDay(20);
 await state.assign(gandalf.id, "navigator");
@@ -1067,53 +1089,62 @@ dice.d20 = 20; await doRoll(gandalf);
 queue.d100.push(99, 100);
 await resolve.resolveDay();
 notes.length = 0;
-await rest.recordRest(gandalf.id);
-out = await rest.recordRest(bilbo.id);
+await rest.recordReady(gandalf.id);
+out = await rest.recordReady(bilbo.id);
 check(out.advanced === false && out.reason === "disabled", "switched off it does not advance");
 check(state.getState().day === 20, "the counter stays");
-check(notes.some(n => n[0] === "info"), "but the GM is told everyone has rested");
-settingValues.advanceOnLongRest = true;
+check(notes.some(n => n[0] === "info"), "but the GM is told everyone is ready");
+settingValues.advanceOnReady = true;
 
 // Only a LONG rest into a NEW DAY counts.
 settingValues.state = {};
 await state.setDay(5);
 let reported = [];
 const origEmit = game.socket.emit;
-check(rest.allRested() === false, "fresh day, nobody rested");
+check(rest.allReady() === false, "fresh day, nobody ready");
 // noteLongRest is the client-side filter; feed it the three rest shapes.
 const seen = [];
 const fakeActor = { id: gandalf.id };
 rest.noteLongRest(fakeActor, { type: "short", newDay: false });
 rest.noteLongRest(fakeActor, { longRest: true, type: "long", newDay: false });
 await new Promise(r => setTimeout(r, 10));
-check(Object.keys(state.getState().rested).length === 0,
+check(Object.keys(state.getState().ready).length === 0,
   "a short rest and a same-day long rest are both ignored");
 rest.noteLongRest(fakeActor, longRest);
 await new Promise(r => setTimeout(r, 20));
-check(state.getState().rested[gandalf.id] === true, "a long rest into a new day counts");
+check(state.getState().ready[gandalf.id] === true, "a long rest into a new day counts");
 
 // An actor outside the travelling party must not move the travel day.
 rest.noteLongRest({ id: notMine.id }, longRest);
 await new Promise(r => setTimeout(r, 20));
-check(!state.getState().rested[notMine.id], "somebody outside the party does not count");
+check(!state.getState().ready[notMine.id], "somebody outside the party does not count");
 
-// An empty party is never "all rested".
+// An empty party is never "all ready".
 setupGame({ actors: [notMine], isGM: true });
-check(rest.allRested() === false, "an empty travelling party is never all rested");
+check(rest.allReady() === false, "an empty travelling party is never all ready");
 setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
 
-// Resting is a fact about your own sheet, so it is NOT behind playerRolls.
+/* --- the one control a player always has -------------------------- */
+/* "I am done with today" is a statement about your own character, not a use of
+   the GM's tool, so it is deliberately NOT behind playerRolls - which is the
+   whole point of the button for a table that runs the tracker GM-only. */
 settingValues.playerRolls = false;
 settingValues.state = {};
 await state.setDay(2);
-await socketHandler({ action: "rested", data: { actorId: gandalf.id }, userId: "user1" });
-check(state.getState().rested[gandalf.id] === true,
-  "a player may report their own rest even when they may not roll");
+await socketHandler({ action: "ready", data: { actorId: gandalf.id }, userId: "user1" });
+check(state.getState().ready[gandalf.id] === true,
+  "a player may check in even when they may not roll");
+
+// And take it back: somebody who wants to search the camp after all should not
+// need the GM to edit the world state.
+await socketHandler({ action: "ready", data: { actorId: gandalf.id, value: false }, userId: "user1" });
+check(!state.getState().ready[gandalf.id], "and un-check-in again");
+
 const realWarn3 = console.warn; console.warn = () => {};
-await socketHandler({ action: "rested", data: { actorId: notMine.id }, userId: "user1" });
+await socketHandler({ action: "ready", data: { actorId: notMine.id }, userId: "user1" });
 console.warn = realWarn3;
-check(!state.getState().rested[notMine.id], "but not for a character they do not own");
-settingValues.advanceOnLongRest = false;
+check(!state.getState().ready[notMine.id], "but not for a character they do not own");
+settingValues.advanceOnReady = false;
 
 /* ------------------------------------------------------------------ */
 section("resolution does not flood chat (Dice So Nice)");
@@ -1196,7 +1227,7 @@ section("one click runs the day, another applies it");
 const ACTIONS = Object.getOwnPropertyDescriptor(app.AdventureTracker, "DEFAULT_OPTIONS").value.actions;
 const instance2 = new app.AdventureTracker();
 /** ApplicationV2 hands the clicked element to the handler; it only needs .disabled. */
-const fakeButton = () => ({ disabled: false, isConnected: true });
+const fakeButton = (dataset = {}) => ({ disabled: false, isConnected: true, dataset });
 
 settingValues.state = {};
 settingValues.applyConsequences = true;
@@ -1484,6 +1515,249 @@ await exportAction.call(instance);
 check(journals.length === 1, "export wrote one journal entry");
 check(journals[0].pages[0].text.content.includes("<table>"), "with the log table");
 check(!journals[0].pages[0].text.content.includes("undefined"), "and no undefined");
+
+/* ------------------------------------------------------------------ */
+section("ready for tomorrow, in the window");
+
+settingValues.playerRolls = false;
+settingValues.advanceOnReady = false;
+settingValues.state = {};
+// `theirs` is a party member this user does not own; `notMine` is not a player
+// character at all and so is not travelling.
+setupGame({ actors: [gandalf, bilbo, theirs, notMine], isGM: true });
+await state.setDay(5);
+
+const READY = Object.getOwnPropertyDescriptor(app.AdventureTracker, "DEFAULT_OPTIONS").value.actions.ready;
+
+let rctx = await new app.AdventureTracker()._prepareContext({});
+check(rctx.ready.total === 3, `everyone travelling is listed (${rctx.ready.total})`);
+check(!rctx.ready.rows.some(r => r.id === notMine.id), "and nobody who is not");
+check(rctx.ready.count === 0, "nobody has checked in yet");
+check(rctx.ready.all === false, "so the party is not ready");
+check(rctx.ready.waiting.length === 3, "and all three are named as missing");
+check(rctx.ready.waiting.includes("Gandalf"), "by name, not by number");
+
+// The GM may check anybody in - somebody has to answer for the player who
+// logged off mid-jungle.
+check(rctx.ready.rows.every(r => r.editable), "the GM may press any row");
+await READY.call(instance, {}, fakeButton({ actorId: gandalf.id, ready: "true" }));
+rctx = await new app.AdventureTracker()._prepareContext({});
+check(rctx.ready.count === 1, "one traveller is in");
+check(rctx.ready.rows.find(r => r.id === gandalf.id).ready === true, "the right one");
+check(!rctx.ready.waiting.includes("Gandalf"), "and no longer on the missing list");
+
+// Taking it back.
+await READY.call(instance, {}, fakeButton({ actorId: gandalf.id, ready: "false" }));
+check(state.getState().ready[gandalf.id] === undefined, "a check-in can be taken back");
+
+/* --- THE ONE CONTROL A PLAYER ALWAYS HAS -------------------------- */
+/* The tracker is the GM's tool, but this button is not part of it: it belongs
+   to the player's own character, so it survives playerRolls being off. */
+setupGame({ actors: [gandalf, bilbo, theirs, notMine], isGM: false, character: bilbo });
+const pctx = await new app.AdventureTracker()._prepareContext({});
+check(pctx.rolling === false, "the player still may not roll");
+check(pctx.ready.total === 3, "but they see the whole check-in list");
+check(pctx.ready.rows.find(r => r.id === bilbo.id).editable === true,
+  "and may press it for their own character");
+check(pctx.ready.rows.find(r => r.id === theirs.id).editable === false,
+  "but not for somebody else's");
+const pHtml = compileTemplate()(pctx);
+check(pHtml.includes('data-action="ready"'), "the button renders in a player's window");
+check(pHtml.includes(game.i18n.localize("toa-adventure-tracker.app.imReady")), "with a label");
+
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+settingValues.state = {};
+
+/* ------------------------------------------------------------------ */
+section("every traveller gets a line, and the night is one of them");
+
+/**
+ * Deterministic, because the interesting assertion is "everybody is listed",
+ * not "the dice were kind". Every chance gate in a day is `Math.random()`:
+ * pinned high, no pursuit fires, no camp mishap fires and no boon turns up.
+ */
+const realRandom = Math.random;
+Math.random = () => 0.99;
+
+settingValues.state = {};
+await state.setDay(6);
+await state.assign(gandalf.id, "navigator");
+dice.d20 = 20; await doRoll(gandalf);
+queue.d100.push(99, 100);          // and no encounter
+const quiet = await resolve.resolveDay();
+check(quiet.events.length === 0, `a genuinely quiet day (${quiet.events.length} events)`);
+check(quiet.consequences.length === 2,
+  `still lists every traveller (${quiet.consequences.length})`);
+check(quiet.consequences.every(c => !c.damage && !c.exhaustion),
+  "with nothing against any of them");
+check(quiet.consequences.every(c => c.restless === false),
+  "and a breather for everyone");
+
+const quietCtx = await new app.AdventureTracker()._prepareContext({});
+check(quietCtx.report.consequences.every(c => c.untouched), "the window marks them untouched");
+check(quietCtx.report.hasConsequences === false,
+  "and offers nothing to apply, because there is nothing to write");
+const quietHtml = compileTemplate()(quietCtx);
+check(quietHtml.includes(game.i18n.localize("toa-adventure-tracker.app.noEffect")),
+  '"no effect" is said out loud rather than left as a gap');
+check(quietHtml.includes(game.i18n.localize("toa-adventure-tracker.app.shortRest")),
+  "and so is the short rest");
+check(!quietHtml.includes('data-action="applyNow"'), "no apply button on a day with nothing to apply");
+
+/* A camp event that LANDS costs the night. The quartermaster's description has
+   always promised "a night that does not count as a rest"; until now nothing
+   made it true. Pin the dice low so the mishap definitely fires, and fail the
+   save so it definitely gets them. */
+Math.random = () => 0;
+settingValues.state = {};
+await state.setDay(7);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "quartermaster");
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);      // the camp check fails
+queue.d100.push(99);                     // but nothing finds them
+saveResult.value = false;
+const campDay = await resolve.resolveDay();
+check(campDay.events.some(e => e.category === "camp"), "a failed camp draws a camp event");
+check(campDay.consequences.some(c => c.restless === true),
+  "and a camp event that lands costs somebody their night");
+const campHtml = compileTemplate()(await new app.AdventureTracker()._prepareContext({}));
+check(campHtml.includes(game.i18n.localize("toa-adventure-tracker.app.noRest")),
+  "which the report says out loud");
+
+// Saving means it did not get you - so it does not cost you the night either.
+saveResult.value = true;
+settingValues.state = {};
+await state.setDay(8);
+await state.assign(gandalf.id, "navigator");
+await state.assign(bilbo.id, "quartermaster");
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99);
+const savedCamp = await resolve.resolveDay();
+check(savedCamp.consequences.every(c => c.restless === false),
+  "a camp event you saved against leaves the night alone");
+
+Math.random = realRandom;
+saveResult.value = false;
+for (const a of [gandalf, bilbo]) {
+  a.system.attributes.exhaustion = 0;
+  a.system.attributes.hp.value = a.system.attributes.hp.max;
+}
+settingValues.state = {};
+await state.setDay(1);
+
+/* ------------------------------------------------------------------ */
+section("the jungle notices the grung walking through it");
+
+/* KIN events are about ONE traveller. Their whole design is that they do not
+   exist for a party that has nobody of that kin - a patrol recognising one of
+   its own makes no sense otherwise - so the first thing to prove is absence. */
+settingValues.grungKin = "";
+const evmod = await import(`${R}/events.mjs`);
+const kinEvents = (await import(`${R}/const.mjs`)).EVENTS.filter(e => e.kin);
+check(kinEvents.length > 0, `there are kin events at all (${kinEvents.length})`);
+
+const poolIds = (cat) => evmod.byCategory(cat, "foot").map(e => e.id);
+check(kinEvents.every(e => !poolIds(e.category).includes(e.id)),
+  "with nobody named, no kin event is in any pool");
+
+// Name one, and they appear.
+settingValues.grungKin = gandalf.id;
+check(kinEvents.every(e => poolIds(e.category).includes(e.id)),
+  "name the grung and every one of them is in play");
+
+/* --- the prose is about him, by name ------------------------------ */
+const mockery = kinEvents.find(e => e.id === "grungMockery");
+const setupText = evmod.eventText({ ...mockery, retortResult: null });
+check(setupText.includes("Gandalf"), "the event says his name");
+check(!setupText.includes("{name}"), "and no placeholder survives into the prose");
+
+// Both endings exist and differ - the retort is the point of the scene.
+const wonText = evmod.eventText({ ...mockery, retortResult: { ok: true } });
+const lostText = evmod.eventText({ ...mockery, retortResult: { ok: false } });
+check(wonText !== lostText, "a retort that lands reads differently from one that does not");
+check(wonText.startsWith(setupText) && lostText.startsWith(setupText),
+  "both endings hang off the same setup");
+check(wonText.includes("Gandalf") && lostText.includes("Gandalf"), "and both name him");
+
+/* --- "kin" as a target hits exactly him --------------------------- */
+check(mockery.target === "kin", "the mockery is aimed at the kin");
+const aimed = evmod.targetsOf(mockery, [gandalf, bilbo]);
+check(aimed.length === 1 && aimed[0].id === gandalf.id, "which is one traveller, not the party");
+// Named but not travelling today: nobody, rather than everybody.
+check(evmod.targetsOf(mockery, [bilbo]).length === 0,
+  "a kin who is not travelling means the event touches no one");
+
+/* --- ONE ROLL, FOR EVERYONE --------------------------------------- */
+/* A retort is a save made with words: rolled once, by the character it is
+   about, cancelling the event for the whole party. That is what separates it
+   from an ordinary save, and it is worth proving in both directions.
+
+   Pinned so the grung event is the one drawn rather than hoped for: `pick`
+   indexes its pool with Math.random, so a value of (index / length) picks
+   exactly it. The same value sits above every chance gate in the day
+   (pursuit 45, camp 35), so nothing else fires alongside it. */
+const encPool = evmod.byCategory("encounter", "foot");
+const mockIdx = encPool.findIndex(e => e.id === "grungMockery");
+check(mockIdx >= 0, "the mockery is in the foot encounter pool");
+const pinned = (mockIdx + 0.5) / encPool.length;
+// The camp gate is the only one this pin has to clear; the rearguard is filled
+// below, so the pursuit gate never opens, and an unfilled quartermaster makes
+// the day non-flawless, so no boon turns up either. Nothing but the grung.
+check(pinned * 100 >= 35, `and the pin clears the camp gate (${Math.round(pinned * 100)})`);
+Math.random = () => pinned;
+saveResult.value = false;
+setupGame({ actors: [gandalf, bilbo, theirs], isGM: true });
+
+/** One day where the grung meet the party in the open. */
+const grungDay = async (day, d20) => {
+  settingValues.state = {};
+  await state.setDay(day);
+  await state.assign(gandalf.id, "navigator");
+  await state.assign(bilbo.id, "vanguard");     // seen in time: an encounter, not an ambush
+  await state.assign(theirs.id, "rearguard");   // and no pursuit to muddy the day
+  dice.d20 = 20;
+  await doRoll(gandalf); await doRoll(bilbo); await doRoll(theirs);
+  gandalf.calls.length = 0;
+  queue.d100.length = 0;
+  queue.d100.push(99, 1);                        // clear sky; something finds them
+  dice.d20 = d20;                                // and this is what he has to say
+  return resolve.resolveDay();
+};
+
+let kinDay = await grungDay(30, 20);
+let kinEvent = kinDay.events.find(e => e.id === "grungMockery");
+check(!!kinEvent, "the grung event is the one that came up");
+check(kinEvent.retortResult.by === "Gandalf", "the retort is rolled by the traveller it is about");
+check(kinEvent.retortResult.ok === true, "a 20 answers them");
+check(gandalf.calls.some(c => c.method === "rollSkill" && c.message?.create === false),
+  "through the system, and without a chat card");
+check(kinDay.consequences.every(c => !c.damage && !c.exhaustion),
+  "and a landed retort costs the party nothing");
+check(evmod.eventText(kinEvent).includes("Gandalf"), "the prose names him");
+
+// The same event, answered badly.
+kinDay = await grungDay(31, 1);
+kinEvent = kinDay.events.find(e => e.id === "grungMockery");
+check(kinEvent.retortResult.ok === false, "a 1 does not");
+const bill = kinDay.consequences.reduce((n, c) => n + c.damage + c.exhaustion, 0);
+check(bill > 0, `and then the event actually costs something (${bill})`);
+// Aimed at the kin, so it is HIS bill and nobody else's.
+check(kinDay.consequences.find(c => c.actorId === gandalf.id).damage > 0, "his bill");
+check(kinDay.consequences.find(c => c.actorId === bilbo.id).damage === 0, "and nobody else's");
+const kinHtml = compileTemplate()(await new app.AdventureTracker()._prepareContext({}));
+check(kinHtml.includes("Gandalf"), "the report names him");
+
+Math.random = realRandom;
+settingValues.grungKin = "";
+settingValues.state = {};
+setupGame({ actors: [gandalf, bilbo, notMine], isGM: true });
+for (const a of [gandalf, bilbo, theirs]) {
+  a.system.attributes.exhaustion = 0;
+  a.system.attributes.hp.value = a.system.attributes.hp.max;
+}
+await state.setDay(1);
 
 /* ------------------------------------------------------------------ */
 section("the button in the left rail");

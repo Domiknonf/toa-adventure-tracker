@@ -6,7 +6,8 @@ import {
 import { setting, paceTable } from "./settings.mjs";
 import { getState, isWriter, setReport } from "./state.mjs";
 import {
-  partyActors, roleStatus, roleFailed, roleCritical, worstExhaustion
+  partyActors, roleStatus, roleFailed, roleCritical, worstExhaustion,
+  kinActor, resolveSkill
 } from "./roles.mjs";
 import { rollWeather } from "./weather.mjs";
 import { pick, targetsOf, hasEffect } from "./events.mjs";
@@ -137,6 +138,31 @@ export async function resolveDay() {
   const flawless = !events.length && Object.values(ROLE)
     .every(id => !roleFailed(roles[id]) || roles[id].role?.unfilled === "none");
   if (flawless && Math.random() * 100 < BOON_CHANCE) draw(EVENT_CATEGORY.BOON);
+
+  /* --- A word back, from the one they were talking about --------- */
+
+  /**
+   * Kin events are settled by ONE roll from the traveller they are about, not
+   * by a save from everybody. It happens here rather than inside the
+   * consequence pass because an event may have no mechanical cost at all and
+   * still need its ending decided - the retort picks which half of the prose
+   * gets read, and that is the whole point of these events.
+   *
+   * The drawn event objects are the const table's own, so the result goes on a
+   * COPY. Writing it through would leave last Tuesday's answer sitting in the
+   * table for every day after.
+   */
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    if (!event.retort) continue;
+    const speaker = kinActor(event.kin);
+    events[i] = {
+      ...event,
+      retortResult: speaker
+        ? await rollRetort(speaker, event.retort)
+        : { ok: false, total: null, dc: event.retort.dc, by: null }
+    };
+  }
 
   /* --- Distance ------------------------------------------------ */
 
@@ -349,7 +375,8 @@ async function resolveConsequences(events, actors) {
   const get = (actor) => {
     if (!perActor.has(actor.id)) {
       perActor.set(actor.id, {
-        actorId: actor.id, actorName: actor.name, damage: 0, exhaustion: 0, heals: 0, from: []
+        actorId: actor.id, actorName: actor.name,
+        damage: 0, exhaustion: 0, heals: 0, restless: false, from: []
       });
     }
     return perActor.get(actor.id);
@@ -373,10 +400,18 @@ async function resolveConsequences(events, actors) {
       }
     }
 
+    /**
+     * A retort was already rolled once, for the whole event (see resolveDay).
+     * It cancels the event for everyone it would have touched, exactly as a
+     * passed save cancels it for one traveller - the difference is that one
+     * person spoke for the party.
+     */
+    const retorted = event.retort ? event.retortResult?.ok === true : null;
+
     for (const actor of targets) {
-      let saved = false;
-      let total = null;
-      if (event.save) {
+      let saved = retorted ?? false;
+      let total = event.retort ? (event.retortResult?.total ?? null) : null;
+      if (event.save && !saved) {
         const outcome = rolling ? await rollSave(actor, event.save) : { saved: false, total: null };
         saved = outcome.saved;
         total = outcome.total;
@@ -389,21 +424,51 @@ async function resolveConsequences(events, actors) {
       if (!saved) {
         if (damage) entry.damage += damage;
         if (event.exhaustion) entry.exhaustion += event.exhaustion;
+        /**
+         * A CAMP EVENT THAT LANDS COSTS THE NIGHT'S BREATHER.
+         *
+         * The quartermaster's description has always promised "a night that
+         * does not count as a rest"; nothing made it true. This does. It
+         * matters most at exactly the tables that need this module's exhaustion
+         * maths - the ones whose house rules bar long rests in the wild, where
+         * the short rest is the only healing there is.
+         *
+         * Saving means it did not get you, so it does not cost you the night
+         * either.
+         */
+        if (event.category === EVENT_CATEGORY.CAMP) entry.restless = true;
       }
       if (event.heals) entry.heals += event.heals;
       entry.from.push({
         event: event.id,
-        saved: event.save ? saved : null,
+        category: event.category,
+        saved: (event.save || event.retort) ? saved : null,
+        // Whose roll it was, when it was not this traveller's own.
+        retortBy: event.retort ? (event.retortResult?.by ?? null) : null,
         // The number, kept because the card that would have shown it is
         // deliberately not created (see rollSave). The report prints it.
         total,
-        dc: event.save?.dc ?? null,
+        dc: event.save?.dc ?? event.retort?.dc ?? null,
         ability: event.save?.ability ?? null
       });
     }
   }
 
-  return [...perActor.values()].filter(e => e.damage || e.exhaustion || e.heals);
+  /**
+   * EVERY TRAVELLER GETS A LINE, INCLUDING THE ONES NOTHING HAPPENED TO.
+   *
+   * This used to return only the people the day had actually cost something,
+   * which reads as an oversight rather than as good news: a character simply
+   * missing from the list looks forgotten, not spared. It also made the
+   * report's own "saved against everything" state unreachable, because an
+   * entry that saved against everything has nothing to add and was filtered
+   * out before anybody could say so.
+   *
+   * Nothing downstream is confused by a zero entry: applying a report skips
+   * writes of 0, and the day's totals sum the same.
+   */
+  for (const actor of actors) get(actor);
+  return [...perActor.values()];
 }
 
 /**
@@ -421,6 +486,31 @@ async function resolveConsequences(events, actors) {
  * so nothing downstream ever sees it. The numbers are not lost: each total goes
  * into the report, which is where the GM reads the day anyway.
  */
+/**
+ * A retort: one character answering back, rolled through the system.
+ *
+ * A skill check rather than a save, because it is a thing somebody DOES.
+ * Silent for the same reason the saves are (see rollSave): a dozen 3D dice per
+ * day is a wait, not information - the number is printed in the report.
+ *
+ * A misconfigured skill falls back to a plain Charisma check rather than
+ * failing the day: the retort still happens, just without the proficiency.
+ */
+async function rollRetort(actor, { skill, ability = "cha", dc }) {
+  const key = resolveSkill(skill);
+  try {
+    const rolls = key
+      ? await actor.rollSkill({ skill: key, target: dc }, { configure: false }, { create: false })
+      : await actor.rollAbilityCheck({ ability, target: dc }, { configure: false }, { create: false });
+    const roll = rolls?.[0];
+    if (!roll) return { ok: false, total: null, dc, by: actor.name };
+    return { ok: roll.total >= dc, total: roll.total, dc, by: actor.name, skill: key ?? null };
+  } catch (error) {
+    console.warn(`${MODULE_ID} | retort failed for ${actor.name}`, error);
+    return { ok: false, total: null, dc, by: actor.name };
+  }
+}
+
 async function rollSave(actor, { ability, dc }) {
   try {
     const rolls = await actor.rollSavingThrow(
