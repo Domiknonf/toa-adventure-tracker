@@ -386,6 +386,35 @@ fällt.
 > Erschöpfung wird dann ohnehin zurückgesetzt, und die Erholung durch das Lager
 > ist einfach ein zusätzlicher Puffer.
 
+### Und die Trefferpunkte?
+
+Kurze Rasten ändern an der Erschöpfungsrechnung oben **nichts** — in 5e nimmt
+nur eine lange Rast Erschöpfung ab. „Nur kurze Rasten" ist für Erschöpfung
+also genau der Fall, der oben gemessen wurde.
+
+Für Trefferpunkte sind kurze Rasten dagegen die einzige Quelle: Trefferwürfel.
+Und die kommen ihrerseits nur bei einer langen Rast zurück — mit der Hausregel
+hat die Gruppe für den ganzen Trek **einen** Vorrat und danach gar nichts. Also
+auch das gemessen, gleicher Aufbau, 150–200 Treks über 40 Tage:
+
+| Rettungswurf-Chance | Schaden je Charakter, 40 Tage |
+|---|:--:|
+| 40 % | 17,7 TP |
+| 55 % | 15,5 TP |
+| 70 % | 14,1 TP |
+
+Rund **15 Trefferpunkte in sechs Wochen** — etwa ein Drittel eines Pools auf
+Stufe 6, bevor überhaupt ein Trefferwürfel ausgegeben wurde. Der Schaden aus
+Reiseereignissen ist damit kein zweiter Ratschenmechanismus; was eure Gruppe
+verwundet, sind die Kämpfe, die ihr aus den Begegnungen macht, und die zählt
+dieses Modul nicht mit.
+
+> **Was dabei nicht funktioniert:** die Weltoption *„Tag automatisch
+> weiterschalten, wenn alle lange rasten"*. Sie hängt an einer langen Rast mit
+> gesetztem „New Day" — die es bei euch im Dschungel nie gibt. Für euch endet
+> der Tag über den Knopf **„Tag abschließen"**. Sag Bescheid, wenn du willst,
+> dass eine kurze Rast das ebenfalls auslöst.
+
 ---
 
 ## Folgen
