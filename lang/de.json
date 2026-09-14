@@ -74,6 +74,7 @@
   "toa-adventure-tracker.role.cartographer.hint": "Führt die Karte. Findet den Weg nicht selbst, aber zurück auf ihn — aus einem verlorenen Tag wird ein vertaner.",
   "toa-adventure-tracker.reason.navigated": "Der Navigator hält den Kurs.",
   "toa-adventure-tracker.reason.lost": "Verlaufen — der Tag ist im Dickicht verloren.",
+  "toa-adventure-tracker.reason.nearMiss": "Kurz vom Kurs ab — der Vormittag geht an ein falsches Tal, am Nachmittag liegt die Spur wieder da.",
   "toa-adventure-tracker.reason.rescued": "Verlaufen, aber der Kartograph findet zurück auf die Karte. Ein vertaner Tag statt eines verlorenen.",
   "toa-adventure-tracker.reason.fastPace": "Schnelles Tempo und ein Navigator, der mehr als nur bestanden hat.",
   "toa-adventure-tracker.reason.fastNoMargin": "Schnelles Tempo, aber die Navigation reichte nicht für den zweiten Marsch.",

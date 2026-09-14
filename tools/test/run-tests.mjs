@@ -31,6 +31,8 @@ const weather = await import(`${R}/weather.mjs`);
 const resolve = await import(`${R}/resolve.mjs`);
 const conseq  = await import(`${R}/consequences.mjs`);
 const app     = await import(`${R}/app.mjs`);
+const { MARGIN_FOR_EXTRA_HEX, MARGIN_FOR_BONUS_HEX, MARGIN_FOR_SALVAGE } =
+  await import(`${R}/const.mjs`);
 
 /** Reset to a clean, deterministic day. */
 async function freshDay({ pace = "normal", nav = null, assignments = {}, mode = "foot" } = {}) {
@@ -142,6 +144,58 @@ check(report.hexes === 0, `failed navigation = 0 hexes (got ${report.hexes})`);
 check(report.events.some(e => e.category === "lost"), "a 'lost' event explains it");
 check(report.reasons.some(r => r.key === "lost"), "the reason list names it");
 
+/* Derived from the DC and the modifier rather than a hardcoded face: the
+   navigator's DC is a balance dial, and a test that pins a d20 to it breaks
+   every time the dial moves instead of moving with it. */
+const NAV_DC = roles.getRole("navigator").dc;
+const NAV_MOD = gandalf.system.skills.sur.total;
+/** A d20 face that passes by exactly `by`. */
+const navFace = (by) => NAV_DC + by - NAV_MOD;
+
+/* --- A NEAR MISS IS NOT A LOST DAY -------------------------------- */
+/* The rule that took zero-hex days from half of all travel days down to a
+   third. Missing the bearing by one is not going in circles, and it must not
+   cost the same day - but a real miss still does, or the navigator stops
+   mattering. */
+await freshDay({ pace: "normal", nav: navFace(-1), assignments: { [gandalf.id]: "navigator" } });
+const missedNarrowly = await doRoll(gandalf);
+check(missedNarrowly.success === false, `a near miss is still a failure (margin ${missedNarrowly.margin})`);
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes === 1, `missing by one still makes a hexfield (got ${report.hexes})`);
+check(report.reasons.some(r => r.key === "nearMiss"), "and the report says why");
+check(!report.reasons.some(r => r.key === "lost"), "it is not reported as lost");
+
+// One past the salvage margin, and the day really is gone.
+await freshDay({ pace: "normal", nav: navFace(-(MARGIN_FOR_SALVAGE + 1)),
+  assignments: { [gandalf.id]: "navigator" } });
+await doRoll(gandalf);
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes === 0, `missing by ${MARGIN_FOR_SALVAGE + 1} loses the day (got ${report.hexes})`);
+check(report.reasons.some(r => r.key === "lost"), "reported as lost");
+
+// AN EMPTY ROLE HAS NO MARGIN TO BE CLOSE BY. Leaving the navigator unfilled
+// must stay the disaster it always was, or the salvage rule quietly pays for
+// not filling the most important job in the party.
+await freshDay({ pace: "normal", assignments: { [bilbo.id]: "vanguard" } });
+dice.d20 = 20; await doRoll(bilbo);
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes === 0, `an unfilled navigator is still zero (got ${report.hexes})`);
+check(!report.reasons.some(r => r.key === "nearMiss"), "with no salvage for nobody having tried");
+
+// And the cartographer is still worth having: in a mode with a higher ceiling
+// they salvage MORE than the near-miss rule hands out for free.
+await freshDay({ mode: "ship", pace: "normal", nav: navFace(-(MARGIN_FOR_SALVAGE + 1)),
+  assignments: { [gandalf.id]: "navigator", [bilbo.id]: "cartographer" } });
+await doRoll(gandalf);
+dice.d20 = 20; await doRoll(bilbo);
+queue.d100.push(99, 99);
+report = await resolve.resolveDay();
+check(report.hexes > 1, `a cartographer at sea salvages more than one hex (got ${report.hexes})`);
+check(report.reasons.some(r => r.key === "rescued"), "and it is the map that did it");
+
 // Fast pace with a clear margin -> two hexes.
 await freshDay({ pace: "fast", nav: 20, assignments: { [gandalf.id]: "navigator" } });
 await doRoll(gandalf);
@@ -151,9 +205,10 @@ check(report.hexes === 2, `fast + big margin = 2 hexes (got ${report.hexes})`);
 check(report.reasons.some(r => r.key === "fastPace"), "the second hex is explained");
 
 // Fast pace scraping the DC -> still one. The margin rule is what gives pace risk.
-await freshDay({ pace: "fast", nav: 7, assignments: { [gandalf.id]: "navigator" } });
+await freshDay({ pace: "fast", nav: navFace(1), assignments: { [gandalf.id]: "navigator" } });
 const scrape = await doRoll(gandalf);
-check(scrape.success === true && scrape.margin < 5, `a scrape: total ${scrape.total}, margin ${scrape.margin}`);
+check(scrape.success === true && scrape.margin < MARGIN_FOR_EXTRA_HEX,
+  `a scrape: total ${scrape.total}, margin ${scrape.margin}`);
 queue.d100.push(99, 99);
 report = await resolve.resolveDay();
 check(report.hexes === 1, `fast without margin = 1 hex (got ${report.hexes})`);
@@ -213,11 +268,14 @@ check(vanCall.config.rolls?.[0]?.parts?.[0] === "@pace", "the pace reaches the v
 check(vanCall.config.rolls[0].data.pace === -5, "as -5");
 
 // And a fast pace must still be the FASTEST. Same roll, three paces.
-// Survival +9 against DC 15, so a d20 of 12 is a margin of 6: past the fast
-// threshold of 3, short of the normal-pace bonus at 8. That band is precisely
-// what separates the three paces on one and the same roll.
+// The roll is aimed at the band BETWEEN the two margin thresholds: past the
+// fast threshold of 3, short of the normal-pace bonus at 8. That band is
+// precisely what separates the three paces on one and the same roll, and
+// aiming at it by arithmetic rather than by a hardcoded face means a change to
+// either threshold - or to the DC - moves the test with the rule.
+const bandFace = navFace(Math.floor((MARGIN_FOR_EXTRA_HEX + MARGIN_FOR_BONUS_HEX) / 2));
 for (const [pace, expected] of [["slow", 1], ["normal", 1], ["fast", 2]]) {
-  await freshDay({ pace, nav: 12, assignments: { [gandalf.id]: "navigator" } });
+  await freshDay({ pace, nav: bandFace, assignments: { [gandalf.id]: "navigator" } });
   const rec = await doRoll(gandalf);
   check(rec.success === true, `${pace}: the same roll succeeds`);
   queue.d100.push(99, 100);
@@ -237,6 +295,12 @@ section("the medic actually does something");
  */
 gandalf.system.attributes.exhaustion = 2;
 bilbo.system.attributes.exhaustion = 1;
+/* Pinned: a boon of its own can hand out relief (a chwinga heals a level too),
+   and these assertions are about the MEDIC's relief specifically. With the
+   value high, no chance gate opens and no boon turns up. */
+const realRandomMedic = Math.random;
+Math.random = () => 0.99;
+
 await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
 dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
 queue.d100.push(99, 100);
@@ -273,6 +337,7 @@ dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
 queue.d100.push(99, 100);
 medReport = await resolve.resolveDay();
 check(!medReport.consequences.some(c => c.heals > 0), "a healthy party needs no medic");
+Math.random = realRandomMedic;
 
 /* ------------------------------------------------------------------ */
 section("exhaustion is not a ratchet");
@@ -310,7 +375,12 @@ const campRelief = campReport.consequences.find(c => c.heals > 0);
 check(!!campRelief, "a successful quartermaster relieves somebody");
 check(campRelief.actorId === gandalf.id, "the worst-off traveller, not just anyone");
 
-// A FAILED quartermaster relieves nobody - and may cost a night instead.
+/* A FAILED quartermaster relieves nobody - and may cost a night instead.
+   Pinned like the medic block above: with the quartermaster failing and the
+   navigator succeeding the day can still come out flawless, and a boon hands
+   out relief of its own. That relief is real, it is just not the camp's. */
+const realRandomCamp = Math.random;
+Math.random = () => 0.99;
 gandalf.system.attributes.exhaustion = 3;
 await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "quartermaster" } });
 dice.d20 = 20; await doRoll(gandalf);
@@ -318,6 +388,7 @@ dice.d20 = 1;  await doRoll(bilbo);
 queue.d100.push(99, 100);
 campReport = await resolve.resolveDay();
 check(!campReport.consequences.some(c => c.heals > 0), "a failed camp relieves nobody");
+Math.random = realRandomCamp;
 
 /**
  * Two carers help TWO people. Doubling up on one traveller while another stays
@@ -786,9 +857,9 @@ for (const mode of MODE_ORDER) {
 }
 
 // Hurrying without the margin falls back to the cruising ceiling, not to 1.
-await freshDay({ mode: "ship", pace: "fast", nav: 7, assignments: { [gandalf.id]: "navigator" } });
+await freshDay({ mode: "ship", pace: "fast", nav: navFace(1), assignments: { [gandalf.id]: "navigator" } });
 const scrapeSea = await doRoll(gandalf);
-check(scrapeSea.success && scrapeSea.margin < 3, "a scraped navigation at sea");
+check(scrapeSea.success && scrapeSea.margin < MARGIN_FOR_EXTRA_HEX, "a scraped navigation at sea");
 queue.d100.push(99, 100);
 let sea = await resolve.resolveDay();
 let seaBlocked = sea.events.filter(e => e.blocks).length;
@@ -803,9 +874,12 @@ dice.d20 = 1;  await doRoll(bilbo);
 queue.d100.push(99, 100);
 sea = await resolve.resolveDay();
 seaBlocked = sea.events.filter(e => e.blocks).length;
-const salvaged = Math.max(1, Math.floor(TRAVEL_MODES.ship.hexes.normal / 2));
+// Half the ceiling, rounded UP - the cartographer has to beat the near-miss
+// rule, which hands out one hexfield to anybody who only just missed.
+const salvaged = Math.max(1, Math.ceil(TRAVEL_MODES.ship.hexes.normal / 2));
 check(sea.hexes === Math.max(0, salvaged - seaBlocked),
   `a rescued day at sea salvages half (${salvaged} less ${seaBlocked}, got ${sea.hexes})`);
+check(salvaged > 1, "and at sea that is more than the near-miss rule gives for free");
 check(salvaged < TRAVEL_MODES.ship.hexes.normal, "which is less than a full day's run");
 check(sea.reasons.some(r => r.key === "rescued"), "and the report credits the chart");
 

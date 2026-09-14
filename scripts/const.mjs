@@ -232,6 +232,24 @@ export const MARGIN_FOR_EXTRA_HEX = 3;
 export const MARGIN_FOR_BONUS_HEX = 8;
 
 /**
+ * How badly the navigator has to miss before the day is actually LOST.
+ *
+ * Missing the bearing by one is not the same mistake as going in circles, and
+ * it should not cost the same day. Inside this margin the party loses the
+ * morning to a wrong valley and picks the thread back up by afternoon: one
+ * hexfield instead of none.
+ *
+ * The symmetric counterpart of MARGIN_FOR_EXTRA_HEX, and the single biggest
+ * reason the module stopped feeling like a coin flip for a whole day's travel.
+ *
+ * It deliberately does NOT make the cartographer redundant: a near miss is
+ * salvaged by anybody, a real one only by somebody with the map - and in the
+ * faster modes the cartographer still salvages more than one hex where this
+ * rule gives exactly one.
+ */
+export const MARGIN_FOR_SALVAGE = 2;
+
+/**
  * Party exhaustion ceilings on the day's travel.
  *
  * Read as: at this much exhaustion (the HIGHEST level any single traveller
@@ -277,7 +295,16 @@ export const DEFAULT_ROLES = [
     // Decides whether the party moves at all. The one role with no substitute.
     id: "navigator",
     skill: "sur",
-    dc: 15,
+    /**
+     * LOWER THAN THE REST LOOKS BACKWARDS - IT IS NOT.
+     *
+     * This is the one role whose failure costs the ENTIRE day, so its difficulty
+     * has to be read together with that. At 15 a competent level-6 navigator
+     * (Survival +5) missed 45 % of the time, and measured over 3000 days that
+     * put half of all travel days at zero hexes - a party walking from dawn to
+     * dusk and arriving nowhere, every other day.
+     */
+    dc: 13,
     unfilled: "worse",
     icon: "fa-solid fa-compass"
   },
@@ -392,8 +419,8 @@ export const ENCOUNTER_DEFAULTS = { baseChance: 20, rearguardFailMod: 15, reargu
  * water skin IS empty.
  */
 export const EVENT_CHANCE = {
-  pursuit: { failed: 35, unfilled: 45 },
-  camp:    { failed: 30, unfilled: 35 }
+  pursuit: { failed: 30, unfilled: 35 },
+  camp:    { failed: 25, unfilled: 30 }
 };
 
 /* ------------------------------------------------------------------ */
@@ -587,7 +614,7 @@ export const EVENT_CATEGORY = {
  * Chance in percent that a flawless day turns up a boon. Small on purpose: the
  * good days are worth something because they are rare.
  */
-export const BOON_CHANCE = 25;
+export const BOON_CHANCE = 30;
 
 /**
  * Levels of exhaustion a successful medic takes back off the party.

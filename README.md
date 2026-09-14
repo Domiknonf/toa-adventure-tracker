@@ -147,7 +147,7 @@ Rollenverteilung bleibt bestehen.
 
 | Rolle | Probe | SG | Was sie mechanisch tut | Unbesetzt |
 |---|---|:--:|---|---|
-| **Navigator** | Überleben | 15 | Bestimmt die Tagesstrecke. Misslingt der Wurf, kommt die Gruppe keinen Schritt weit. | **schlimmer** |
+| **Navigator** | Überleben | 13 | Bestimmt die Tagesstrecke. Ein knapper Fehlschlag (bis 2 unter dem SG) kostet nur den halben Tag, ein echter den ganzen — außer der Kartograph fängt ihn auf. | **schlimmer** |
 | **Vorhut** | Wahrnehmung | 12 | Entscheidet, ob eine Begegnung ein Hinterhalt oder eine rechtzeitige Sichtung wird. Misslungen kostet TP. | **schlimmer** |
 | **Nachhut** | Heimlichkeit | 12 | Verwischt die Spuren. Misslungen hebt die Begegnungschance um 15 Punkte und kann eine Verfolgung auslösen. | **schlimmer** |
 | **Lagermeister** | Überleben | 12 | Gelungen: nimmt dem am stärksten Erschöpften **einen Grad Erschöpfung ab**. Misslungen: eine Nacht, die nicht als Rast zählt. | Misserfolg |
@@ -164,6 +164,27 @@ die Probe legt, und was du selbst darauf hättest.
 > das erst beim Schreiben dieser Übersicht, weil die Spalte „Was sie mechanisch
 > tut" leer blieb. Jetzt prüft `verify`, dass **jede** Standardrolle vom
 > Resolver gelesen wird *und* eine Wirkungsbeschreibung hat.
+
+### Ein knapper Fehlschlag kostet nicht den ganzen Tag
+
+Am Kurs um eins vorbei ist nicht dasselbe wie im Kreis laufen — und darf nicht
+denselben Tag kosten. Verfehlt die Navigation ihren SG um **höchstens 2**, geht
+der Vormittag an ein falsches Tal und die Gruppe kommt trotzdem **ein
+Hexfeld** weit. Alles darüber ist der verlorene Tag, der es immer war.
+
+Das war die größte Einzelursache dafür, dass sich das Modul gegen die Spieler
+anfühlte: Über 3000 gemessene Tage endete **die Hälfte aller Reisetage bei null
+Hexfeldern** — einen ganzen Tag marschieren und nirgendwo ankommen, jeden
+zweiten Tag. Jetzt ist es rund ein Drittel, mit Kartograph ein Fünftel.
+
+Zwei Dinge bleiben bewusst hart:
+
+- Eine **unbesetzte** Navigation hat keinen Vorsprung, knapp daneben zu sein.
+  Niemanden auf die wichtigste Rolle zu setzen ist weiterhin die Katastrophe,
+  die es immer war.
+- Der **Kartograph** rettet *jeden* Fehlschlag, nicht nur den knappen, und in
+  den schnelleren Reisearten rettet er mehr als ein Hexfeld. Eine Rolle muss
+  mehr wert sein als die Regel, die greift, wenn sie niemand besetzt.
 
 **„Unbesetzt“** sagt, was passiert, wenn niemand die Rolle übernimmt:
 
@@ -194,8 +215,15 @@ müsste „schnell" zwei verschiedene Dinge gleichzeitig heißen.
 | **Kanu** | 1 | 2 | 3 | Land + Fluss | Krokodile, Stromschnellen, Flusspferde — gelagert wird am Ufer |
 | **Schiff** | 2 | 3 | 5 | See | Piraten, Sahuagin, Flaute. **Keine Nachhut** — es gibt keine Spuren |
 
-Gemessen über je 300 simulierte Tage bei normalem Tempo: zu Fuß 0,70 Hexfelder
-pro Tag, beritten 1,20, im Kanu 1,30, unter Segeln 2,01.
+Gemessen über je 2000 simulierte Tage mit der Referenzgruppe (siehe unten),
+Hexfelder pro Tag:
+
+| | langsam | normal | schnell |
+|---|:--:|:--:|:--:|
+| Zu Fuß | 0,69 | 0,88 | 1,02 |
+| Reittiere | 0,69 | 1,49 | 1,67 |
+| Kanu | 0,70 | 1,59 | 1,64 |
+| Schiff | 1,39 | 2,17 | 2,74 |
 
 **Die Ereignispools sind getrennt.** Velociraptoren tauchen nie auf offener See
 auf, Sahuagin nie im Dschungel. Was überall passiert — ein verpeilter Kurs,
@@ -241,16 +269,15 @@ ist eine Zahl, über die am Tisch gestritten wird.
 | Normal | 0 | — | — | — | **+1 bei Vorsprung ≥ 8** |
 | Schnell | 0 | **−5** | **−5** | +10 % | höher, ab Vorsprung ≥ 3 |
 
-Gemessen über je 300 Tage zu Fuß, gleiche Gruppe, Vorhut und Nachhut besetzt:
+Gemessen über je 2000 Tage zu Fuß mit der **Referenzgruppe** (fünf Charaktere
+auf Stufe 6; Navigation +5, Vorhut +4, Nachhut +9, Lager +1, Medizin +3 — die
+sechste Rolle bleibt zwangsläufig leer):
 
-| Tempo | Hexfelder/Tag | Schaden/Tag | Begegnungstage |
+| Tempo | Hexfelder/Tag | Nulltage | Schaden/Tag |
 |---|:--:|:--:|:--:|
-| Langsam | 0,62 | 1,1 | 6 % |
-| Normal | 0,79 | 1,7 | 22 % |
-| Schnell | **1,04** | **3,5** | **39 %** |
-
-Unter Segeln dasselbe Muster: 1,37 → 2,20 → 2,74 Hexfelder bei 0,8 → 1,8 → 4,0
-Schaden pro Tag.
+| Langsam | 0,70 | 30 % | 1,4 |
+| Normal | 0,86 | 34 % | 1,9 |
+| Schnell | **1,03** | 34 % | **4,9** |
 
 Schnell kommt am weitesten **und** kostet dreimal so viel Blut. Das ist der
 Handel.
@@ -284,9 +311,16 @@ Schnelles Tempo hebt die Obergrenze — aber nur, wenn die Navigation den SG um
 mindestens 3 übertrifft. Sonst kommt ihr auf das Normalmaß, habt die
 zusätzlichen Begegnungen aber schon bezahlt.
 
-Zum Vergleich, gleiche Gruppe zu Fuß, normales Tempo, **mit** Kartograph statt
-Vorhut: 0,83 Hexfelder pro Tag statt 0,66 und nur 17 % verlorene Tage. Die
-Rollenwahl ist der größte Hebel im ganzen System.
+**Die Rollenwahl ist der größte Hebel im ganzen System.** Dieselbe Gruppe, zu
+Fuß, normales Tempo — nur die fünfte Rolle getauscht:
+
+| Fünfte Rolle | Hexfelder/Tag | Nulltage |
+|---|:--:|:--:|
+| Feldscher | 0,87 | 34 % |
+| **Kartograph** | **1,01** | **21 %** |
+
+Der Kartograph ist die Versicherung gegen den verlorenen Tag. Wer ihn nicht
+besetzt, zahlt das mit einem Drittel aller Reisetage.
 
 ---
 
@@ -327,14 +361,21 @@ es gekostet hat.
 | **Umweg** | Navigation misslungen, Kartograph rettet | Zurück auf die Karte, Ein Felsen, der auf der Karte steht |
 | **Lager** | Lagermeister misslungen | Ein Lager im Nassen, Ameisenstraße durchs Lager, Kein Feuer |
 | **Sturm** | Wetter | Monsunregen, Hangrutsch, Blitzschlag, Sturm auf See, Flaute, Stromschnellen |
-| **Glück** | Ein makelloser Tag, 25 % | Ein Chwinga folgt euch, Trockene Ruine, Klare Quelle |
+| **Glück** | Kein Unheil gezogen und der Kurs gehalten, 30 % | Ein Chwinga folgt euch, Trockene Ruine, Klare Quelle |
 
 Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
 (Schaden, Erschöpfung, Rettungswurf, kostet den Tag). Alle Texte liegen in
 `lang/de.json` — du kannst jede Zeile umschreiben, ohne Code anzufassen.
 
+> **Gute Tage gab es praktisch nie.** Die Bedingung für ein Glücksereignis war
+> früher, dass **jede** Rolle gelungen ist — was eine Gruppe von fünf nie
+> erfüllen kann, weil es sechs Rollen gibt und eine unbesetzte als misslungen
+> zählt. Gemessen: Glück trat an 3 % der Tage ein, die Oberseite war Deko.
+> Jetzt hängt es an den zwei Dingen, die die Gruppe tatsächlich in der Hand
+> hat — es kam nichts, und der Kurs stimmte —, und liegt bei 8–15 %.
+
 **Ein misslungener Nebenrolle löst ihr Ereignis nicht garantiert aus**, sondern
-mit einer Wahrscheinlichkeit (Verfolgung 35 / 45 %, Lager 30 / 35 %). Eine
+mit einer Wahrscheinlichkeit (Verfolgung 30 / 35 %, Lager 25 / 30 %). Eine
 Vierergruppe lässt zwangsläufig Rollen leer; würde jede davon jeden Tag feuern,
 stünden jeden Morgen dieselben Absätze im Bericht und keiner davon hieße noch
 etwas. So ist eine unbesetzte Rolle ein **Risiko**, das ihr tragt, statt einer
@@ -355,7 +396,7 @@ Stufe 6, kompetent besetzt, **ohne** lange Rasten):
 
 | | vorher | jetzt |
 |---|:--:|:--:|
-| Erschöpfung netto pro Tag | 0,48 | **0,25** |
+| Erschöpfung netto pro Tag | 0,48 | **0,23** |
 | Erste Stufe 3 (Strecke gedeckelt) | nach ~21 Tagen | nach ~23 Tagen, und nur in 25 von 200 Läufen |
 | Stufe 6 erreicht (tot) | **68 von 200** | **0 von 200** |
 | 40 Tage überlebt | 132 von 200 | **200 von 200** |

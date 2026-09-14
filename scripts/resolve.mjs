@@ -1,5 +1,5 @@
 import {
-  MODULE_ID, ROLE, EXHAUSTION_LIMITS, EVENT_CATEGORY, BOON_CHANCE,
+  MODULE_ID, ROLE, EXHAUSTION_LIMITS, EVENT_CATEGORY, BOON_CHANCE, MARGIN_FOR_SALVAGE,
   ENCOUNTER_DEFAULTS, EVENT_CHANCE, MARGIN_FOR_EXTRA_HEX, MARGIN_FOR_BONUS_HEX,
   ROLE_RELIEF, TRAVEL_MODES, DEFAULT_MODE
 } from "./const.mjs";
@@ -133,10 +133,16 @@ export async function resolveDay() {
 
   /* --- The jungle's good mood ---------------------------------- */
 
-  // Only on a day where nothing went wrong at all - which is what makes a boon
-  // worth having rather than a consolation prize.
-  const flawless = !events.length && Object.values(ROLE)
-    .every(id => !roleFailed(roles[id]) || roles[id].role?.unfilled === "none");
+  /**
+   * A day where nothing came at them and they got where they were going.
+   *
+   * It used to also demand that EVERY role had succeeded - which a party of
+   * five can never satisfy, because there are six roles and an unfilled one
+   * counts as failed. Boons turned up on 3 % of days: the upside was decorative.
+   * Now the gate is the two things the party actually controls, so a good day is
+   * something they can play for.
+   */
+  const flawless = !events.length && !roleFailed(roles[ROLE.NAVIGATOR]);
   if (flawless && Math.random() * 100 < BOON_CHANCE) draw(EVENT_CATEGORY.BOON);
 
   /* --- A word back, from the one they were talking about --------- */
@@ -293,16 +299,44 @@ function resolveMovement({ state, roles, pace, events, rescued, actors, mode }) 
   const nav = roles[ROLE.NAVIGATOR];
   const navFailed = roleFailed(nav);
 
-  if (navFailed && !rescued) {
+  /**
+   * A NEAR MISS IS NOT A LOST DAY.
+   *
+   * Missing the bearing by one is not the same mistake as going in circles, and
+   * it used to cost the same day. Measured over 3000 days with a competent
+   * level-6 party, that single rule put HALF of all travel days at zero hexes.
+   *
+   * Only a real roll can be a near miss: an UNFILLED navigator has no margin to
+   * be close by, and leaving the role empty should still be the disaster it
+   * always was.
+   */
+  const navMargin = nav.record?.margin;
+  const nearMiss = navFailed && !rescued
+    && Number.isFinite(navMargin) && navMargin >= -MARGIN_FOR_SALVAGE;
+
+  if (nearMiss) {
+    // One hexfield, never more: the morning is gone to a wrong valley either
+    // way. In the faster modes that is still a heavy loss, which is what keeps
+    // the cartographer worth having.
+    hexes = Math.min(1, target);
+    reasons.push({ key: "nearMiss", delta: hexes - target });
+  } else if (navFailed && !rescued) {
     // Lost is lost, in any mode. A ship off its bearing is arguably worse than
     // a party going in circles, but zero is as low as a day goes.
     hexes = 0;
     reasons.push({ key: "lost", delta: -target });
   } else if (navFailed && rescued) {
-    // The cartographer got them back on the chart: they move, but the day is
-    // mostly gone. Half the pace's ceiling, and never less than one - having a
-    // map should not be worse than not travelling at all.
-    const salvaged = Math.max(1, Math.floor(target / 2));
+    /**
+     * The cartographer got them back on the chart: they move, but the day is
+     * mostly gone. Half the pace's ceiling, ROUNDED UP, and never less than one -
+     * having a map should not be worse than not travelling at all.
+     *
+     * Rounded up rather than down since the near-miss rule arrived: rounding
+     * down made a cartographer at sea salvage exactly one hexfield, which is
+     * what a near miss now hands out for free. A role has to be worth more than
+     * the rule that applies when nobody fills it.
+     */
+    const salvaged = Math.max(1, Math.ceil(target / 2));
     reasons.push({ key: "rescued", delta: salvaged - target });
     hexes = salvaged;
   } else {
