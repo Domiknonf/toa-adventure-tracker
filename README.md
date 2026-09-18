@@ -220,10 +220,10 @@ Hexfelder pro Tag:
 
 | | langsam | normal | schnell |
 |---|:--:|:--:|:--:|
-| Zu Fuß | 0,67 | 0,85 | 0,99 |
-| Reittiere | 0,69 | 1,48 | 1,66 |
-| Kanu | 0,70 | 1,57 | 1,63 |
-| Schiff | 1,37 | 2,10 | 2,75 |
+| Zu Fuß | 0,62 | 0,80 | 0,94 |
+| Reittiere | 0,60 | 1,45 | 1,61 |
+| Kanu | 0,60 | 1,41 | 1,57 |
+| Schiff | 1,29 | 2,07 | 2,75 |
 
 **Die Ereignispools sind getrennt.** Velociraptoren tauchen nie auf offener See
 auf, Sahuagin nie im Dschungel. Was überall passiert — ein verpeilter Kurs,
@@ -273,14 +273,14 @@ Gemessen über je 2000 Tage zu Fuß mit der **Referenzgruppe** (fünf Charaktere
 auf Stufe 6; Navigation +5, Vorhut +4, Nachhut +9, Lager +1, Medizin +3 — die
 sechste Rolle bleibt zwangsläufig leer):
 
-| Tempo | Hexfelder/Tag | Nulltage | Schaden/Tag |
+| Tempo | Hexfelder/Tag | Nulltage | Schaden/Tag (ganze Gruppe) |
 |---|:--:|:--:|:--:|
-| Langsam | 0,67 | 33 % | 3,0 |
-| Normal | 0,85 | 35 % | 3,7 |
-| Schnell | **0,99** | 34 % | **7,2** |
+| Langsam | 0,63 | 37 % | 11,0 |
+| Normal | 0,82 | 39 % | 14,2 |
+| Schnell | **0,94** | 37 % | **25,8** |
 
-Schnell kommt am weitesten **und** kostet doppelt so viel Blut. Das ist der
-Handel.
+Schnell kommt am weitesten **und** kostet fast doppelt so viel Blut. Das ist
+der Handel.
 
 ### Wofür normales Tempo überhaupt gut ist
 
@@ -389,7 +389,7 @@ Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
 > Jetzt hängt es an den zwei Dingen, die die Gruppe tatsächlich in der Hand
 > hat — es kam nichts, und der Kurs stimmte —, und liegt bei 8–15 %.
 
-> **Schaden war zu selten, nicht zu klein.** Er lag fast vollständig im
+> **Schaden war zu selten, nicht zu klein** — und danach immer noch zu wenig. Er lag fast vollständig im
 > **Hinterhalt**-Pool (18 von 18 Einträgen), und ein Hinterhalt braucht eine
 > Begegnung *und* eine patzende Vorhut — zusammen rund 7 % der Tage. Gemessen:
 > an **87 % aller Reisetage** bekam niemand einen Kratzer. Jetzt kostet auch ein
@@ -469,24 +469,48 @@ Und die kommen ihrerseits nur bei einer langen Rast zurück — mit der Hausrege
 hat die Gruppe für den ganzen Trek **einen** Vorrat und danach gar nichts. Also
 auch das gemessen, gleicher Aufbau, 150–200 Treks über 40 Tage:
 
-Rund **28 Trefferpunkte in sechs Wochen**, gemessen bei 55 % Rettungswurf-Chance
-— etwa zwei Drittel eines Pools auf Stufe 6, bevor überhaupt ein Trefferwürfel
-ausgegeben wurde. Mit der Hausregel habt ihr für den ganzen Trek **einen** Satz
-Trefferwürfel und danach nichts mehr, also ist das eine echte Rechnung und
-keine Randnotiz mehr — dazu kommen ja noch die Kämpfe, die ihr aus den
-Begegnungen macht, und die zählt dieses Modul nicht mit.
+**Rund 19 Trefferpunkte pro Person und Woche** — das ist die Vorgabe, auf die
+dieses Modul eingestellt ist, und sie ist eine bewusste Ansage des Tisches, kein
+Messergebnis.
 
-> Wenn euch das zu viel oder zu wenig ist: **Weltoption „Schadensstärke"**, in
-> Prozent. 100 lässt jede Würfelformel so, wie sie geschrieben ist; 75 nimmt ein
-> Viertel weg, 150 legt die Hälfte drauf. Die eine Stellschraube, die keine
-> Messung von mir entscheiden kann — wie blutig ein Reisetag sein soll, ist
-> Geschmackssache am Tisch.
+| | |
+|---|---|
+| Je Person und Woche | **19 TP** |
+| Tage mit Schaden | 42 % |
+| Wenn es trifft | Median **10 TP**, p90 24, p99 32 |
+| Erschöpfung/Tag (ganze Gruppe) | 0,29 |
 
-> **Und das Tagesende?** Früher hing der Automatismus an einer langen Rast mit
-> „neuer Tag", die es bei euch im Dschungel nie gibt. Deshalb gibt es jetzt den
-> Knopf **„Bereit"** in jedem Spielerfenster — siehe
-> [Bereit für morgen](#bereit-für-morgen).
+**Rechnet das für eure Strecke einmal durch.** 19 TP pro Woche sind über einen
+40-Tage-Trek rund **100 Trefferpunkte pro Person**. Ein Charakter auf Stufe 6
+hat etwa 45, plus einmalig rund 45 aus Trefferwürfeln — und die kommen mit eurer
+Hausregel nur an einem gesicherten Ort zurück. Ein Trek dieser Länge ist damit
+**nicht** allein aus dem Reisebudget zu überleben: Ihr braucht Heilzauber,
+Rückkehrpunkte oder kürzere Etappen. Das ist kein Fehler, das ist die Zahl, die
+ihr genannt habt.
 
+Die Stellschraube dafür ist die Weltoption **„Schadensstärke"**, in Prozent:
+
+| Schadensstärke | TP je Person und Woche | schlimmster Einzeltreffer |
+|---|:--:|:--:|
+| 50 % | 5 | 14 |
+| 100 % | 11 | 24 |
+| 150 % | 16 | 35 |
+| **200 % (Vorgabe)** | **19** | 44 |
+| 250 % | 26 | 50 |
+
+> **Warum nicht einfach die Würfel verdreifachen?** Weil ein Treffer dann
+> Charaktere umbringt, statt sie zu verwunden: Bei reinem Hochskalieren lag der
+> schlimmste Einzeltag schon bei 60 TP, bevor die Wochenzahl überhaupt
+> erreicht war. Der Weg dorthin führte deshalb über **Breite statt Wucht** —
+> mehr Begegnungen (20 % → 45 %), Schaden in Kategorien, die vorher keinen
+> hatten, und vor allem: **ein Hinterhalt ist die Sache der Gruppe, nicht eines
+> Einzelnen.** Ein Rudel Velociraptoren greift nicht eine Person an.
+>
+> **Erschöpfung ist bewusst NICHT mitgewandert.** Sie bleibt bei 0,29 pro Tag
+> und trifft weiter einzelne Reisende, weil sie unter eurer Hausregel keinen
+> Rückweg hat: Trefferpunkte kommen wieder, Erschöpfungsgrade nicht. Beim ersten
+> Versuch ist sie auf 0,69 mitgesprungen — ein Test hält die beiden Währungen
+> jetzt auseinander.
 ---
 
 ## Folgen
@@ -860,8 +884,8 @@ Unabhängig vom Zahlenmodifikator.
 |---|---|
 | Sturmwahrscheinlichkeit | 10 % |
 | Regenwahrscheinlichkeit | 55 % |
-| Begegnungswahrscheinlichkeit | 28 % |
-| Schadensstärke (%) | **100** |
+| Begegnungswahrscheinlichkeit | 45 % |
+| Schadensstärke (%) | **200** |
 
 ### Reisende
 | Option | Vorgabe |

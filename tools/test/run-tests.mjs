@@ -518,6 +518,22 @@ check(sightPool.filter(e => !e.damage).length > sightPool.length / 2,
 // cancels it for everybody exactly as a passed save does.
 check(sightPool.every(e => !e.damage || e.save || e.retort),
   "a sighting that does cost something always offers a way past it");
+
+/* --- WHAT HURTS EVERYBODY, AND WHAT HURTS ONE ---------------------- */
+/* The table asked for roughly 20 hit points per person per week, and the way to
+   get there without a single roll killing somebody is to spread a hit across
+   the party rather than to make it bigger. That only works while the two
+   currencies stay separate: hit points come back, and under a house rule that
+   bars long rests EXHAUSTION DOES NOT. So an event that hands out exhaustion
+   must keep taking one victim, however hard the jungle bites. */
+const groupExhaustion = ALL_EVENTS.filter(e => e.exhaustion && (e.target ?? "party") === "party");
+for (const e of groupExhaustion) {
+  check(!!e.save || !!e.retort,
+    `party-wide exhaustion event "${e.id}" must at least offer a way past it`);
+}
+const spread = ALL_EVENTS.filter(e => e.damage && (e.target ?? "party") === "party");
+check(spread.length > ALL_EVENTS.filter(e => e.damage && e.target === "random").length,
+  `most damage is the party's problem, not one traveller's (${spread.length} vs ${ALL_EVENTS.filter(e => e.damage && e.target === "random").length})`);
 const ambushToday = report.events.find(e => e.category === "ambush");
 check(!ambushToday, "and no ambush event fires alongside it");
 
@@ -586,15 +602,18 @@ const hpBefore = Object.fromEntries(report.consequences.map(c => [c.actorId,
 const applied = await conseq.applyConsequences(report);
 check(applied.applied === true, "consequences are applied by default");
 
-/* Unconditional, for everybody the day billeded. The old version guarded each
+/* Unconditional, for everybody the day billed. The old version guarded each
    assertion behind "if this traveller took damage", so a day that happened to
-   billed nobody skipped the whole check and still reported success. */
+   bill nobody skipped the whole check and still reported success. */
 for (const c of billed) {
   const actor = game.actors.get(c.actorId);
   if (c.damage) {
     check(actor.damageTaken.includes(c.damage),
       `${c.actorName}: damage went through actor.applyDamage()`);
-    check(actor.system.attributes.hp.value === hpBefore[c.actorId] - c.damage,
+    // Floored at zero, because that is what applyDamage() does - and with the
+    // jungle biting as hard as this table asked for, a single event can now
+    // exceed what a traveller has left.
+    check(actor.system.attributes.hp.value === Math.max(0, hpBefore[c.actorId] - c.damage),
       `${c.actorName}: hit points actually dropped`);
   }
   if (c.exhaustion) {
@@ -1484,7 +1503,8 @@ check(state.getState().report.applied === true, "the report is marked applied");
 const damaged = rep.consequences.find(c => c.actorId === gandalf.id && c.damage > 0);
 if (damaged) {
   check(gandalf.damageTaken.length === 1, "damage went to the sheet exactly once");
-  check(gandalf.system.attributes.hp.value === hpBefore2 - damaged.damage, "hit points dropped");
+  check(gandalf.system.attributes.hp.value === Math.max(0, hpBefore2 - damaged.damage),
+    "hit points dropped");
 }
 
 /**

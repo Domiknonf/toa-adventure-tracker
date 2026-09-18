@@ -403,7 +403,7 @@ export const WEATHER_DEFAULTS = { stormChance: 10, rainChance: 55 };
  * party's own choices move it. Modified by pace and by how well the rearguard
  * did (see resolve.mjs).
  */
-export const ENCOUNTER_DEFAULTS = { baseChance: 28, rearguardFailMod: 15, rearguardUnfilledMod: 25 };
+export const ENCOUNTER_DEFAULTS = { baseChance: 45, rearguardFailMod: 15, rearguardUnfilledMod: 25 };
 
 /**
  * Damage scale, in percent, applied to every event's rolled damage.
@@ -421,7 +421,7 @@ export const ENCOUNTER_DEFAULTS = { baseChance: 28, rearguardFailMod: 15, reargu
  * then come back only from Hit Dice, and Hit Dice only from a long rest. See
  * the README before pushing this far up.
  */
-export const DAMAGE_SCALE_DEFAULT = 100;
+export const DAMAGE_SCALE_DEFAULT = 200;
 
 /**
  * How likely a failed or unfilled role is to ACTUALLY produce its event.
@@ -437,7 +437,7 @@ export const DAMAGE_SCALE_DEFAULT = 100;
  * water skin IS empty.
  */
 export const EVENT_CHANCE = {
-  pursuit: { failed: 30, unfilled: 35 },
+  pursuit: { failed: 45, unfilled: 55 },
   camp:    { failed: 25, unfilled: 30 }
 };
 
@@ -520,11 +520,11 @@ export const EVENTS = [
   { id: "raptors",      category: "ambush", damage: "2d6", blocks: true,  target: "party" , foe: { key: "velociraptor", cr: "1/4" }},
   { id: "zombieHorde",  category: "ambush", damage: "2d8", blocks: true,  target: "party" , foe: { key: "zombie", cr: "1/4" }},
   { id: "snake",        category: "ambush", damage: "1d8", save: { ability: "con", dc: 13 }, exhaustion: 1, target: "random" , foe: { key: "giantPoisonousSnake", cr: "1/4" }},
-  { id: "pterafolk",    category: "ambush", damage: "2d6", blocks: true,  target: "random" , foe: { key: "pterafolk", cr: "1" }},
+  { id: "pterafolk",    category: "ambush", damage: "2d6", blocks: true,  target: "party"  , foe: { key: "pterafolk", cr: "1" }},
   { id: "batiri",       category: "ambush", damage: "1d10", blocks: true, target: "party" , foe: { key: "goblin", cr: "1/4" }},
   { id: "assassinVine", category: "ambush", damage: "1d10", save: { ability: "str", dc: 14 }, target: "random" , foe: { key: "assassinVine", cr: "3" }},
   { id: "stirges",      category: "ambush", damage: "1d6", exhaustion: 1, save: { ability: "con", dc: 11 }, target: "random" , foe: { key: "stirge", cr: "1/8" }},
-  { id: "girallon",     category: "ambush", damage: "3d6", blocks: true,  target: "random" , foe: { key: "girallon", cr: "4" }},
+  { id: "girallon",     category: "ambush", damage: "3d6", blocks: true,  target: "party"  , foe: { key: "girallon", cr: "4" }},
   { id: "yuanti",       category: "ambush", damage: "2d6", blocks: true,  target: "party" , foe: { key: "yuantiPureblood", cr: "1" }},
   { id: "quicksand",    category: "ambush", damage: "1d6", save: { ability: "str", dc: 13 }, blocks: true, target: "random" },
 
@@ -557,9 +557,9 @@ export const EVENTS = [
   /* --- Lost: no map to fall back on ----------------------------- */
   { id: "circles",      category: "lost", target: "party" },
   { id: "riverWrong",   category: "lost", target: "party" },
-  { id: "canopyDark",   category: "lost", damage: "1d4", save: { ability: "dex", dc: 11 }, target: "random" },
+  { id: "canopyDark",   category: "lost", damage: "1d4", save: { ability: "dex", dc: 11 }, target: "party"  },
   { id: "ravine",       category: "lost", damage: "1d6", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "swampDetour",  category: "lost", damage: "1d4", save: { ability: "con", dc: 11 }, target: "random" },
+  { id: "swampDetour",  category: "lost", damage: "1d4", save: { ability: "con", dc: 11 }, target: "party"  },
 
   /* --- Detour: lost, but the cartographer got them back --------- */
   { id: "backtrack",    category: "detour", target: "party" , terrain: "any"},
@@ -602,7 +602,7 @@ export const EVENTS = [
   { id: "swiftCurrent", category: "boon", terrain: "river", target: "party" },
 
   /* --- Sea: the ship's own troubles ------------------------------- */
-  { id: "sharks",       category: "ambush", terrain: "sea", damage: "2d8", blocks: true, target: "random", foe: { key: "hunterShark", cr: "2" } },
+  { id: "sharks",       category: "ambush", terrain: "sea", damage: "2d8", blocks: true, target: "party" , foe: { key: "hunterShark", cr: "2" } },
   { id: "pirates",      category: "ambush", terrain: "sea", damage: "2d6", blocks: true, target: "party", foe: { key: "pirate", cr: "1/8" } },
   { id: "sahuagin",     category: "ambush", terrain: "sea", damage: "2d6", blocks: true, target: "party", foe: { key: "sahuagin", cr: "1/2" } },
   { id: "krakenArm",    category: "ambush", terrain: "sea", damage: "2d10", save: { ability: "str", dc: 14 }, blocks: true, target: "random", foe: { key: "giantOctopus", cr: "1" } },
@@ -618,7 +618,7 @@ export const EVENTS = [
 
   /* --- Mounts: what a day on horseback costs ---------------------- */
   { id: "mountLame",    category: "camp", terrain: "mount", blocks: true, target: "party" },
-  { id: "mountBolted",  category: "ambush", terrain: "mount", damage: "1d6", save: { ability: "dex", dc: 12 }, target: "random" },
+  { id: "mountBolted",  category: "ambush", terrain: "mount", damage: "1d6", save: { ability: "dex", dc: 12 }, target: "party"  },
   { id: "mountSpent",   category: "camp", terrain: "mount", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" }
 ];
 
