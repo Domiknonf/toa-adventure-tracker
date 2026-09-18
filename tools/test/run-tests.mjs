@@ -371,9 +371,53 @@ await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilb
 dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
 queue.d100.push(99, 100);
 let campReport = await resolve.resolveDay();
-const campRelief = campReport.consequences.find(c => c.heals > 0);
-check(!!campRelief, "a successful quartermaster relieves somebody");
-check(campRelief.actorId === gandalf.id, "the worst-off traveller, not just anyone");
+/* Asserted through the carers' own line rather than through "the first row
+   with heals on it": a boon can heal too (a chwinga takes a level off the
+   party), and that used to make this fail about one run in ten by finding
+   somebody else's relief first. The care list says WHO did WHAT, which is both
+   immune to that and the thing the table actually reads. */
+const qmCare = campReport.care.find(c => c.roleId === "quartermaster");
+check(qmCare?.outcome === "helped", "a successful quartermaster relieves somebody");
+check(qmCare.actorName === gandalf.name, "the worst-off traveller, not just anyone");
+check(campReport.consequences.find(c => c.actorId === gandalf.id).heals >= 1,
+  "and it reaches his line in the roster");
+
+/* THE MEDIC LOOKED BROKEN BECAUSE IT WAS SILENT.
+   It needs a passed check AND somebody already exhausted, which is about one
+   day in five - and on the other four it said nothing at all, which at the
+   table is indistinguishable from not working. Every carer reports its own
+   outcome now, "nothing to do" included. */
+for (const a of [gandalf, bilbo, notMine]) a.system.attributes.exhaustion = 0;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
+dice.d20 = 20; await doRoll(gandalf); await doRoll(bilbo);
+queue.d100.push(99, 100);
+const idleReport = await resolve.resolveDay();
+const idleCare = idleReport.care.find(c => c.roleId === "medic");
+check(idleCare?.outcome === "nobodyNeeded",
+  `a medic with nobody to treat says so (${idleCare?.outcome})`);
+const idleCtx = await new app.AdventureTracker()._prepareContext({});
+const idleRow = idleCtx.report.care.find(c => c.roleId === "medic");
+check(!!idleRow.text && !idleRow.text.includes("adventure-tracker"), "in words, not a key path");
+check(idleRow.idle === true, "and marked as a quiet day rather than a failure");
+check(compileTemplate()(idleCtx).includes(idleRow.text), "and it renders");
+
+// A failed carer is its own outcome, distinct from having nothing to do.
+gandalf.system.attributes.exhaustion = 2;
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator", [bilbo.id]: "medic" } });
+dice.d20 = 20; await doRoll(gandalf);
+dice.d20 = 1;  await doRoll(bilbo);
+queue.d100.push(99, 100);
+check((await resolve.resolveDay()).care.find(c => c.roleId === "medic").outcome === "failed",
+  "a failed medic is reported as failed, not as idle");
+
+// And an unfilled one is a third thing again.
+await freshDay({ pace: "normal", assignments: { [gandalf.id]: "navigator" } });
+dice.d20 = 20; await doRoll(gandalf);
+queue.d100.push(99, 100);
+check((await resolve.resolveDay()).care.find(c => c.roleId === "medic").outcome === "unfilled",
+  "an unfilled medic says nobody is looking after anyone");
+gandalf.system.attributes.exhaustion = 3;
+bilbo.system.attributes.exhaustion = 1;
 
 /* A FAILED quartermaster relieves nobody - and may cost a night instead.
    Pinned like the medic block above: with the quartermaster failing and the
@@ -436,7 +480,9 @@ report = await resolve.resolveDay();
 check(report.encounter?.happened === true, "an encounter happened");
 check(report.encounter.surprised === true, "a failed vanguard means surprised");
 check(report.events.some(e => e.category === "ambush"), "the event comes from the ambush table");
-check(report.consequences.length > 0, "somebody got hurt");
+// Not `consequences.length > 0` - every traveller is listed now, so that would
+// be true on a day nobody was touched.
+check(report.consequences.some(c => c.damage > 0), "somebody got hurt");
 
 // Vanguard succeeds -> the same jungle, seen in time.
 await freshDay({ pace: "normal", nav: 18, assignments: { [gandalf.id]: "navigator", [bilbo.id]: "vanguard" } });
@@ -445,8 +491,33 @@ queue.d100.push(99, 1);
 report = await resolve.resolveDay();
 check(report.encounter.surprised === false, "a good vanguard is not surprised");
 check(report.events.some(e => e.category === "encounter"), "the event comes from the sighting table");
-const sighting = report.events.find(e => e.category === "encounter");
-check(!sighting.damage, "a sighting costs no hit points - that is what the vanguard buys");
+/**
+ * WHAT THE VANGUARD BUYS, stated as the rule rather than as one draw.
+ *
+ * This used to assert that a sighting costs NOTHING, which was true and made
+ * the jungle too tame: a party that saw a tyrannosaurus coming paid nothing at
+ * all, and 87 % of travel days drew blood from nobody. Some sightings now cost
+ * a little - a fighting withdrawal - and the invariant worth protecting is the
+ * comparison, not the zero.
+ */
+const avgDamage = (pool) => {
+  const roll = (f) => {
+    const m = /^(\d+)d(\d+)$/.exec(f ?? "");
+    return m ? Number(m[1]) * (Number(m[2]) + 1) / 2 : 0;
+  };
+  return pool.reduce((n, e) => n + roll(e.damage), 0) / pool.length;
+};
+const sightPool = ALL_EVENTS.filter(e => e.category === "encounter" && (e.terrain ?? "land") === "land");
+const ambushPool = ALL_EVENTS.filter(e => e.category === "ambush" && (e.terrain ?? "land") === "land");
+check(avgDamage(sightPool) * 2 < avgDamage(ambushPool),
+  `a sighting costs far less than an ambush (${avgDamage(sightPool).toFixed(1)} vs ${avgDamage(ambushPool).toFixed(1)})`);
+check(sightPool.filter(e => !e.damage).length > sightPool.length / 2,
+  "and most sightings still cost nothing at all");
+// A save or a retort - the same two ways past an event the exhaustion rule
+// accepts. A kin event is settled by one character answering back, and that
+// cancels it for everybody exactly as a passed save does.
+check(sightPool.every(e => !e.damage || e.save || e.retort),
+  "a sighting that does cost something always offers a way past it");
 const ambushToday = report.events.find(e => e.category === "ambush");
 check(!ambushToday, "and no ambush event fires alongside it");
 

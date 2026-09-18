@@ -1,6 +1,6 @@
 import {
   MODULE_ID, REFRESH_HOOK, PACE_ORDER, DEBOUNCE_MS, MODE_ORDER, TRAVEL_MODES,
-  DEFAULT_MODE
+  DEFAULT_MODE, MARGIN_FOR_EXTRA_HEX, MARGIN_FOR_BONUS_HEX
 } from "./const.mjs";
 import { setting, paceTable } from "./settings.mjs";
 import {
@@ -334,8 +334,35 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         label: game.i18n.localize(`${MODULE_ID}.role.${roleId}.label`),
         mod: signed(value),
         bad: value < 0
-      }))
+      })),
+      /**
+       * WHAT THE CEILING ACTUALLY DOES - the half of each pace that was missing.
+       *
+       * The card used to print "up to 1 hexfield" for both slow and normal on
+       * foot, three advantages under slow and NOTHING under normal. Read off
+       * the window, normal was strictly the worse slow - and the rule that makes
+       * it the better one lived only in resolveMovement and in the README.
+       *
+       * A pace's ceiling is a promise, and all three of them carry an asterisk:
+       *  - slow keeps its ceiling and can never beat it,
+       *  - normal alone can EXCEED it, on an exceptional bearing,
+       *  - fast only reaches the number on the card with a clear margin, which
+       *    is why the card no longer reads as a free upgrade.
+       */
+      note: this.#paceNote(key, mode)
     }));
+  }
+
+  /** The asterisk on a pace's hex ceiling, as one line of text. */
+  #paceNote(key, mode) {
+    const faster = mode.hexes[key] > mode.hexes.normal;
+    if (faster) {
+      return game.i18n.format(`${MODULE_ID}.app.paceNoteFast`, { margin: MARGIN_FOR_EXTRA_HEX });
+    }
+    if (key === "normal") {
+      return game.i18n.format(`${MODULE_ID}.app.paceNoteNormal`, { margin: MARGIN_FOR_BONUS_HEX });
+    }
+    return game.i18n.localize(`${MODULE_ID}.app.paceNoteFixed`);
   }
 
   /**
@@ -509,6 +536,20 @@ export class AdventureTracker extends HandlebarsApplicationMixin(ApplicationV2) 
         // because otherwise a traveller with nothing next to their name looks
         // like an oversight rather than a good night.
         savedAll: c.from?.length > 0 && c.from.every(f => f.saved === true)
+      })),
+      /**
+       * The carers' own line. Printed even when they had nothing to do, because
+       * a role that is silent on a good day is indistinguishable from a role
+       * that does not work - which is exactly how the medic read at the table.
+       */
+      care: (report.care ?? []).map(c => ({
+        ...c,
+        label: game.i18n.localize(`${MODULE_ID}.role.${c.roleId}.label`),
+        text: game.i18n.format(`${MODULE_ID}.care.${c.outcome}`, {
+          name: c.actorName ?? "", n: c.heals ?? 0
+        }),
+        good: c.outcome === "helped",
+        idle: c.outcome === "nobodyNeeded"
       })),
       willApply: !!setting("applyConsequences"),
       // Whether the consequences have already been written to the sheets. The

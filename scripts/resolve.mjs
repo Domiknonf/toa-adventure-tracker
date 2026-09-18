@@ -119,13 +119,35 @@ export async function resolveDay() {
     .filter(a => (Number(a.system?.attributes?.exhaustion) || 0) > 0)
     .sort((a, b) => b.system.attributes.exhaustion - a.system.attributes.exhaustion);
 
+  /**
+   * WHAT EACH CARER DID, INCLUDING NOTHING.
+   *
+   * The medic fires on about one day in five - it needs a passed check AND
+   * somebody already exhausted - so at the table it looks broken: you take the
+   * role, you pass the roll, and the report says nothing at all. It was never
+   * broken; it was silent, which is indistinguishable.
+   *
+   * Every relieving role now reports its own outcome, and "nobody was
+   * exhausted" is one of them: that is the medic having a quiet day, not the
+   * module forgetting the medic exists.
+   */
+  const care = [];
+
   for (const [roleId, amount] of Object.entries(ROLE_RELIEF)) {
-    if (roles[roleId]?.status !== "success") continue;
+    const status = roles[roleId]?.status;
+    if (status !== "success") {
+      care.push({ roleId, outcome: status === "unfilled" ? "unfilled" : "failed" });
+      continue;
+    }
     // The worst-off traveller nobody has seen to yet; if everyone has been
     // seen to, the carer doubles up on whoever needs it most.
     const target = byNeed.find(a => !cared.has(a.id)) ?? byNeed[0];
-    if (!target) break;
+    if (!target) {
+      care.push({ roleId, outcome: "nobodyNeeded" });
+      continue;
+    }
     cared.add(target.id);
+    care.push({ roleId, outcome: "helped", actorName: target.name, heals: amount });
     const existing = relief.find(r => r.actorId === target.id);
     if (existing) existing.heals += amount;
     else relief.push({ actorId: target.id, actorName: target.name, heals: amount, by: roleId });
@@ -198,6 +220,8 @@ export async function resolveDay() {
     hexes: movement.hexes,
     reasons: movement.reasons,
     encounter,
+    // What the relieving roles did today, "nothing to do" included.
+    care,
     events: events.map(e => ({ ...e })),
     consequences,
     roles: Object.fromEntries(Object.entries(roles).map(([id, s]) => [id, {
@@ -427,7 +451,16 @@ async function resolveConsequences(events, actors) {
     if (event.damage) {
       try {
         const roll = await new Roll(String(event.damage)).evaluate();
-        damage = roll.total;
+        /**
+         * Scaled HERE, once, where the damage is rolled - so the number in the
+         * report and the number written to the sheet can never disagree.
+         *
+         * Rounded up and floored at 1: a table that dials this down wants
+         * smaller bites, not events that quietly stop happening.
+         */
+        const scale = Number(setting("damageScale"));
+        const factor = Number.isFinite(scale) && scale > 0 ? scale / 100 : 1;
+        damage = roll.total > 0 ? Math.max(1, Math.round(roll.total * factor)) : roll.total;
       } catch (error) {
         // A bad formula must not take the whole day's report down with it.
         console.warn(`${MODULE_ID} | damage formula failed for event "${event.id}"`, error);

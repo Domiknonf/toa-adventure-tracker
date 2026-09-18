@@ -100,6 +100,9 @@
             {{/each}}
             {{#if encounterMod}}<span>{{encounterMod}}% {{localize "toa-adventure-tracker.app.encounters"}}</span>{{/if}}
           </span>
+          {{!-- The asterisk on the ceiling above. Without it the normal card was
+                blank and read as a strictly worse slow. --}}
+          <span class="toa-pace-note">{{note}}</span>
         </button>
         {{/each}}
       </div>
@@ -476,6 +479,19 @@
       </ul>
       {{else}}
       <p class="toa-hint">{{localize "toa-adventure-tracker.app.quietDay"}}</p>
+      {{/if}}
+
+      {{!-- The carers. Above the roster because it is the answer to "did the
+            medic do anything", which is otherwise read off an absence. --}}
+      {{#if report.care.length}}
+      <ul class="toa-care">
+        {{#each report.care}}
+        <li class="{{#if good}}ok{{/if}} {{#if idle}}idle{{/if}}">
+          <i class="fa-solid {{#if good}}fa-hand-holding-medical{{else}}fa-minus{{/if}}"></i>
+          <strong>{{label}}</strong> &middot; {{text}}
+        </li>
+        {{/each}}
+      </ul>
       {{/if}}
 
       {{!-- ONE LINE PER TRAVELLER, the untouched ones included: a name simply

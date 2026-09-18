@@ -403,7 +403,25 @@ export const WEATHER_DEFAULTS = { stormChance: 10, rainChance: 55 };
  * party's own choices move it. Modified by pace and by how well the rearguard
  * did (see resolve.mjs).
  */
-export const ENCOUNTER_DEFAULTS = { baseChance: 20, rearguardFailMod: 15, rearguardUnfilledMod: 25 };
+export const ENCOUNTER_DEFAULTS = { baseChance: 28, rearguardFailMod: 15, rearguardUnfilledMod: 25 };
+
+/**
+ * Damage scale, in percent, applied to every event's rolled damage.
+ *
+ * THE ONE DIAL FOR "the jungle does not bite hard enough" - or the opposite.
+ * It exists because that is a question of taste rather than of arithmetic: how
+ * bloody a travel day should be depends on a table, and no measurement of mine
+ * settles it. A setting can be turned at that table in ten seconds; a number
+ * baked into 25 event entries cannot.
+ *
+ * Applied once, where the damage is rolled, so the report and the sheets can
+ * never disagree about it.
+ *
+ * Above 100 it interacts with a house rule that bars long rests: hit points
+ * then come back only from Hit Dice, and Hit Dice only from a long rest. See
+ * the README before pushing this far up.
+ */
+export const DAMAGE_SCALE_DEFAULT = 100;
 
 /**
  * How likely a failed or unfilled role is to ACTUALLY produce its event.
@@ -512,8 +530,8 @@ export const EVENTS = [
 
   /* --- Encounters spotted in time: the vanguard earned its keep -- */
   { id: "tRexTracks",   category: "encounter", blocks: true,  target: "party" , foe: { key: "tyrannosaurus", cr: "8" }},
-  { id: "raptorsSeen",  category: "encounter", blocks: false, target: "party" , foe: { key: "velociraptor", cr: "1/4" }},
-  { id: "zombiesSeen",  category: "encounter", blocks: true,  target: "party" , foe: { key: "zombie", cr: "1/4" }},
+  { id: "raptorsSeen",  category: "encounter", blocks: false, damage: "1d6", save: { ability: "dex", dc: 12 }, target: "random" , foe: { key: "velociraptor", cr: "1/4" }},
+  { id: "zombiesSeen",  category: "encounter", blocks: true,  damage: "1d6", save: { ability: "str", dc: 12 }, target: "random" , foe: { key: "zombie", cr: "1/4" }},
   { id: "grungPatrol",  category: "encounter", blocks: false, target: "party" , foe: { key: "grung", cr: "1/4" }},
   /* Grung who have noticed the grung walking with you. Only in play once the
      world names one (see KIN); the retort is how each of them ends. */
@@ -523,8 +541,8 @@ export const EVENTS = [
     target: "party", retort: { skill: "dec", dc: 13 }, foe: { key: "grung", cr: "1/4" }},
   { id: "hadrosaurs",   category: "encounter", blocks: false, target: "party" , foe: { key: "hadrosaurus", cr: "1/4" }},
   { id: "tabaxiHunter", category: "encounter", blocks: false, target: "party" },
-  { id: "vegepygmies",  category: "encounter", blocks: true,  target: "party" , foe: { key: "vegepygmy", cr: "1/4" }},
-  { id: "aldani",       category: "encounter", blocks: false, target: "party" , foe: { key: "aldani", cr: "2" }},
+  { id: "vegepygmies",  category: "encounter", blocks: true,  damage: "1d6", save: { ability: "dex", dc: 12 }, target: "random" , foe: { key: "vegepygmy", cr: "1/4" }},
+  { id: "aldani",       category: "encounter", blocks: false, damage: "1d8", save: { ability: "dex", dc: 13 }, target: "random" , foe: { key: "aldani", cr: "2" }},
   { id: "flailSnail",   category: "encounter", blocks: false, target: "party" , foe: { key: "flailSnail", cr: "3" }},
 
   /* --- Pursuit: the rearguard left a trail ---------------------- */
@@ -539,9 +557,9 @@ export const EVENTS = [
   /* --- Lost: no map to fall back on ----------------------------- */
   { id: "circles",      category: "lost", target: "party" },
   { id: "riverWrong",   category: "lost", target: "party" },
-  { id: "canopyDark",   category: "lost", target: "party" },
-  { id: "ravine",       category: "lost", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "swampDetour",  category: "lost", target: "party" },
+  { id: "canopyDark",   category: "lost", damage: "1d4", save: { ability: "dex", dc: 11 }, target: "random" },
+  { id: "ravine",       category: "lost", damage: "1d6", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
+  { id: "swampDetour",  category: "lost", damage: "1d4", save: { ability: "con", dc: 11 }, target: "random" },
 
   /* --- Detour: lost, but the cartographer got them back --------- */
   { id: "backtrack",    category: "detour", target: "party" , terrain: "any"},
@@ -552,10 +570,10 @@ export const EVENTS = [
 
 
   /* --- A camp that was not a rest -------------------------------- */
-  { id: "wetCamp",      category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
+  { id: "wetCamp",      category: "camp", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
   { id: "antSwarm",     category: "camp", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 11 }, target: "random" },
-  { id: "noFire",       category: "camp", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "party" },
-  { id: "mosquitoes",   category: "camp", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" },
+  { id: "noFire",       category: "camp", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 12 }, target: "random" },
+  { id: "mosquitoes",   category: "camp", damage: "1d4", exhaustion: 1, save: { ability: "con", dc: 13 }, target: "random" },
 
   /* --- Storms ----------------------------------------------------- */
   { id: "monsoon",      category: "storm", blocks: true, target: "party" },

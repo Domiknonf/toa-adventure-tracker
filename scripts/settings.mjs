@@ -1,6 +1,6 @@
 import {
   MODULE_ID, MOON_DEFAULTS, PACES, PACE_ORDER, PARTY_SOURCE,
-  REFRESH_HOOK, WEATHER_DEFAULTS, ENCOUNTER_DEFAULTS
+  REFRESH_HOOK, WEATHER_DEFAULTS, ENCOUNTER_DEFAULTS, DAMAGE_SCALE_DEFAULT
 } from "./const.mjs";
 
 /** Tell every open window that something it shows has changed. See REFRESH_HOOK. */
@@ -76,6 +76,18 @@ export function registerSettings() {
   reg("encounterChance", {
     ...WORLD, type: Number, default: ENCOUNTER_DEFAULTS.baseChance,
     range: { min: 0, max: 100, step: 5 }
+  });
+
+  /**
+   * How hard the jungle bites, in percent of the rolled damage.
+   *
+   * The dial for the one balance question no measurement of mine can settle:
+   * how bloody a travel day should be is a matter of taste at a table. 100
+   * leaves every event's dice exactly as written.
+   */
+  reg("damageScale", {
+    ...WORLD, type: Number, default: DAMAGE_SCALE_DEFAULT,
+    range: { min: 25, max: 300, step: 5 }
   });
 
   /* --- Party ------------------------------------------------- */

@@ -711,6 +711,39 @@
      forgotten rather than as spared - but quietly. */
   .toa-untouched { opacity: 0.75; }
 
+  /* What the relieving roles did - including nothing. */
+  .toa-care {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    font-size: var(--font-size-12, 0.75rem);
+  }
+
+  .toa-care li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.1rem 0;
+    color: var(--toa-dim);
+  }
+
+  .toa-care li i { color: var(--toa-dim); width: 1rem; text-align: center; }
+  .toa-care li.ok { color: var(--toa-fg); }
+  .toa-care li.ok i { color: var(--toa-ok); }
+
+  /* The asterisk on a pace's hex ceiling. Quiet, but it is the only place the
+     window says why "normal" is not simply a worse "slow". */
+  .toa-pace-note {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: var(--font-size-11, 0.6875rem);
+    color: var(--toa-dim);
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  .toa-pace.on .toa-pace-note { color: var(--toa-fg); }
+
   .toa-sub-title {
     margin: 0.85rem 0 0.35rem;
     font-size: var(--font-size-12, 0.75rem);

@@ -220,10 +220,10 @@ Hexfelder pro Tag:
 
 | | langsam | normal | schnell |
 |---|:--:|:--:|:--:|
-| Zu Fuß | 0,69 | 0,88 | 1,02 |
-| Reittiere | 0,69 | 1,49 | 1,67 |
-| Kanu | 0,70 | 1,59 | 1,64 |
-| Schiff | 1,39 | 2,17 | 2,74 |
+| Zu Fuß | 0,67 | 0,85 | 0,99 |
+| Reittiere | 0,69 | 1,48 | 1,66 |
+| Kanu | 0,70 | 1,57 | 1,63 |
+| Schiff | 1,37 | 2,10 | 2,75 |
 
 **Die Ereignispools sind getrennt.** Velociraptoren tauchen nie auf offener See
 auf, Sahuagin nie im Dschungel. Was überall passiert — ein verpeilter Kurs,
@@ -275,12 +275,27 @@ sechste Rolle bleibt zwangsläufig leer):
 
 | Tempo | Hexfelder/Tag | Nulltage | Schaden/Tag |
 |---|:--:|:--:|:--:|
-| Langsam | 0,70 | 30 % | 1,4 |
-| Normal | 0,86 | 34 % | 1,9 |
-| Schnell | **1,03** | 34 % | **4,9** |
+| Langsam | 0,67 | 33 % | 3,0 |
+| Normal | 0,85 | 35 % | 3,7 |
+| Schnell | **0,99** | 34 % | **7,2** |
 
-Schnell kommt am weitesten **und** kostet dreimal so viel Blut. Das ist der
+Schnell kommt am weitesten **und** kostet doppelt so viel Blut. Das ist der
 Handel.
+
+### Wofür normales Tempo überhaupt gut ist
+
+Zu Fuß haben langsam und normal **dieselbe Obergrenze von einem Hexfeld**. Auf
+der Karte im Fenster sah langsam damit strikt besser aus: drei Vorteile, gleiche
+Strecke. Die Regel, die das umdreht, stand nur in dieser Datei.
+
+**Nur normales Tempo kann seine eigene Obergrenze überbieten:** Liegt die
+Navigation **8 oder mehr** über dem SG, gibt es ein Hexfeld extra. Langsam
+erreicht das nie — „Obergrenze fest" heißt genau das. Und schnell bekommt die
+höhere Zahl auf seiner Karte *nur* bei einem Vorsprung von 3; sonst fällt es auf
+das Normalmaß zurück und hat die zusätzlichen Begegnungen schon bezahlt.
+
+Alle drei Sätze stehen jetzt **auf den Tempo-Karten im Fenster**. Eine
+Obergrenze ist ein Versprechen, und alle drei haben ein Sternchen.
 
 > **Zwei Fehler, die hier drinsteckten — beide gefunden, indem gerechnet statt
 > geraten wurde.**
@@ -374,6 +389,20 @@ Jedes Ereignis hat einen Namen, einen Absatz Prosa und seine Mechanik
 > Jetzt hängt es an den zwei Dingen, die die Gruppe tatsächlich in der Hand
 > hat — es kam nichts, und der Kurs stimmte —, und liegt bei 8–15 %.
 
+> **Schaden war zu selten, nicht zu klein.** Er lag fast vollständig im
+> **Hinterhalt**-Pool (18 von 18 Einträgen), und ein Hinterhalt braucht eine
+> Begegnung *und* eine patzende Vorhut — zusammen rund 7 % der Tage. Gemessen:
+> an **87 % aller Reisetage** bekam niemand einen Kratzer. Jetzt kostet auch ein
+> verlorener Tag im Dornengestrüpp, ein schlechtes Lager und eine rechtzeitig
+> gesichtete Begegnung etwas — in kleinen Bissen mit Rettungswurf statt in einer
+> Spitze. Tage mit Schaden: **13 % → 34 %**, je Charakter über 40 Tage
+> **16 → 28 TP**. Die Begegnungschance steht jetzt auf 28 % statt 20 %.
+>
+> Die Vorhut bleibt trotzdem die Rolle, die Blut spart: Eine Sichtung kostet im
+> Schnitt einen Bruchteil eines Hinterhalts, die meisten Sichtungen kosten
+> weiterhin gar nichts, und jede, die etwas kostet, bietet einen Rettungswurf.
+> Ein Test prüft genau diesen Vergleich statt einer Null.
+
 **Ein misslungener Nebenrolle löst ihr Ereignis nicht garantiert aus**, sondern
 mit einer Wahrscheinlichkeit (Verfolgung 30 / 35 %, Lager 25 / 30 %). Eine
 Vierergruppe lässt zwangsläufig Rollen leer; würde jede davon jeden Tag feuern,
@@ -440,17 +469,18 @@ Und die kommen ihrerseits nur bei einer langen Rast zurück — mit der Hausrege
 hat die Gruppe für den ganzen Trek **einen** Vorrat und danach gar nichts. Also
 auch das gemessen, gleicher Aufbau, 150–200 Treks über 40 Tage:
 
-| Rettungswurf-Chance | Schaden je Charakter, 40 Tage |
-|---|:--:|
-| 40 % | 17,7 TP |
-| 55 % | 15,5 TP |
-| 70 % | 14,1 TP |
+Rund **28 Trefferpunkte in sechs Wochen**, gemessen bei 55 % Rettungswurf-Chance
+— etwa zwei Drittel eines Pools auf Stufe 6, bevor überhaupt ein Trefferwürfel
+ausgegeben wurde. Mit der Hausregel habt ihr für den ganzen Trek **einen** Satz
+Trefferwürfel und danach nichts mehr, also ist das eine echte Rechnung und
+keine Randnotiz mehr — dazu kommen ja noch die Kämpfe, die ihr aus den
+Begegnungen macht, und die zählt dieses Modul nicht mit.
 
-Rund **15 Trefferpunkte in sechs Wochen** — etwa ein Drittel eines Pools auf
-Stufe 6, bevor überhaupt ein Trefferwürfel ausgegeben wurde. Der Schaden aus
-Reiseereignissen ist damit kein zweiter Ratschenmechanismus; was eure Gruppe
-verwundet, sind die Kämpfe, die ihr aus den Begegnungen macht, und die zählt
-dieses Modul nicht mit.
+> Wenn euch das zu viel oder zu wenig ist: **Weltoption „Schadensstärke"**, in
+> Prozent. 100 lässt jede Würfelformel so, wie sie geschrieben ist; 75 nimmt ein
+> Viertel weg, 150 legt die Hälfte drauf. Die eine Stellschraube, die keine
+> Messung von mir entscheiden kann — wie blutig ein Reisetag sein soll, ist
+> Geschmackssache am Tisch.
 
 > **Und das Tagesende?** Früher hing der Automatismus an einer langen Rast mit
 > „neuer Tag", die es bei euch im Dschungel nie gibt. Deshalb gibt es jetzt den
@@ -664,6 +694,23 @@ Ein Name, der einfach fehlt, liest sich als vergessen und nicht als verschont �
 und die zweite Hälfte jeder Zeile ist für eine Gruppe ohne lange Rasten die
 wichtigste Zeile im ganzen Bericht.
 
+### Was der Feldscher heute getan hat
+
+Darüber steht eine Zeile pro **pflegender Rolle** — auch dann, wenn sie nichts
+zu tun hatte:
+
+```
+Feldscher     · nimmt Pyroth 1 Grad Erschöpfung ab.
+Lagermeister  · niemand war erschöpft — nichts zu tun.
+```
+
+Der Feldscher braucht **beides**: eine gelungene Probe *und* jemanden, der
+überhaupt erschöpft ist. Gemessen über 2400 Tage ist das an 18 % der Tage der
+Fall — an den anderen 82 % sagte der Bericht schlicht gar nichts, und eine
+Rolle, die auf einem guten Tag schweigt, ist von einer kaputten Rolle nicht zu
+unterscheiden. Vier Ausgänge werden jetzt benannt: *hat geholfen*, *niemand war
+erschöpft*, *Probe misslungen*, *unbesetzt*.
+
 **„Abgewehrt" ist nicht „kein Effekt".** Ein gelungener Rettungswurf hebt das
 Ereignis **ganz** auf — kein halber Schaden, keine Erschöpfung: Das sind Tage
 und keine Feuerbälle, der Wurf fragt „hat es dich erwischt". Ein Kamadan, der
@@ -813,7 +860,8 @@ Unabhängig vom Zahlenmodifikator.
 |---|---|
 | Sturmwahrscheinlichkeit | 10 % |
 | Regenwahrscheinlichkeit | 55 % |
-| Begegnungswahrscheinlichkeit | 20 % |
+| Begegnungswahrscheinlichkeit | 28 % |
+| Schadensstärke (%) | **100** |
 
 ### Reisende
 | Option | Vorgabe |
